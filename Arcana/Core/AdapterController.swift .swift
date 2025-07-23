@@ -13,9 +13,17 @@ class AdapterController: ObservableObject {
 }
 
 struct LoRAAdapter: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     var name: String
     var path: String
     var task: String
     var baseModel: String
+    
+    init(name: String, path: String, task: String, baseModel: String) {
+        self.id = UUID()
+        self.name = name
+        self.path = path
+        self.task = task
+        self.baseModel = baseModel
+    }
 }

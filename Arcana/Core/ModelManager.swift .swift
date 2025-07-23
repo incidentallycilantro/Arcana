@@ -1,8 +1,20 @@
-// LLMModel.swift (for ModelManager)
+// ModelManager.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Privacy-first AI Assistant for macOS
 
 import Foundation
+
+class ModelManager: ObservableObject {
+    @Published var models: [LLMModel] = []
+    
+    init() {
+        // Model management will be implemented in Phase 2
+    }
+    
+    func loadAvailableModels() {
+        // TODO: Implement model discovery
+    }
+}
 
 struct LLMModel: Identifiable, Codable {
     let id: UUID
@@ -21,23 +33,3 @@ struct LLMModel: Identifiable, Codable {
         self.capabilities = capabilities
     }
 }
-
-struct LoRAAdapter: Identifiable, Codable {
-    let id: UUID
-    var name: String
-    var path: String
-    var task: String
-    var baseModel: String
-    
-    init(name: String, path: String, task: String, baseModel: String) {
-        self.id = UUID()
-        self.name = name
-        self.path = path
-        self.task = task
-        self.baseModel = baseModel
-    }
-}
-Smart, efficient model for everyday use Learn more
-
-Artifacts
-
