@@ -1,0 +1,546 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		1DA788132E30687D0095ED87 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1DA787FC2E30687B0095ED87 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1DA788032E30687B0095ED87;
+			remoteInfo = Arcana;
+		};
+		1DA7881D2E30687D0095ED87 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1DA787FC2E30687B0095ED87 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1DA788032E30687B0095ED87;
+			remoteInfo = Arcana;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1DA788042E30687B0095ED87 /* Arcana.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Arcana.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1DA788122E30687D0095ED87 /* ArcanaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1DA7881C2E30687D0095ED87 /* ArcanaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		1DA788062E30687B0095ED87 /* Arcana */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Arcana;
+			sourceTree = "<group>";
+		};
+		1DA788152E30687D0095ED87 /* ArcanaTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ArcanaTests;
+			sourceTree = "<group>";
+		};
+		1DA7881F2E30687D0095ED87 /* ArcanaUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ArcanaUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1DA788012E30687B0095ED87 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1DA7880F2E30687D0095ED87 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1DA788192E30687D0095ED87 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1DA787FB2E30687B0095ED87 = {
+			isa = PBXGroup;
+			children = (
+				1DA788062E30687B0095ED87 /* Arcana */,
+				1DA788152E30687D0095ED87 /* ArcanaTests */,
+				1DA7881F2E30687D0095ED87 /* ArcanaUITests */,
+				1DA788052E30687B0095ED87 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1DA788052E30687B0095ED87 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1DA788042E30687B0095ED87 /* Arcana.app */,
+				1DA788122E30687D0095ED87 /* ArcanaTests.xctest */,
+				1DA7881C2E30687D0095ED87 /* ArcanaUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1DA788032E30687B0095ED87 /* Arcana */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DA788262E30687D0095ED87 /* Build configuration list for PBXNativeTarget "Arcana" */;
+			buildPhases = (
+				1DA788002E30687B0095ED87 /* Sources */,
+				1DA788012E30687B0095ED87 /* Frameworks */,
+				1DA788022E30687B0095ED87 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				1DA788062E30687B0095ED87 /* Arcana */,
+			);
+			name = Arcana;
+			packageProductDependencies = (
+			);
+			productName = Arcana;
+			productReference = 1DA788042E30687B0095ED87 /* Arcana.app */;
+			productType = "com.apple.product-type.application";
+		};
+		1DA788112E30687D0095ED87 /* ArcanaTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DA788292E30687D0095ED87 /* Build configuration list for PBXNativeTarget "ArcanaTests" */;
+			buildPhases = (
+				1DA7880E2E30687D0095ED87 /* Sources */,
+				1DA7880F2E30687D0095ED87 /* Frameworks */,
+				1DA788102E30687D0095ED87 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1DA788142E30687D0095ED87 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				1DA788152E30687D0095ED87 /* ArcanaTests */,
+			);
+			name = ArcanaTests;
+			packageProductDependencies = (
+			);
+			productName = ArcanaTests;
+			productReference = 1DA788122E30687D0095ED87 /* ArcanaTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		1DA7881B2E30687D0095ED87 /* ArcanaUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DA7882C2E30687D0095ED87 /* Build configuration list for PBXNativeTarget "ArcanaUITests" */;
+			buildPhases = (
+				1DA788182E30687D0095ED87 /* Sources */,
+				1DA788192E30687D0095ED87 /* Frameworks */,
+				1DA7881A2E30687D0095ED87 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1DA7881E2E30687D0095ED87 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				1DA7881F2E30687D0095ED87 /* ArcanaUITests */,
+			);
+			name = ArcanaUITests;
+			packageProductDependencies = (
+			);
+			productName = ArcanaUITests;
+			productReference = 1DA7881C2E30687D0095ED87 /* ArcanaUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1DA787FC2E30687B0095ED87 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					1DA788032E30687B0095ED87 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					1DA788112E30687D0095ED87 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 1DA788032E30687B0095ED87;
+					};
+					1DA7881B2E30687D0095ED87 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 1DA788032E30687B0095ED87;
+					};
+				};
+			};
+			buildConfigurationList = 1DA787FF2E30687B0095ED87 /* Build configuration list for PBXProject "Arcana" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 1DA787FB2E30687B0095ED87;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 1DA788052E30687B0095ED87 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1DA788032E30687B0095ED87 /* Arcana */,
+				1DA788112E30687D0095ED87 /* ArcanaTests */,
+				1DA7881B2E30687D0095ED87 /* ArcanaUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		1DA788022E30687B0095ED87 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1DA788102E30687D0095ED87 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1DA7881A2E30687D0095ED87 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1DA788002E30687B0095ED87 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1DA7880E2E30687D0095ED87 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1DA788182E30687D0095ED87 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1DA788142E30687D0095ED87 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1DA788032E30687B0095ED87 /* Arcana */;
+			targetProxy = 1DA788132E30687D0095ED87 /* PBXContainerItemProxy */;
+		};
+		1DA7881E2E30687D0095ED87 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1DA788032E30687B0095ED87 /* Arcana */;
+			targetProxy = 1DA7881D2E30687D0095ED87 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1DA788242E30687D0095ED87 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		1DA788252E30687D0095ED87 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		1DA788272E30687D0095ED87 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Arcana/Arcana.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.spectrallabs.Arcana;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		1DA788282E30687D0095ED87 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Arcana/Arcana.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.spectrallabs.Arcana;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		1DA7882A2E30687D0095ED87 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.spectrallabs.ArcanaTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Arcana.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Arcana";
+			};
+			name = Debug;
+		};
+		1DA7882B2E30687D0095ED87 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.spectrallabs.ArcanaTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Arcana.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Arcana";
+			};
+			name = Release;
+		};
+		1DA7882D2E30687D0095ED87 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.spectrallabs.ArcanaUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Arcana;
+			};
+			name = Debug;
+		};
+		1DA7882E2E30687D0095ED87 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.spectrallabs.ArcanaUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Arcana;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DA787FF2E30687B0095ED87 /* Build configuration list for PBXProject "Arcana" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DA788242E30687D0095ED87 /* Debug */,
+				1DA788252E30687D0095ED87 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DA788262E30687D0095ED87 /* Build configuration list for PBXNativeTarget "Arcana" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DA788272E30687D0095ED87 /* Debug */,
+				1DA788282E30687D0095ED87 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DA788292E30687D0095ED87 /* Build configuration list for PBXNativeTarget "ArcanaTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DA7882A2E30687D0095ED87 /* Debug */,
+				1DA7882B2E30687D0095ED87 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DA7882C2E30687D0095ED87 /* Build configuration list for PBXNativeTarget "ArcanaUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DA7882D2E30687D0095ED87 /* Debug */,
+				1DA7882E2E30687D0095ED87 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1DA787FC2E30687B0095ED87 /* Project object */;
+}
