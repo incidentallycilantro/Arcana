@@ -29,6 +29,9 @@
 		1DA788782E306D4C0095ED87 /* Features.md in Resources */ = {isa = PBXBuildFile; fileRef = 1DA788702E306D4C0095ED87 /* Features.md */; };
 		1DA788792E306D4C0095ED87 /* IdeaVault.md in Resources */ = {isa = PBXBuildFile; fileRef = 1DA788712E306D4C0095ED87 /* IdeaVault.md */; };
 		1DA7887A2E306D4C0095ED87 /* PRISM_Spec.md in Resources */ = {isa = PBXBuildFile; fileRef = 1DA788722E306D4C0095ED87 /* PRISM_Spec.md */; };
+		1DA7887C2E307FA30095ED87 /* NewProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA7887B2E307FA30095ED87 /* NewProjectSheet.swift */; };
+		1DA7887E2E3120240095ED87 /* WorkspaceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA7887D2E3120240095ED87 /* WorkspaceManager.swift */; };
+		1DA788802E3128620095ED87 /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA7887F2E3128620095ED87 /* UserSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -75,6 +78,9 @@
 		1DA788722E306D4C0095ED87 /* PRISM_Spec.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PRISM_Spec.md; sourceTree = "<group>"; };
 		1DA788732E306D4C0095ED87 /* Threading_Guide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Threading_Guide.md; sourceTree = "<group>"; };
 		1DA788742E306D4C0095ED87 /* UX_Magic.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = UX_Magic.md; sourceTree = "<group>"; };
+		1DA7887B2E307FA30095ED87 /* NewProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewProjectSheet.swift; sourceTree = "<group>"; };
+		1DA7887D2E3120240095ED87 /* WorkspaceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceManager.swift; sourceTree = "<group>"; };
+		1DA7887F2E3128620095ED87 /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -157,6 +163,8 @@
 				1DA788512E306C930095ED87 /* ModelManager.swift .swift */,
 				1DA788532E306C9B0095ED87 /* AdapterController.swift .swift */,
 				1DA788552E306CA20095ED87 /* MemoryGraph.swift    .swift */,
+				1DA7887D2E3120240095ED87 /* WorkspaceManager.swift */,
+				1DA7887F2E3128620095ED87 /* UserSettings.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -168,6 +176,7 @@
 				1DA7885A2E306CBC0095ED87 /* ProjectSidebar.swift */,
 				1DA7885C2E306CC50095ED87 /* ChatView.swift */,
 				1DA7885E2E306CCD0095ED87 /* TimelineView.swift */,
+				1DA7887B2E307FA30095ED87 /* NewProjectSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -359,11 +368,14 @@
 				1DA788592E306CB30095ED87 /* MainView.swift in Sources */,
 				1DA7885F2E306CCD0095ED87 /* TimelineView.swift in Sources */,
 				1DA788542E306C9B0095ED87 /* AdapterController.swift .swift in Sources */,
+				1DA7887E2E3120240095ED87 /* WorkspaceManager.swift in Sources */,
 				1DA7885D2E306CC50095ED87 /* ChatView.swift in Sources */,
 				1DA788562E306CA20095ED87 /* MemoryGraph.swift    .swift in Sources */,
 				1DA788622E306CDF0095ED87 /* Project.swift in Sources */,
 				1DA7886B2E306D0D0095ED87 /* FileLoader.swift in Sources */,
+				1DA7887C2E307FA30095ED87 /* NewProjectSheet.swift in Sources */,
 				1DA788642E306CE60095ED87 /* ChatMessage.swift in Sources */,
+				1DA788802E3128620095ED87 /* UserSettings.swift in Sources */,
 				1DA788692E306D060095ED87 /* UXAnimations.swift in Sources */,
 				1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */,
 				1DA788522E306C930095ED87 /* ModelManager.swift .swift in Sources */,

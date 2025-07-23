@@ -5,27 +5,19 @@
 import SwiftUI
 
 struct ProjectSidebar: View {
-    @Binding var selectedProject: Project?
-    @State private var projects: [Project] = Project.sampleProjects
+    @EnvironmentObject private var workspaceManager: WorkspaceManager
     @State private var searchText = ""
     @State private var showingNewProjectSheet = false
     
     var filteredProjects: [Project] {
-        if searchText.isEmpty {
-            return projects.sorted { $0.isPinned && !$1.isPinned }
-        } else {
-            return projects.filter {
-                $0.title.localizedCaseInsensitiveContains(searchText) ||
-                $0.description.localizedCaseInsensitiveContains(searchText)
-            }
-        }
+        workspaceManager.filteredWorkspaces(searchText: searchText)
     }
     
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Projects")
+                Text("Workspaces")
                     .font(.headline)
                     .fontWeight(.semibold)
                 
@@ -37,13 +29,14 @@ struct ProjectSidebar: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.top)
             
             // Search
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                TextField("Search projects...", text: $searchText)
+                TextField("Search workspaces...", text: $searchText)
                     .textFieldStyle(.plain)
             }
             .padding(.horizontal)
@@ -51,56 +44,42 @@ struct ProjectSidebar: View {
             
             Divider()
             
-            // Projects List
-            List(filteredProjects, id: \.id, selection: $selectedProject) { project in
-                ProjectRow(project: project, isSelected: selectedProject?.id == project.id)
-                    .listRowInsets(EdgeInsets())
-                    .onTapGesture {
-                        selectedProject = project
-                    }
-                    .contextMenu {
-                        Button("Pin Project") {
-                            togglePin(for: project)
+            // Workspaces List
+            List(selection: $workspaceManager.selectedWorkspace) {
+                ForEach(filteredProjects) { project in
+                    ProjectRow(project: project)
+                        .listRowInsets(EdgeInsets())
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            workspaceManager.selectedWorkspace = project
                         }
-                        Button("Duplicate") {
-                            duplicateProject(project)
+                        .contextMenu {
+                            Button(project.isPinned ? "Unpin Workspace" : "Pin Workspace") {
+                                workspaceManager.togglePin(for: project)
+                            }
+                            Button("Duplicate") {
+                                workspaceManager.duplicateWorkspace(project)
+                            }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                workspaceManager.deleteWorkspace(project)
+                            }
                         }
-                        Divider()
-                        Button("Delete", role: .destructive) {
-                            deleteProject(project)
-                        }
-                    }
+                        .tag(project)
+                }
             }
             .listStyle(.sidebar)
         }
         .sheet(isPresented: $showingNewProjectSheet) {
-            NewProjectSheet(projects: $projects)
-        }
-    }
-    
-    private func togglePin(for project: Project) {
-        if let index = projects.firstIndex(where: { $0.id == project.id }) {
-            projects[index].isPinned.toggle()
-        }
-    }
-    
-    private func duplicateProject(_ project: Project) {
-        var newProject = project
-        newProject.title += " Copy"
-        projects.append(newProject)
-    }
-    
-    private func deleteProject(_ project: Project) {
-        projects.removeAll { $0.id == project.id }
-        if selectedProject?.id == project.id {
-            selectedProject = projects.first
+            NewProjectSheet { newProject in
+                workspaceManager.createWorkspace(title: newProject.title, description: newProject.description)
+            }
         }
     }
 }
 
 struct ProjectRow: View {
     let project: Project
-    let isSelected: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -131,46 +110,12 @@ struct ProjectRow: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal)
-        .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-        .cornerRadius(8)
-    }
-}
-
-struct NewProjectSheet: View {
-    @Binding var projects: [Project]
-    @Environment(\.dismiss) private var dismiss
-    @State private var title = ""
-    @State private var description = ""
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Project Details") {
-                    TextField("Project Name", text: $title)
-                    TextField("Description (optional)", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-            }
-            .navigationTitle("New Project")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
-                        let newProject = Project(title: title, description: description)
-                        projects.append(newProject)
-                        dismiss()
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-        }
-        .frame(width: 400, height: 300)
+        .contentShape(Rectangle())  // Makes entire row tappable
     }
 }
 
 #Preview {
-    ProjectSidebar(selectedProject: .constant(nil))
+    ProjectSidebar()
+        .environmentObject(WorkspaceManager.shared)
         .frame(width: 300, height: 600)
 }

@@ -26,16 +26,6 @@ struct Project: Identifiable, Codable, Hashable {
     mutating func updateModified() {
         self.lastModified = Date()
     }
-    
-    // Hashable conformance
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-    
-    // Equatable conformance
-    static func == (lhs: Project, rhs: Project) -> Bool {
-        lhs.id == rhs.id
-    }
 }
 
 // Sample data for development

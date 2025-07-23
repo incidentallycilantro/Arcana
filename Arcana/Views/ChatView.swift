@@ -9,6 +9,7 @@ struct ChatView: View {
     @State private var messages: [ChatMessage] = []
     @State private var inputText = ""
     @State private var isAssistantTyping = false
+    @State private var lastMessageCount = 0
     @FocusState private var isInputFocused: Bool
     
     var body: some View {
@@ -58,7 +59,7 @@ struct ChatView: View {
                     }
                     .padding()
                 }
-                .onChange(of: messages.count) { oldCount, newCount in
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ScrollToBottom"))) { _ in
                     if let lastMessage = messages.last {
                         withAnimation(.easeOut(duration: 0.3)) {
                             proxy.scrollTo(lastMessage.id, anchor: .bottom)
@@ -105,6 +106,7 @@ struct ChatView: View {
     
     private func loadMessages() {
         messages = ChatMessage.sampleMessages(for: project.id)
+        lastMessageCount = messages.count
     }
     
     private func sendMessage() {
@@ -114,6 +116,9 @@ struct ChatView: View {
         // Add user message
         let userMessage = ChatMessage(content: trimmedText, role: .user, projectId: project.id)
         messages.append(userMessage)
+        
+        // Scroll to bottom
+        scrollToBottom()
         
         // Clear input
         inputText = ""
@@ -137,17 +142,35 @@ struct ChatView: View {
             ]
             
             let randomResponse = responses.randomElement() ?? responses[0]
-            let assistantMessage = ChatMessage(content: randomResponse, role: .assistant, projectId: project.id)
+            var assistantMessage = ChatMessage(content: randomResponse, role: .assistant, projectId: project.id)
+            
+            // Add mock metadata including model information
+            assistantMessage.metadata = MessageMetadata(
+                modelUsed: "Mistral-7B-Instruct-v0.1",
+                tokensGenerated: Int.random(in: 25...150),
+                responseTime: Double.random(in: 0.8...2.1),
+                wasSpeculative: Bool.random()
+            )
             
             withAnimation(.easeOut) {
                 messages.append(assistantMessage)
             }
+            
+            // Scroll to bottom after response
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                scrollToBottom()
+            }
         }
+    }
+    
+    private func scrollToBottom() {
+        NotificationCenter.default.post(name: NSNotification.Name("ScrollToBottom"), object: nil)
     }
 }
 
 struct MessageBubble: View {
     let message: ChatMessage
+    @EnvironmentObject private var userSettings: UserSettings
     
     var body: some View {
         HStack {
@@ -165,10 +188,37 @@ struct MessageBubble: View {
                     )
                     .foregroundStyle(message.role == .user ? .white : .primary)
                 
-                Text(message.timestamp, style: .time)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
+                // Message metadata (conditional based on user settings)
+                HStack(spacing: 4) {
+                    Text(message.timestamp, style: .time)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    
+                    if message.role == .assistant, let metadata = message.metadata {
+                        if userSettings.showModelAttribution {
+                            Text("•")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                            
+                            Text(metadata.modelUsed ?? "Unknown Model")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        if userSettings.showPerformanceMetrics,
+                           let tokens = metadata.tokensGenerated,
+                           let responseTime = metadata.responseTime {
+                            Text("•")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                            
+                            Text("\(tokens) tokens • \(String(format: "%.1fs", responseTime))")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 4)
             }
             .frame(maxWidth: 400, alignment: message.role == .user ? .trailing : .leading)
             
