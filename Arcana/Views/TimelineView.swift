@@ -52,7 +52,7 @@ struct TimelineView: View {
                         in: 0...Double(messages.count - 1),
                         step: 1
                     )
-                    .accentColor(.blue)
+                    .tint(.blue)
                 }
                 .padding()
                 
@@ -138,11 +138,8 @@ struct MessageTimelineItem: View {
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .foregroundColor(isSelected ? Color.blue.opacity(0.1) : Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isSelected ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1)
-                    )
+                    .fill(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+                    .stroke(isSelected ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1)
             )
         }
     }

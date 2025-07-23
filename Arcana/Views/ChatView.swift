@@ -9,7 +9,6 @@ struct ChatView: View {
     @State private var messages: [ChatMessage] = []
     @State private var inputText = ""
     @State private var isAssistantTyping = false
-    @State private var lastMessageCount = 0
     @FocusState private var isInputFocused: Bool
     
     var body: some View {
@@ -59,7 +58,7 @@ struct ChatView: View {
                     }
                     .padding()
                 }
-                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ScrollToBottom"))) { _ in
+                .onChange(of: messages.count) { oldCount, newCount in
                     if let lastMessage = messages.last {
                         withAnimation(.easeOut(duration: 0.3)) {
                             proxy.scrollTo(lastMessage.id, anchor: .bottom)
@@ -106,7 +105,6 @@ struct ChatView: View {
     
     private func loadMessages() {
         messages = ChatMessage.sampleMessages(for: project.id)
-        lastMessageCount = messages.count
     }
     
     private func sendMessage() {
@@ -116,9 +114,6 @@ struct ChatView: View {
         // Add user message
         let userMessage = ChatMessage(content: trimmedText, role: .user, projectId: project.id)
         messages.append(userMessage)
-        
-        // Scroll to bottom
-        scrollToBottom()
         
         // Clear input
         inputText = ""
@@ -147,16 +142,7 @@ struct ChatView: View {
             withAnimation(.easeOut) {
                 messages.append(assistantMessage)
             }
-            
-            // Scroll to bottom after response
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                scrollToBottom()
-            }
         }
-    }
-    
-    private func scrollToBottom() {
-        NotificationCenter.default.post(name: NSNotification.Name("ScrollToBottom"), object: nil)
     }
 }
 
