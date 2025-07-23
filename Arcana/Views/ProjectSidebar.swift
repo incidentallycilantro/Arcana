@@ -53,8 +53,11 @@ struct ProjectSidebar: View {
             
             // Projects List
             List(filteredProjects, id: \.id, selection: $selectedProject) { project in
-                ProjectRow(project: project)
+                ProjectRow(project: project, isSelected: selectedProject?.id == project.id)
                     .listRowInsets(EdgeInsets())
+                    .onTapGesture {
+                        selectedProject = project
+                    }
                     .contextMenu {
                         Button("Pin Project") {
                             togglePin(for: project)
@@ -90,13 +93,14 @@ struct ProjectSidebar: View {
     private func deleteProject(_ project: Project) {
         projects.removeAll { $0.id == project.id }
         if selectedProject?.id == project.id {
-            selectedProject = nil
+            selectedProject = projects.first
         }
     }
 }
 
 struct ProjectRow: View {
     let project: Project
+    let isSelected: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -127,6 +131,8 @@ struct ProjectRow: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal)
+        .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+        .cornerRadius(8)
     }
 }
 

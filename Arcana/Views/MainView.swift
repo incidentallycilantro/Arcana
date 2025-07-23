@@ -14,8 +14,15 @@ struct MainView: View {
         } detail: {
             if let project = selectedProject {
                 ChatView(project: project)
+                    .id(project.id) // Force refresh when project changes
             } else {
                 WelcomeView()
+            }
+        }
+        .onAppear {
+            // Auto-select first project for testing
+            if selectedProject == nil {
+                selectedProject = Project.sampleProjects.first
             }
         }
     }
@@ -32,9 +39,10 @@ struct WelcomeView: View {
                 .font(.largeTitle)
                 .fontWeight(.semibold)
             
-            Text("Create a new project to get started")
+            Text("Select a project from the sidebar to get started")
                 .font(.title3)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

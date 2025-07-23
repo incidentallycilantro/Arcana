@@ -1,4 +1,3 @@
-
 // Project.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Privacy-first AI Assistant for macOS
@@ -26,6 +25,16 @@ struct Project: Identifiable, Codable, Hashable {
     
     mutating func updateModified() {
         self.lastModified = Date()
+    }
+    
+    // Hashable conformance
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    // Equatable conformance
+    static func == (lhs: Project, rhs: Project) -> Bool {
+        lhs.id == rhs.id
     }
 }
 
