@@ -8,42 +8,67 @@ import SwiftUI
 class WorkspaceManager: ObservableObject {
     static let shared = WorkspaceManager()
     
-    @Published var workspaces: [Project] = Project.sampleProjects
+    @Published var workspaces: [Project] = []
     @Published var selectedWorkspace: Project?
+    @Published var showNewWorkspaceSheet = false
     
-    private init() {}
+    enum WorkspaceType {
+        case code
+        case creative
+        case research
+        case general
+        
+        var displayName: String {
+            switch self {
+            case .code: return "Code"
+            case .creative: return "Creative"
+            case .research: return "Research"
+            case .general: return "General"
+            }
+        }
+        
+        var emoji: String {
+            switch self {
+            case .code: return "💻"
+            case .creative: return "🎨"
+            case .research: return "📊"
+            case .general: return "💼"
+            }
+        }
+    }
     
-    // MARK: - Workspace Management
+    private init() {
+        loadSampleWorkspaces()
+    }
     
-    func createWorkspace(title: String, description: String = "") {
+    private func loadSampleWorkspaces() {
+        workspaces = [
+            Project(title: "Personal Assistant", description: "General purpose conversations and tasks"),
+            Project(title: "Code Review", description: "Software development and code analysis"),
+            Project(title: "Creative Writing", description: "Stories, poems, and creative content")
+        ]
+    }
+    
+    @discardableResult
+    func createWorkspace(title: String, description: String) -> Project {
         let newWorkspace = Project(title: title, description: description)
         
-        // Add to the beginning of the array for immediate visibility
+        // Detect workspace type for intelligent features
+        let detectedType = detectWorkspaceType(title: title, description: description)
+        print("🧠✨ Detected: \(detectedType.displayName.uppercased()) workspace - \(detectedType.emoji)")
+        
+        // Insert at the beginning of the array (top of list)
         workspaces.insert(newWorkspace, at: 0)
-        selectedWorkspace = newWorkspace
         
-        print("✅ Created workspace '\(title)' at position 0, total workspaces: \(workspaces.count)")
+        // Force UI update and selection
+        DispatchQueue.main.async {
+            self.selectedWorkspace = newWorkspace
+            print("📍 New workspace '\(title)' created and selected at position 0")
+            print("📋 Total workspaces: \(self.workspaces.count)")
+            print("📋 Workspace order: \(self.workspaces.map(\.title))")
+        }
         
-        // TODO: Phase 2 - Analyze title/description for intelligent model selection
-        analyzeWorkspaceType(newWorkspace)
-    }
-    
-    func deleteWorkspace(_ workspace: Project) {
-        workspaces.removeAll { $0.id == workspace.id }
-        if selectedWorkspace?.id == workspace.id {
-            selectedWorkspace = nil
-        }
-    }
-    
-    func duplicateWorkspace(_ workspace: Project) {
-        var newWorkspace = workspace
-        newWorkspace.title += " Copy"
-        // Insert the duplicate right after the original
-        if let index = workspaces.firstIndex(where: { $0.id == workspace.id }) {
-            workspaces.insert(newWorkspace, at: index + 1)
-        } else {
-            workspaces.insert(newWorkspace, at: 0)
-        }
+        return newWorkspace
     }
     
     func togglePin(for workspace: Project) {
@@ -51,71 +76,67 @@ class WorkspaceManager: ObservableObject {
             workspaces[index].isPinned.toggle()
             workspaces[index].updateModified()
             
-            // Update selected workspace if it's the one being pinned
+            // Resort: pinned items first, then by modification date
+            workspaces.sort { lhs, rhs in
+                if lhs.isPinned != rhs.isPinned {
+                    return lhs.isPinned
+                }
+                return lhs.lastModified > rhs.lastModified
+            }
+            
+            // Update selection if needed
             if selectedWorkspace?.id == workspace.id {
-                selectedWorkspace = workspaces[index]
+                selectedWorkspace = workspaces[workspaces.firstIndex(where: { $0.id == workspace.id })!]
             }
         }
     }
     
-    // MARK: - Intelligent Analysis (Phase 2)
+    func duplicateWorkspace(_ workspace: Project) {
+        var newWorkspace = workspace
+        newWorkspace.title += " Copy"
+        newWorkspace.updateModified()
+        workspaces.insert(newWorkspace, at: 0)
+    }
     
-    private func analyzeWorkspaceType(_ workspace: Project) {
-        // TODO: Implement intelligent workspace type detection
-        // This will analyze the title and description to:
-        // 1. Suggest optimal model
-        // 2. Set up workspace-specific defaults
-        // 3. Enable relevant adaptive UI features
+    func deleteWorkspace(_ workspace: Project) {
+        workspaces.removeAll { $0.id == workspace.id }
+        if selectedWorkspace?.id == workspace.id {
+            selectedWorkspace = workspaces.first
+        }
+    }
+    
+    func getWorkspaceType(for workspace: Project) -> WorkspaceType {
+        return detectWorkspaceType(title: workspace.title, description: workspace.description)
+    }
+    
+    private func detectWorkspaceType(title: String, description: String) -> WorkspaceType {
+        let combinedText = "\(title) \(description)".lowercased()
         
-        let title = workspace.title.lowercased()
-        let description = workspace.description.lowercased()
+        // Code-related keywords
+        let codeKeywords = ["code", "programming", "development", "swift", "python", "javascript", "api", "debug", "software", "algorithm", "framework", "repository", "github", "coding", "technical", "architecture", "database", "backend", "frontend", "mobile", "web", "ios", "android", "react", "node", "java", "c++", "html", "css", "sql", "devops", "engineering"]
         
-        print("🔍 Analyzing workspace: '\(workspace.title)'")
+        // Creative keywords
+        let creativeKeywords = ["creative", "writing", "story", "novel", "poem", "poetry", "art", "design", "music", "screenplay", "character", "plot", "narrative", "fiction", "blog", "content", "marketing", "copy", "brand", "creative", "artistic", "illustration", "graphics", "video", "animation", "photography"]
         
-        // Simple keyword analysis for now
-        if title.contains("code") || title.contains("programming") || title.contains("swift") ||
-           title.contains("development") || description.contains("development") ||
-           title.contains("review") || title.contains("debug") {
-            print("🧠✨ Detected: CODE workspace - Optimizing for development tasks")
-            // TODO: Set code-optimized model and preferences
-        } else if title.contains("creative") || title.contains("writing") || title.contains("story") ||
-                  title.contains("poem") || description.contains("story") || description.contains("creative") {
-            print("🧠🎨 Detected: CREATIVE workspace - Optimizing for creative tasks")
-            // TODO: Set creative-optimized model and preferences
-        } else if title.contains("research") || title.contains("analysis") || title.contains("study") ||
-                  title.contains("market") || description.contains("research") || description.contains("analysis") {
-            print("🧠📊 Detected: RESEARCH workspace - Optimizing for analytical tasks")
-            // TODO: Set research-optimized model and preferences
+        // Research keywords
+        let researchKeywords = ["research", "analysis", "study", "report", "data", "market", "survey", "academic", "paper", "thesis", "investigation", "findings", "statistics", "trends", "insights", "analytics", "business", "strategy", "competitive", "industry", "market", "economics", "finance", "science", "methodology", "hypothesis"]
+        
+        // Count keyword matches
+        let codeMatches = codeKeywords.filter { combinedText.contains($0) }.count
+        let creativeMatches = creativeKeywords.filter { combinedText.contains($0) }.count
+        let researchMatches = researchKeywords.filter { combinedText.contains($0) }.count
+        
+        // Determine the highest scoring category
+        let maxMatches = max(codeMatches, creativeMatches, researchMatches)
+        
+        if maxMatches == 0 {
+            return .general
+        } else if codeMatches == maxMatches {
+            return .code
+        } else if creativeMatches == maxMatches {
+            return .creative
         } else {
-            print("🧠💼 Detected: GENERAL workspace - Using balanced configuration")
+            return .research
         }
-    }
-    
-    // MARK: - Filtered and Sorted Workspaces
-    
-    func filteredWorkspaces(searchText: String) -> [Project] {
-        let filtered = searchText.isEmpty ? workspaces : workspaces.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText) ||
-            $0.description.localizedCaseInsensitiveContains(searchText)
-        }
-        
-        print("🔍 Filtering \(workspaces.count) workspaces, filtered to \(filtered.count)")
-        
-        // Simple sort: pinned first, then maintain the order from the array (newest first)
-        let sorted = filtered.sorted { workspace1, workspace2 in
-            if workspace1.isPinned && !workspace2.isPinned {
-                return true
-            } else if !workspace1.isPinned && workspace2.isPinned {
-                return false
-            } else {
-                // Maintain insertion order - find index in original array
-                let index1 = workspaces.firstIndex(where: { $0.id == workspace1.id }) ?? workspaces.count
-                let index2 = workspaces.firstIndex(where: { $0.id == workspace2.id }) ?? workspaces.count
-                return index1 < index2
-            }
-        }
-        
-        print("📋 First workspace in sorted list: \(sorted.first?.title ?? "None")")
-        return sorted
     }
 }

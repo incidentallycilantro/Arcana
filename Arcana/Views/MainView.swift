@@ -6,206 +6,168 @@ import SwiftUI
 
 struct MainView: View {
     @StateObject private var workspaceManager = WorkspaceManager.shared
-    @State private var showingInspector = false  // Default to closed
-    @State private var sidebarVisibility: NavigationSplitViewVisibility = .automatic
-    @State private var showingNewProjectSheet = false
-    @EnvironmentObject private var appState: AppState
+    @StateObject private var userSettings = UserSettings.shared
+    @State private var showingInspector = false
+    @State private var showingSmartGutter = false
     
     var body: some View {
-        NavigationSplitView(columnVisibility: $sidebarVisibility) {
-            ProjectSidebar()
-                .environmentObject(workspaceManager)
-                .frame(minWidth: 250, maxWidth: 350)
-                .navigationSplitViewColumnWidth(min: 250, ideal: 300, max: 350)
-        } content: {
-            if let workspace = workspaceManager.selectedWorkspace {
-                ChatView(project: workspace)
-                    .frame(minWidth: 400)
-                    .navigationSplitViewColumnWidth(min: 400, ideal: 600)
-            } else {
-                WelcomeView()
-                    .environmentObject(workspaceManager)
-                    .frame(minWidth: 400)
-                    .navigationSplitViewColumnWidth(min: 400, ideal: 600)
-            }
-        } detail: {
-            if showingInspector, let workspace = workspaceManager.selectedWorkspace {
-                InspectorView(project: workspace)
-                    .frame(minWidth: 250, maxWidth: 300)
-                    .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 300)
-            } else {
-                // Always provide a detail view, but make it invisible when not needed
-                Color.clear
-                    .frame(width: 0)
-                    .navigationSplitViewColumnWidth(0)
-            }
-        }
-        .navigationSplitViewStyle(.balanced)
-        .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                Button(action: toggleSidebar) {
-                    Image(systemName: "sidebar.left")
+        HStack(spacing: 0) {
+            // Main Chat Area
+            NavigationSplitView {
+                ProjectSidebar(selectedProject: $workspaceManager.selectedWorkspace)
+                    .frame(minWidth: 250, maxWidth: 350)
+            } detail: {
+                if let workspace = workspaceManager.selectedWorkspace {
+                    ChatView(project: workspace)
+                } else {
+                    WelcomeView()
                 }
-                .help("Toggle Sidebar")
             }
             
+            // Smart Gutter (contextual tools)
+            if showingSmartGutter && workspaceManager.selectedWorkspace != nil {
+                SmartGutterView(workspace: workspaceManager.selectedWorkspace!)
+                    .frame(width: 60)
+                    .transition(.move(edge: .trailing))
+            }
+            
+            // Inspector Panel
+            if showingInspector && workspaceManager.selectedWorkspace != nil {
+                InspectorView(workspace: workspaceManager.selectedWorkspace!)
+                    .frame(minWidth: 250, maxWidth: 300)
+                    .transition(.move(edge: .trailing))
+            }
+        }
+        .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                // Always show New Workspace button
-                Button(action: { showingNewProjectSheet = true }) {
-                    Image(systemName: "plus.rectangle.on.folder")
-                }
-                .help("New Workspace")
-                
-                // Only show these when a workspace is selected
                 if workspaceManager.selectedWorkspace != nil {
-                    Button(action: toggleInspector) {
-                        Image(systemName: "sidebar.right")
-                            .foregroundStyle(showingInspector ? .blue : .primary)
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showingInspector.toggle()
+                        }
+                    }) {
+                        Image(systemName: showingInspector ? "sidebar.right" : "sidebar.right")
+                            .foregroundColor(showingInspector ? .blue : .primary)
                     }
                     .help("Toggle Inspector")
                     
-                    Button(action: newChat) {
+                    Button(action: { createNewThread() }) {
                         Image(systemName: "plus.bubble")
                     }
                     .help("New Thread")
                 }
+                
+                Button(action: { showNewWorkspaceSheet() }) {
+                    Image(systemName: "plus.rectangle.on.folder")
+                }
+                .help("New Workspace")
             }
         }
-        .sheet(isPresented: $showingNewProjectSheet) {
-            NewProjectSheet { newProject in
-                workspaceManager.createWorkspace(title: newProject.title, description: newProject.description)
-            }
+        .onChange(of: workspaceManager.selectedWorkspace) { _ in
+            updateSmartGutter()
         }
-        .focusedSceneObject(appState)
-        .onChange(of: appState.shouldShowNewProject) { _, shouldShow in
-            if shouldShow {
-                showingNewProjectSheet = true
-                appState.shouldShowNewProject = false
-            }
-        }
-        .onChange(of: appState.shouldToggleSidebar) { _, shouldToggle in
-            if shouldToggle {
-                toggleSidebar()
-                appState.shouldToggleSidebar = false
-            }
-        }
-        .onChange(of: appState.shouldToggleInspector) { _, shouldToggle in
-            if shouldToggle {
-                toggleInspector()
-                appState.shouldToggleInspector = false
-            }
+        .onAppear {
+            updateSmartGutter()
         }
     }
     
-    private func toggleSidebar() {
-        withAnimation(.easeInOut(duration: 0.25)) {
-            sidebarVisibility = sidebarVisibility == .detailOnly ? .automatic : .detailOnly
+    private func createNewThread() {
+        // TODO: Implement new thread creation in current workspace
+        print("Creating new thread in current workspace")
+    }
+    
+    private func showNewWorkspaceSheet() {
+        workspaceManager.showNewWorkspaceSheet = true
+    }
+    
+    private func updateSmartGutter() {
+        guard let workspace = workspaceManager.selectedWorkspace else {
+            showingSmartGutter = false
+            return
         }
-    }
-    
-    private func toggleInspector() {
-        withAnimation(.easeInOut(duration: 0.25)) {
-            showingInspector.toggle()
+        
+        let workspaceType = workspaceManager.getWorkspaceType(for: workspace)
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showingSmartGutter = workspaceType != .general
         }
-    }
-    
-    private func newProject() {
-        showingNewProjectSheet = true
-    }
-    
-    private func newChat() {
-        // TODO: Implement new chat functionality in current workspace
-        print("New thread in workspace: \(workspaceManager.selectedWorkspace?.title ?? "Unknown")")
     }
 }
 
 struct WelcomeView: View {
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var workspaceManager: WorkspaceManager
-    @State private var showingNewWorkspaceSheet = false
+    @StateObject private var workspaceManager = WorkspaceManager.shared
     
     var body: some View {
         VStack(spacing: 24) {
-            // App Icon/Logo Area
-            VStack(spacing: 16) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 64, weight: .light))
-                    .foregroundStyle(.blue.gradient)
-                    .symbolEffect(.pulse)
+            // Icon with gradient
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 120, height: 120)
                 
-                VStack(spacing: 8) {
-                    Text("Welcome to Arcana")
-                        .font(.largeTitle)
-                        .fontWeight(.medium)
-                    
-                    Text("Your privacy-first AI assistant")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                }
+                Image(systemName: "sparkles")
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundColor(.white)
             }
             
-            // Quick Actions
             VStack(spacing: 12) {
-                Button(action: { showingNewWorkspaceSheet = true }) {
+                Text("Welcome to Arcana")
+                    .font(.largeTitle)
+                    .fontWeight(.semibold)
+                
+                Text("Design a dedicated space for focused AI collaboration")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 400)
+            }
+            
+            VStack(spacing: 16) {
+                Button(action: {
+                    workspaceManager.showNewWorkspaceSheet = true
+                }) {
                     HStack {
                         Image(systemName: "plus.circle.fill")
-                        Text("Create New Workspace")
+                        Text("Create Your First Workspace")
                     }
-                    .frame(maxWidth: 200)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                
-                Button(action: { showingNewWorkspaceSheet = true }) {
-                    HStack {
-                        Image(systemName: "folder.badge.plus")
-                        Text("Import Workspace")
-                    }
-                    .frame(maxWidth: 200)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
-            
-            // Recent Projects Preview (placeholder)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Recent Workspaces")
                     .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
                 
-                Text("Your recent workspaces will appear here")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                Button(action: {
+                    // TODO: Open getting started guide
+                }) {
+                    Text("Learn More")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
             }
-            .frame(maxWidth: 300, alignment: .leading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 0))
-        .sheet(isPresented: $showingNewWorkspaceSheet) {
-            NewProjectSheet { newProject in
-                workspaceManager.createWorkspace(title: newProject.title, description: newProject.description)
-            }
-        }
+        .background(Color(NSColor.windowBackgroundColor))
     }
 }
 
 struct InspectorView: View {
-    let project: Project
-    @State private var selectedTab: InspectorTab = .projectInfo
-    
-    enum InspectorTab: String, CaseIterable {
-        case projectInfo = "Project"
-        case assistant = "Assistant"
-        case performance = "Performance"
-        
-        var icon: String {
-            switch self {
-            case .projectInfo: return "info.circle"
-            case .assistant: return "brain.head.profile"
-            case .performance: return "speedometer"
-            }
-        }
-    }
+    let workspace: Project
+    @State private var selectedTab = 0
     
     var body: some View {
         VStack(spacing: 0) {
@@ -214,187 +176,174 @@ struct InspectorView: View {
                 Text("Inspector")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
                 Spacer()
             }
             .padding()
             
-            // Tab Picker
+            Divider()
+            
+            // Tab Selector
             Picker("Inspector Tab", selection: $selectedTab) {
-                ForEach(InspectorTab.allCases, id: \.self) { tab in
-                    Label(tab.rawValue, systemImage: tab.icon)
-                        .tag(tab)
-                }
+                Text("Info").tag(0)
+                Text("Assistant").tag(1)
+                Text("Performance").tag(2)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
-            
-            Divider()
-                .padding(.top, 8)
+            .padding(.top, 8)
             
             // Tab Content
             ScrollView {
-                switch selectedTab {
-                case .projectInfo:
-                    ProjectInfoView(project: project)
-                case .assistant:
-                    AssistantConfigView(project: project)
-                case .performance:
-                    PerformanceView(project: project)
+                Group {
+                    switch selectedTab {
+                    case 0:
+                        ProjectInfoView(workspace: workspace)
+                    case 1:
+                        AssistantConfigView(workspace: workspace)
+                    case 2:
+                        PerformanceView()
+                    default:
+                        EmptyView()
+                    }
                 }
+                .padding()
             }
         }
+        .background(Color(NSColor.controlBackgroundColor))
     }
 }
 
 struct ProjectInfoView: View {
-    let project: Project
+    let workspace: Project
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Project Details
             VStack(alignment: .leading, spacing: 8) {
-                Text("Project Details")
+                Text("Workspace Details")
                     .font(.headline)
                 
-                LabeledContent("Name", value: project.title)
-                LabeledContent("Description", value: project.description.isEmpty ? "No description" : project.description)
-                LabeledContent("Created", value: project.createdAt.formatted(date: .abbreviated, time: .shortened))
-                LabeledContent("Modified", value: project.lastModified.formatted(date: .abbreviated, time: .shortened))
+                Group {
+                    HStack {
+                        Text("Created:")
+                        Spacer()
+                        Text(workspace.createdAt, style: .date)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Modified:")
+                        Spacer()
+                        Text(workspace.lastModified, style: .relative)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Threads:")
+                        Spacer()
+                        Text("1") // TODO: Count actual threads
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .font(.caption)
             }
             
             Divider()
             
-            // Statistics (placeholder)
             VStack(alignment: .leading, spacing: 8) {
-                Text("Statistics")
+                Text("Quick Actions")
                     .font(.headline)
                 
-                LabeledContent("Messages", value: "12")
-                LabeledContent("Files", value: "3")
-                LabeledContent("Total Tokens", value: "2,847")
-            }
-            
-            Divider()
-            
-            // Quick Actions
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Actions")
-                    .font(.headline)
-                
-                Button("Export Project") {
+                Button("Export Workspace") {
                     // TODO: Implement export
                 }
                 .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity)
                 
-                Button("Duplicate Project") {
+                Button("Duplicate Workspace") {
                     // TODO: Implement duplicate
                 }
                 .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity)
             }
+            
+            Spacer()
         }
-        .padding()
     }
 }
 
 struct AssistantConfigView: View {
-    let project: Project
+    let workspace: Project
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Assistant Configuration")
-                .font(.headline)
-            
-            // Model Selection (placeholder)
             VStack(alignment: .leading, spacing: 8) {
-                Text("Active Model")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                Text("Model Configuration")
+                    .font(.headline)
                 
-                Text("Mistral-7B-Instruct-v0.1 (Q4_K_M)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(8)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                HStack {
+                    Text("Current Model:")
+                    Spacer()
+                    Text("Mistral-7B")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.caption)
+                
+                HStack {
+                    Text("Performance:")
+                    Spacer()
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 8, height: 8)
+                    Text("Optimal")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.caption)
             }
             
             Divider()
             
-            // Performance Metrics (placeholder)
             VStack(alignment: .leading, spacing: 8) {
-                Text("Performance")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                Text("Assistant Behavior")
+                    .font(.headline)
                 
-                LabeledContent("Avg Response Time", value: "1.2s")
-                LabeledContent("Tokens/Second", value: "24.7")
-                LabeledContent("Memory Usage", value: "2.1 GB")
+                // TODO: Add assistant configuration options
+                Text("Configuration options will appear here")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+            
+            Spacer()
         }
-        .padding()
     }
 }
 
 struct PerformanceView: View {
-    let project: Project
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Performance Metrics")
-                .font(.headline)
-            
-            // System Resources
             VStack(alignment: .leading, spacing: 8) {
-                Text("System Resources")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                Text("System Performance")
+                    .font(.headline)
                 
-                VStack(spacing: 4) {
-                    HStack {
-                        Text("RAM Usage")
-                        Spacer()
-                        Text("2.1 GB / 8 GB")
-                    }
-                    .font(.caption)
-                    
-                    ProgressView(value: 0.26)
-                        .progressViewStyle(.linear)
+                HStack {
+                    Text("Memory Usage:")
+                    Spacer()
+                    Text("2.1 GB")
+                        .foregroundStyle(.secondary)
                 }
+                .font(.caption)
                 
-                VStack(spacing: 4) {
-                    HStack {
-                        Text("CPU Usage")
-                        Spacer()
-                        Text("12%")
-                    }
-                    .font(.caption)
-                    
-                    ProgressView(value: 0.12)
-                        .progressViewStyle(.linear)
+                HStack {
+                    Text("Response Time:")
+                    Spacer()
+                    Text("0.8s avg")
+                        .foregroundStyle(.secondary)
                 }
+                .font(.caption)
             }
             
-            Divider()
-            
-            // Model Performance
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Model Performance")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                LabeledContent("Inference Speed", value: "24.7 tok/s")
-                LabeledContent("Cache Hit Rate", value: "78%")
-                LabeledContent("Speculative Accuracy", value: "65%")
-            }
+            Spacer()
         }
-        .padding()
     }
 }
 
 #Preview {
     MainView()
-        .environmentObject(AppState())
-        .frame(width: 1200, height: 800)
 }

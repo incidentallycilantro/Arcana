@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D549FC32E316A3000583CBF /* SmartGutterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC22E316A3000583CBF /* SmartGutterView.swift */; };
+		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1DA7884A2E306C5A0095ED87 /* ArcanaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA788462E306C5A0095ED87 /* ArcanaApp.swift */; };
 		1DA7884C2E306C5A0095ED87 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1DA788472E306C5A0095ED87 /* Assets.xcassets */; };
 		1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA7884F2E306C8B0095ED87 /* PRISMEngine.swift */; };
@@ -52,6 +54,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1D549FC22E316A3000583CBF /* SmartGutterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartGutterView.swift; sourceTree = "<group>"; };
+		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1DA788042E30687B0095ED87 /* Arcana.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Arcana.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DA788122E30687D0095ED87 /* ArcanaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DA7881C2E30687D0095ED87 /* ArcanaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -165,6 +169,7 @@
 				1DA788552E306CA20095ED87 /* MemoryGraph.swift    .swift */,
 				1DA7887D2E3120240095ED87 /* WorkspaceManager.swift */,
 				1DA7887F2E3128620095ED87 /* UserSettings.swift */,
+				1D549FC42E316E7000583CBF /* SmartToolController.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -177,6 +182,7 @@
 				1DA7885C2E306CC50095ED87 /* ChatView.swift */,
 				1DA7885E2E306CCD0095ED87 /* TimelineView.swift */,
 				1DA7887B2E307FA30095ED87 /* NewProjectSheet.swift */,
+				1D549FC22E316A3000583CBF /* SmartGutterView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -367,6 +373,7 @@
 				1DA7884A2E306C5A0095ED87 /* ArcanaApp.swift in Sources */,
 				1DA788592E306CB30095ED87 /* MainView.swift in Sources */,
 				1DA7885F2E306CCD0095ED87 /* TimelineView.swift in Sources */,
+				1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */,
 				1DA788542E306C9B0095ED87 /* AdapterController.swift .swift in Sources */,
 				1DA7887E2E3120240095ED87 /* WorkspaceManager.swift in Sources */,
 				1DA7885D2E306CC50095ED87 /* ChatView.swift in Sources */,
@@ -377,6 +384,7 @@
 				1DA788642E306CE60095ED87 /* ChatMessage.swift in Sources */,
 				1DA788802E3128620095ED87 /* UserSettings.swift in Sources */,
 				1DA788692E306D060095ED87 /* UXAnimations.swift in Sources */,
+				1D549FC32E316A3000583CBF /* SmartGutterView.swift in Sources */,
 				1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */,
 				1DA788522E306C930095ED87 /* ModelManager.swift .swift in Sources */,
 				1DA7886D2E306D170095ED87 /* TextUtilities.swift in Sources */,

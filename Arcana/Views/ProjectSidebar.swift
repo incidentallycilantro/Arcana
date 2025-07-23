@@ -5,17 +5,25 @@
 import SwiftUI
 
 struct ProjectSidebar: View {
-    @EnvironmentObject private var workspaceManager: WorkspaceManager
+    @Binding var selectedProject: Project?
+    @StateObject private var workspaceManager = WorkspaceManager.shared
     @State private var searchText = ""
-    @State private var showingNewProjectSheet = false
     
     var filteredProjects: [Project] {
-        workspaceManager.filteredWorkspaces(searchText: searchText)
+        let projects = workspaceManager.workspaces
+        if searchText.isEmpty {
+            return projects
+        } else {
+            return projects.filter {
+                $0.title.localizedCaseInsensitiveContains(searchText) ||
+                $0.description.localizedCaseInsensitiveContains(searchText)
+            }
+        }
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // Header - NO SIDEBAR TOGGLE (using native macOS toggle only)
             HStack {
                 Text("Workspaces")
                     .font(.headline)
@@ -23,34 +31,41 @@ struct ProjectSidebar: View {
                 
                 Spacer()
                 
-                Button(action: { showingNewProjectSheet = true }) {
+                Button(action: {
+                    workspaceManager.showNewWorkspaceSheet = true
+                }) {
                     Image(systemName: "plus")
                         .foregroundStyle(.blue)
                 }
                 .buttonStyle(.plain)
+                .help("New Workspace")
             }
-            .padding(.horizontal)
-            .padding(.top)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             
-            // Search
+            // Search - Reduced top padding to fix new workspace visibility
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
                 TextField("Search workspaces...", text: $searchText)
                     .textFieldStyle(.plain)
             }
-            .padding(.horizontal)
-            .padding(.bottom)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
             
             Divider()
             
-            // Workspaces List
-            List(selection: $workspaceManager.selectedWorkspace) {
-                ForEach(filteredProjects) { project in
-                    ProjectRow(project: project)
-                        .listRowInsets(EdgeInsets())
+            // Projects List - Fixed insets for proper visibility
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(filteredProjects, id: \.id) { project in
+                        ProjectRow(
+                            project: project,
+                            isSelected: selectedProject?.id == project.id
+                        )
                         .contentShape(Rectangle())
                         .onTapGesture {
+                            selectedProject = project
                             workspaceManager.selectedWorkspace = project
                         }
                         .contextMenu {
@@ -63,16 +78,27 @@ struct ProjectSidebar: View {
                             Divider()
                             Button("Delete", role: .destructive) {
                                 workspaceManager.deleteWorkspace(project)
+                                if selectedProject?.id == project.id {
+                                    selectedProject = nil
+                                }
                             }
                         }
-                        .tag(project)
+                    }
                 }
+                .padding(.top, 4) // Small top padding for first item visibility
             }
-            .listStyle(.sidebar)
         }
-        .sheet(isPresented: $showingNewProjectSheet) {
-            NewProjectSheet { newProject in
-                workspaceManager.createWorkspace(title: newProject.title, description: newProject.description)
+        .sheet(isPresented: $workspaceManager.showNewWorkspaceSheet) {
+            NewProjectSheet { title, description in
+                let newWorkspace = workspaceManager.createWorkspace(title: title, description: description)
+                selectedProject = newWorkspace
+            }
+        }
+        .onAppear {
+            // Ensure the first workspace is visible
+            if let firstWorkspace = workspaceManager.workspaces.first, selectedProject == nil {
+                selectedProject = firstWorkspace
+                workspaceManager.selectedWorkspace = firstWorkspace
             }
         }
     }
@@ -80,6 +106,7 @@ struct ProjectSidebar: View {
 
 struct ProjectRow: View {
     let project: Project
+    let isSelected: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -93,6 +120,7 @@ struct ProjectRow: View {
                 Text(project.title)
                     .font(.headline)
                     .lineLimit(1)
+                    .foregroundColor(isSelected ? .white : .primary)
                 
                 Spacer()
             }
@@ -100,22 +128,25 @@ struct ProjectRow: View {
             if !project.description.isEmpty {
                 Text(project.description)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
                     .lineLimit(2)
             }
             
             Text(project.lastModified, style: .relative)
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(isSelected ? .white.opacity(0.6) : .secondary)
         }
         .padding(.vertical, 8)
-        .padding(.horizontal)
-        .contentShape(Rectangle())  // Makes entire row tappable
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.blue : Color.clear)
+        )
+        .padding(.horizontal, 8)
     }
 }
 
 #Preview {
-    ProjectSidebar()
-        .environmentObject(WorkspaceManager.shared)
+    ProjectSidebar(selectedProject: .constant(nil))
         .frame(width: 300, height: 600)
 }
