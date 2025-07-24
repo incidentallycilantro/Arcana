@@ -7,27 +7,52 @@ import SwiftUI
 
 class IntelligenceEngine: ObservableObject {
     
-    // MARK: - Real-time Input Analysis
+    // Performance optimization: debounce real-time analysis
+    private var analysisTimer: Timer?
+    private let analysisDelay: TimeInterval = 0.5 // Wait 500ms after user stops typing
+    private let maxAnalysisLength = 1000 // Don't analyze texts longer than 1000 characters in real-time
+    
+    // MARK: - Optimized Real-time Input Analysis
     
     func analyzeInputInRealTime(_ text: String, workspaceType: WorkspaceManager.WorkspaceType) {
-        // Invisible intelligence - no UI feedback, just background analysis
-        guard text.count > 50 else { return }
+        // Performance guard: Skip analysis for very long texts
+        guard text.count <= maxAnalysisLength else {
+            print("⚡ Skipping real-time analysis for large text (\(text.count) chars)")
+            return
+        }
         
-        switch workspaceType {
-        case .code:
-            if text.contains("func ") || text.contains("class ") || text.contains("import ") {
-                // Code detected - prepare for formatting suggestions
+        // Performance guard: Skip analysis for very short texts
+        guard text.count > 20 else { return }
+        
+        // Debounce: Cancel previous timer and start new one
+        analysisTimer?.invalidate()
+        analysisTimer = Timer.scheduledTimer(withTimeInterval: analysisDelay, repeats: false) { _ in
+            self.performDebouncedAnalysis(text, workspaceType: workspaceType)
+        }
+    }
+    
+    private func performDebouncedAnalysis(_ text: String, workspaceType: WorkspaceManager.WorkspaceType) {
+        // Lightweight analysis only - no heavy processing
+        DispatchQueue.global(qos: .background).async {
+            switch workspaceType {
+            case .code:
+                if self.isCodeContent(text) {
+                    // Light analysis for code patterns
+                    print("🧠 Code patterns detected in workspace")
+                }
+            case .creative:
+                if text.count > 200 {
+                    // Light analysis for long-form writing
+                    print("🧠 Long-form writing detected")
+                }
+            case .research:
+                if self.isResearchContent(text) {
+                    // Light analysis for research patterns
+                    print("🧠 Research content detected")
+                }
+            case .general:
+                break
             }
-        case .creative:
-            if text.count > 200 {
-                // Long form writing - prepare tone analysis
-            }
-        case .research:
-            if text.contains("study") || text.contains("research") || text.contains("according to") {
-                // Research claims detected - prepare fact checking
-            }
-        case .general:
-            break
         }
     }
     
@@ -51,7 +76,7 @@ class IntelligenceEngine: ObservableObject {
         }
     }
     
-    // MARK: - Proactive Assistance
+    // MARK: - Performance-Optimized Proactive Assistance
     
     func checkForProactiveAssistance(
         userMessage: String,
@@ -59,17 +84,20 @@ class IntelligenceEngine: ObservableObject {
         completion: @escaping (String?) -> Void
     ) {
         
-        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 1.0) {
+        // Performance optimization: Use background queue with shorter delay for large texts
+        let delay: TimeInterval = userMessage.count > 500 ? 0.5 : 1.0
+        
+        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + delay) {
             var assistance: String? = nil
             
-            // Detect patterns that suggest user might need help
-            if userMessage.contains("I'm stuck") || userMessage.contains("not sure") {
+            // Quick pattern detection without heavy processing
+            if userMessage.localizedCaseInsensitiveContains("stuck") || userMessage.localizedCaseInsensitiveContains("not sure") {
                 assistance = "I notice you might be looking for direction. Would you like me to help break this down into smaller steps?"
-            } else if self.isCodeContent(userMessage) && userMessage.contains("error") {
+            } else if self.isCodeContent(userMessage) && (userMessage.localizedCaseInsensitiveContains("error") || userMessage.localizedCaseInsensitiveContains("bug")) {
                 assistance = "I see there might be an issue with this code. Would you like me to analyze it for potential problems?"
             } else if userMessage.count > 300 && workspaceType == .creative {
                 assistance = "That's a substantial piece of writing! Would you like me to help refine the tone or structure?"
-            } else if self.isResearchContent(userMessage) {
+            } else if self.isResearchContent(userMessage) && userMessage.count > 200 {
                 assistance = "I notice you're discussing research. Would you like me to fact-check any of these claims?"
             }
             
@@ -79,7 +107,7 @@ class IntelligenceEngine: ObservableObject {
         }
     }
     
-    // MARK: - File Processing
+    // MARK: - Optimized File Processing
     
     func generateFileProcessingResponse(
         fileName: String,
@@ -90,7 +118,7 @@ class IntelligenceEngine: ObservableObject {
         let baseMessage = "I've received '\(fileName)'. "
         
         switch fileExtension {
-        case "swift", "py", "js", "java", "cpp", "c":
+        case "swift", "py", "js", "java", "cpp", "c", "ts", "go", "rs":
             return baseMessage + "I can see this is code. Would you like me to review it for improvements, explain how it works, or help with any specific issues?"
             
         case "pdf", "docx", "doc":
@@ -99,10 +127,10 @@ class IntelligenceEngine: ObservableObject {
         case "md", "txt":
             return baseMessage + "I've read through this text. What would you like to explore or discuss about it?"
             
-        case "csv", "xlsx":
+        case "csv", "xlsx", "json":
             return baseMessage + "I can see this contains data. Would you like me to analyze patterns, create summaries, or help you understand what the data shows?"
             
-        case "png", "jpg", "jpeg":
+        case "png", "jpg", "jpeg", "gif", "svg":
             return baseMessage + "I've received an image. While I can't see the details yet, feel free to describe what you'd like to discuss about it."
             
         default:
@@ -110,11 +138,13 @@ class IntelligenceEngine: ObservableObject {
         }
     }
     
-    // MARK: - Content Detection Helpers
+    // MARK: - Lightweight Content Detection Helpers
     
     private func isCodeContent(_ text: String) -> Bool {
-        let codeIndicators = ["func ", "class ", "import ", "def ", "function", "const ", "var ", "let ", "{", "}", "//", "/*", "*/", "#include", "public ", "private "]
-        return codeIndicators.contains { text.contains($0) }
+        // Optimized: Check only first 200 characters for performance
+        let sample = String(text.prefix(200)).lowercased()
+        let codeIndicators = ["func ", "class ", "import ", "def ", "function", "const ", "var ", "let ", "{", "}", "//", "/*"]
+        return codeIndicators.contains { sample.contains($0) }
     }
     
     private func isLongFormWriting(_ text: String) -> Bool {
@@ -122,19 +152,26 @@ class IntelligenceEngine: ObservableObject {
     }
     
     private func isResearchContent(_ text: String) -> Bool {
-        let researchIndicators = ["study shows", "research indicates", "according to", "data suggests", "findings", "methodology", "hypothesis", "correlation", "statistically"]
-        return researchIndicators.contains { text.localizedCaseInsensitiveContains($0) }
+        // Optimized: Check only first 300 characters for performance
+        let sample = String(text.prefix(300)).lowercased()
+        let researchIndicators = ["study shows", "research indicates", "according to", "data suggests", "findings", "methodology"]
+        return researchIndicators.contains { sample.contains($0) }
     }
     
-    // MARK: - Response Generators
+    // MARK: - Response Generators (Optimized)
     
     private func generateCodeResponse(_ message: String, workspaceType: WorkspaceManager.WorkspaceType) -> String {
-        let responses = [
-            "I can see this is code. Looking at the structure, there are a few things that could be improved. Would you like me to suggest some optimizations?",
-            "This code looks well-structured! I notice some patterns here - would you like me to explain how it works or suggest any enhancements?",
-            "I've analyzed this code. There are some interesting approaches here. Should we discuss the logic or focus on potential improvements?"
-        ]
-        return responses.randomElement() ?? "I can help you with this code. What specific aspect would you like to focus on?"
+        // Quick analysis without heavy processing
+        let hasError = message.localizedCaseInsensitiveContains("error") || message.localizedCaseInsensitiveContains("bug")
+        let hasFunction = message.localizedCaseInsensitiveContains("function") || message.localizedCaseInsensitiveContains("func")
+        
+        if hasError {
+            return "I can see there's an issue with this code. Let me help you debug it. What specific error are you encountering?"
+        } else if hasFunction && message.count > 100 {
+            return "This looks like a substantial function. I can help analyze its logic, suggest improvements, or explain how it works. What aspect would you like to focus on?"
+        } else {
+            return "I can see this is code. Would you like me to review it for optimizations, explain the logic, or help with any specific challenges?"
+        }
     }
     
     private func generateWritingResponse(_ message: String, workspaceType: WorkspaceManager.WorkspaceType) -> String {
@@ -142,18 +179,19 @@ class IntelligenceEngine: ObservableObject {
         
         if wordCount > 200 {
             return "That's a substantial piece of writing! The ideas flow well. Would you like me to help refine the tone, check for clarity, or suggest ways to make it more engaging?"
+        } else if wordCount > 50 {
+            return "I can see you're developing some interesting ideas here. Would you like me to help expand on any particular points or suggest ways to strengthen the narrative?"
         } else {
-            return "I can see you're developing some interesting ideas here. Would you like me to help expand on any particular points or suggest ways to strengthen the argument?"
+            return "This is a good start! How can I help you develop these ideas further?"
         }
     }
     
     private func generateResearchResponse(_ message: String, workspaceType: WorkspaceManager.WorkspaceType) -> String {
-        let responses = [
-            "I notice you're discussing research findings. These are interesting points. Would you like me to help verify any of these claims or suggest additional sources?",
-            "This research content looks substantial. I can help fact-check specific claims or assist with organizing the information. What would be most helpful?",
-            "I see several research references here. Would you like me to help analyze the methodology or suggest ways to strengthen the evidence?"
-        ]
-        return responses.randomElement() ?? "I can help you work with this research content. What aspect would you like to focus on?"
+        if message.count > 300 {
+            return "I notice you're discussing substantial research findings. These are interesting points. Would you like me to help verify any claims or suggest additional sources?"
+        } else {
+            return "I see research references here. Would you like me to help analyze the methodology or suggest ways to strengthen the evidence?"
+        }
     }
     
     private func generateGeneralResponse(_ message: String, workspaceType: WorkspaceManager.WorkspaceType) -> String {
@@ -164,5 +202,11 @@ class IntelligenceEngine: ObservableObject {
             "Those are good points. Should we build on this or would you like me to help organize these thoughts differently?"
         ]
         return responses.randomElement() ?? "I'm here to help you think through this. What would be most useful?"
+    }
+    
+    // MARK: - Cleanup
+    
+    deinit {
+        analysisTimer?.invalidate()
     }
 }

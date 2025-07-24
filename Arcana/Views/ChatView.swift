@@ -490,49 +490,6 @@ struct SmartSuggestionsBar: View {
     }
 }
 
-struct TypingIndicator: View {
-    @State private var animationPhase = 0
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    ForEach(0..<3) { index in
-                        Circle()
-                            .fill(.secondary)
-                            .frame(width: 6, height: 6)
-                            .opacity(animationPhase == index ? 1 : 0.3)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(Color(NSColor.controlBackgroundColor))
-                )
-                
-                Text("Arcana is thinking...")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-            }
-            
-            Spacer()
-        }
-        .onAppear {
-            startAnimation()
-        }
-    }
-    
-    private func startAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-            withAnimation(.easeInOut(duration: 0.3)) {
-                animationPhase = (animationPhase + 1) % 3
-            }
-        }
-    }
-}
-
 #Preview {
     ChatView(project: Project.sampleProjects[0])
         .frame(width: 600, height: 500)

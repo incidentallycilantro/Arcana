@@ -7,9 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D01F04B2E326A15005E1F64 /* SharedUIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F04A2E326A15005E1F64 /* SharedUIComponents.swift */; };
 		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC62E31756700583CBF /* InvisibleChatView.swift */; };
 		1D549FC92E31757700583CBF /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC82E31757700583CBF /* IntelligenceEngine.swift */; };
+		1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */; };
 		1DA7884A2E306C5A0095ED87 /* ArcanaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA788462E306C5A0095ED87 /* ArcanaApp.swift */; };
 		1DA7884C2E306C5A0095ED87 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1DA788472E306C5A0095ED87 /* Assets.xcassets */; };
 		1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA7884F2E306C8B0095ED87 /* PRISMEngine.swift */; };
@@ -55,9 +57,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1D01F04A2E326A15005E1F64 /* SharedUIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUIComponents.swift; sourceTree = "<group>"; };
 		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1D549FC62E31756700583CBF /* InvisibleChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvisibleChatView.swift; sourceTree = "<group>"; };
 		1D549FC82E31757700583CBF /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
+		1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistenceController.swift; sourceTree = "<group>"; };
 		1DA788042E30687B0095ED87 /* Arcana.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Arcana.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DA788122E30687D0095ED87 /* ArcanaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DA7881C2E30687D0095ED87 /* ArcanaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -173,6 +177,7 @@
 				1DA7887F2E3128620095ED87 /* UserSettings.swift */,
 				1D549FC42E316E7000583CBF /* SmartToolController.swift */,
 				1D549FC82E31757700583CBF /* IntelligenceEngine.swift */,
+				1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -206,6 +211,7 @@
 				1DA788682E306D060095ED87 /* UXAnimations.swift */,
 				1DA7886A2E306D0D0095ED87 /* FileLoader.swift */,
 				1DA7886C2E306D170095ED87 /* TextUtilities.swift */,
+				1D01F04A2E326A15005E1F64 /* SharedUIComponents.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -382,9 +388,11 @@
 				1DA7885D2E306CC50095ED87 /* ChatView.swift in Sources */,
 				1DA788562E306CA20095ED87 /* MemoryGraph.swift    .swift in Sources */,
 				1DA788622E306CDF0095ED87 /* Project.swift in Sources */,
+				1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */,
 				1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */,
 				1DA7886B2E306D0D0095ED87 /* FileLoader.swift in Sources */,
 				1DA7887C2E307FA30095ED87 /* NewProjectSheet.swift in Sources */,
+				1D01F04B2E326A15005E1F64 /* SharedUIComponents.swift in Sources */,
 				1DA788642E306CE60095ED87 /* ChatMessage.swift in Sources */,
 				1DA788802E3128620095ED87 /* UserSettings.swift in Sources */,
 				1DA788692E306D060095ED87 /* UXAnimations.swift in Sources */,

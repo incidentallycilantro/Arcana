@@ -16,7 +16,7 @@ struct InvisibleChatView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Minimal header - just workspace title
+            // Minimal header with invisible type indicator
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(project.title)
@@ -32,22 +32,22 @@ struct InvisibleChatView: View {
                 
                 Spacer()
                 
-                // Minimal workspace type indicator
-                let workspaceType = WorkspaceManager.shared.getWorkspaceType(for: project)
-                Text(workspaceType.emoji)
-                    .font(.title3)
-                    .help(workspaceType.displayName)
+                // Invisible workspace type indicator - barely visible, only shows on hover
+                InvisibleWorkspaceTypeIndicator(
+                    WorkspaceManager.shared.getWorkspaceType(for: project),
+                    inHeader: true
+                )
             }
             .padding()
             
             Divider()
             
-            // Pure conversation area
+            // High-performance conversation area
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 20) {
                         ForEach(messages) { message in
-                            InvisibleMessageView(
+                            OptimizedMessageView(
                                 message: message,
                                 showTechnicalInfo: userSettings.showModelAttribution || userSettings.showPerformanceMetrics
                             )
@@ -55,7 +55,7 @@ struct InvisibleChatView: View {
                         }
                         
                         if isAssistantTyping {
-                            TypingIndicator()
+                            TypingIndicator() // Now using shared component
                         }
                     }
                     .padding()
@@ -71,7 +71,7 @@ struct InvisibleChatView: View {
             
             Divider()
             
-            // Intelligent input area
+            // Optimized input area
             VStack(spacing: 8) {
                 // Live word count (appears as you type)
                 if !inputText.isEmpty && liveWordCount > 20 {
@@ -92,6 +92,7 @@ struct InvisibleChatView: View {
                 }
                 
                 HStack(alignment: .bottom, spacing: 12) {
+                    // Performance-optimized text field
                     TextField("Share your thoughts...", text: $inputText, axis: .vertical)
                         .textFieldStyle(.plain)
                         .padding(.horizontal, 16)
@@ -104,8 +105,11 @@ struct InvisibleChatView: View {
                             sendMessage()
                         }
                         .onChange(of: inputText) {
-                            updateLiveWordCount()
-                            intelligenceEngine.analyzeInputInRealTime(inputText, workspaceType: WorkspaceManager.shared.getWorkspaceType(for: project))
+                            updateLiveWordCountOptimized()
+                            // Only analyze if text is reasonable length
+                            if inputText.count < 2000 {
+                                intelligenceEngine.analyzeInputInRealTime(inputText, workspaceType: WorkspaceManager.shared.getWorkspaceType(for: project))
+                            }
                         }
                     
                     Button(action: sendMessage) {
@@ -121,7 +125,7 @@ struct InvisibleChatView: View {
                 if messages.isEmpty {
                     Text("Drop files here or start typing")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                         .padding(.top, 8)
                 }
             }
@@ -140,10 +144,17 @@ struct InvisibleChatView: View {
         messages = ChatMessage.sampleMessages(for: project.id)
     }
     
-    private func updateLiveWordCount() {
-        let words = inputText.components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-        liveWordCount = words.count
+    private func updateLiveWordCountOptimized() {
+        // Optimize word counting for large texts
+        if inputText.count > 5000 {
+            // For very large texts, estimate word count
+            liveWordCount = inputText.count / 5 // Rough estimate
+        } else {
+            // For normal texts, accurate word count
+            let words = inputText.components(separatedBy: .whitespacesAndNewlines)
+                .filter { !$0.isEmpty }
+            liveWordCount = words.count
+        }
     }
     
     private func sendMessage() {
@@ -252,9 +263,24 @@ struct InvisibleChatView: View {
     }
 }
 
-struct InvisibleMessageView: View {
+struct OptimizedMessageView: View {
     let message: ChatMessage
     let showTechnicalInfo: Bool
+    
+    // Performance optimization: limit text rendering for very long messages
+    private var displayContent: String {
+        if message.content.count > 3000 {
+            // For very long messages, show truncated version with option to expand
+            return String(message.content.prefix(3000)) + "..."
+        }
+        return message.content
+    }
+    
+    private var isTruncated: Bool {
+        return message.content.count > 3000
+    }
+    
+    @State private var showFullContent = false
     
     var body: some View {
         HStack(alignment: .top) {
@@ -263,34 +289,48 @@ struct InvisibleMessageView: View {
             }
             
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
-                // Message content
-                Text(message.content)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(message.role == .user ? .blue : Color(NSColor.controlBackgroundColor))
-                    )
-                    .foregroundStyle(message.role == .user ? .white : .primary)
+                // Optimized message content with truncation handling
+                VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
+                    Text(showFullContent ? message.content : displayContent)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(message.role == .user ? .blue : Color(NSColor.controlBackgroundColor))
+                        )
+                        .foregroundStyle(message.role == .user ? .white : .primary)
+                    
+                    // Show expand button for truncated messages
+                    if isTruncated && !showFullContent {
+                        Button("Show full message") {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showFullContent = true
+                            }
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.blue)
+                        .buttonStyle(.plain)
+                    }
+                }
                 
                 // Minimal metadata (only if enabled)
                 if showTechnicalInfo && message.role == .assistant {
                     HStack(spacing: 4) {
                         Text(message.timestamp, style: .time)
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.secondary)
                         
                         if let metadata = message.metadata {
                             if let model = metadata.modelUsed {
                                 Text("• \(model)")
                                     .font(.caption2)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
                             }
                             
                             if let responseTime = metadata.responseTime {
                                 Text("• \(String(format: "%.1f", responseTime))s")
                                     .font(.caption2)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -305,8 +345,6 @@ struct InvisibleMessageView: View {
         }
     }
 }
-
-// TypingIndicator is already defined in ChatView.swift - reusing that component
 
 #Preview {
     InvisibleChatView(project: Project.sampleProjects[0])
