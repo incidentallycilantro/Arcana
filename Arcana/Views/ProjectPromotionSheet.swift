@@ -101,17 +101,11 @@ struct ProjectPromotionSheet: View {
                             .fontWeight(.medium)
                         
                         VStack(spacing: 4) {
-                            Text("• \(suggestion.thread.messages.count) messages")
+                            Text("• \(suggestion.messageCount) messages")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             
-                            if !suggestion.thread.attachedFiles.isEmpty {
-                                Text("• \(suggestion.thread.attachedFiles.count) attached files")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            Text("• Started \(suggestion.thread.lastModified, style: .relative)")
+                            Text("• Started \(suggestion.conversationStart, style: .relative)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -134,7 +128,6 @@ struct ProjectPromotionSheet: View {
                 
                 HStack(spacing: 12) {
                     Button("Not Now") {
-                        threadManager.dismissPromotion()
                         dismiss()
                     }
                     .buttonStyle(.bordered)
@@ -142,7 +135,7 @@ struct ProjectPromotionSheet: View {
                     
                     Button("Create Project") {
                         let title = useCustomTitle && !customTitle.isEmpty ? customTitle : suggestion.suggestedTitle
-                        threadManager.promoteToProject(suggestion, title: title)
+                        createProject(title: title)
                         dismiss()
                     }
                     .buttonStyle(.borderedProminent)
@@ -157,16 +150,19 @@ struct ProjectPromotionSheet: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
     }
+    
+    private func createProject(title: String) {
+        // Create workspace through WorkspaceManager
+        let _ = WorkspaceManager.shared.createWorkspace(title: title, description: suggestion.description)
+    }
 }
 
-#Preview {
-    let thread = ConversationThread(title: "Code Review Discussion", type: .instant, projectId: nil)
-    let suggestion = ProjectPromotionSuggestion(
-        thread: thread,
-        suggestedType: .code,
-        suggestedTitle: "API Development Project",
-        reason: "This looks like a coding discussion. Save as a project to keep track of solutions and code snippets?"
-    )
-    
-    ProjectPromotionSheet(suggestion: suggestion)
+// Simple data structure for suggestions
+struct ProjectPromotionSuggestion {
+    let suggestedType: WorkspaceManager.WorkspaceType
+    let suggestedTitle: String
+    let reason: String
+    let description: String
+    let messageCount: Int
+    let conversationStart: Date
 }

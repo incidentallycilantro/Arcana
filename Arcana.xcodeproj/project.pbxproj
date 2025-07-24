@@ -8,17 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		1D01F04B2E326A15005E1F64 /* SharedUIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F04A2E326A15005E1F64 /* SharedUIComponents.swift */; };
-		1D01F04D2E326ECD005E1F64 /* ThreadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F04C2E326ECD005E1F64 /* ThreadManager.swift */; };
-		1D01F04F2E326EDC005E1F64 /* ThreadPersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F04E2E326EDC005E1F64 /* ThreadPersistenceController.swift */; };
-		1D01F0512E326EE4005E1F64 /* ContextualSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F0502E326EE4005E1F64 /* ContextualSidebar.swift */; };
-		1D01F0532E326EED005E1F64 /* ContextualChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F0522E326EED005E1F64 /* ContextualChatView.swift */; };
 		1D01F0552E326EF5005E1F64 /* ProjectPromotionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F0542E326EF5005E1F64 /* ProjectPromotionSheet.swift */; };
-		1D01F0572E326EFD005E1F64 /* IntelligenceEngine+ThreadSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F0562E326EFD005E1F64 /* IntelligenceEngine+ThreadSupport.swift */; };
 		1D01F0592E32721A005E1F64 /* IntelligenceEngine+EnhancedWorkspaceGeneration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F0582E32721A005E1F64 /* IntelligenceEngine+EnhancedWorkspaceGeneration.swift */; };
 		1D01F05B2E327227005E1F64 /* IntelligentWorkspaceCreationDialog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F05A2E327227005E1F64 /* IntelligentWorkspaceCreationDialog.swift */; };
+		1D01F05D2E327768005E1F64 /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F05C2E327768005E1F64 /* IntelligenceEngine.swift */; };
+		1D01F05F2E327886005E1F64 /* ThreadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F05E2E327886005E1F64 /* ThreadManager.swift */; };
 		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC62E31756700583CBF /* InvisibleChatView.swift */; };
-		1D549FC92E31757700583CBF /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC82E31757700583CBF /* IntelligenceEngine.swift */; };
 		1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */; };
 		1DA7884A2E306C5A0095ED87 /* ArcanaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA788462E306C5A0095ED87 /* ArcanaApp.swift */; };
 		1DA7884C2E306C5A0095ED87 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1DA788472E306C5A0095ED87 /* Assets.xcassets */; };
@@ -66,17 +62,13 @@
 
 /* Begin PBXFileReference section */
 		1D01F04A2E326A15005E1F64 /* SharedUIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedUIComponents.swift; sourceTree = "<group>"; };
-		1D01F04C2E326ECD005E1F64 /* ThreadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadManager.swift; sourceTree = "<group>"; };
-		1D01F04E2E326EDC005E1F64 /* ThreadPersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadPersistenceController.swift; sourceTree = "<group>"; };
-		1D01F0502E326EE4005E1F64 /* ContextualSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextualSidebar.swift; sourceTree = "<group>"; };
-		1D01F0522E326EED005E1F64 /* ContextualChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextualChatView.swift; sourceTree = "<group>"; };
 		1D01F0542E326EF5005E1F64 /* ProjectPromotionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectPromotionSheet.swift; sourceTree = "<group>"; };
-		1D01F0562E326EFD005E1F64 /* IntelligenceEngine+ThreadSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntelligenceEngine+ThreadSupport.swift"; sourceTree = "<group>"; };
 		1D01F0582E32721A005E1F64 /* IntelligenceEngine+EnhancedWorkspaceGeneration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntelligenceEngine+EnhancedWorkspaceGeneration.swift"; sourceTree = "<group>"; };
 		1D01F05A2E327227005E1F64 /* IntelligentWorkspaceCreationDialog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligentWorkspaceCreationDialog.swift; sourceTree = "<group>"; };
+		1D01F05C2E327768005E1F64 /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
+		1D01F05E2E327886005E1F64 /* ThreadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadManager.swift; sourceTree = "<group>"; };
 		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1D549FC62E31756700583CBF /* InvisibleChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvisibleChatView.swift; sourceTree = "<group>"; };
-		1D549FC82E31757700583CBF /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
 		1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistenceController.swift; sourceTree = "<group>"; };
 		1DA788042E30687B0095ED87 /* Arcana.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Arcana.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DA788122E30687D0095ED87 /* ArcanaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -192,12 +184,10 @@
 				1DA7887D2E3120240095ED87 /* WorkspaceManager.swift */,
 				1DA7887F2E3128620095ED87 /* UserSettings.swift */,
 				1D549FC42E316E7000583CBF /* SmartToolController.swift */,
-				1D549FC82E31757700583CBF /* IntelligenceEngine.swift */,
 				1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */,
-				1D01F04C2E326ECD005E1F64 /* ThreadManager.swift */,
-				1D01F04E2E326EDC005E1F64 /* ThreadPersistenceController.swift */,
-				1D01F0562E326EFD005E1F64 /* IntelligenceEngine+ThreadSupport.swift */,
 				1D01F0582E32721A005E1F64 /* IntelligenceEngine+EnhancedWorkspaceGeneration.swift */,
+				1D01F05C2E327768005E1F64 /* IntelligenceEngine.swift */,
+				1D01F05E2E327886005E1F64 /* ThreadManager.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -211,8 +201,6 @@
 				1DA7885E2E306CCD0095ED87 /* TimelineView.swift */,
 				1DA7887B2E307FA30095ED87 /* NewProjectSheet.swift */,
 				1D549FC62E31756700583CBF /* InvisibleChatView.swift */,
-				1D01F0502E326EE4005E1F64 /* ContextualSidebar.swift */,
-				1D01F0522E326EED005E1F64 /* ContextualChatView.swift */,
 				1D01F0542E326EF5005E1F64 /* ProjectPromotionSheet.swift */,
 				1D01F05A2E327227005E1F64 /* IntelligentWorkspaceCreationDialog.swift */,
 			);
@@ -402,8 +390,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				1DA7885B2E306CBC0095ED87 /* ProjectSidebar.swift in Sources */,
-				1D01F0532E326EED005E1F64 /* ContextualChatView.swift in Sources */,
-				1D01F04D2E326ECD005E1F64 /* ThreadManager.swift in Sources */,
 				1DA788662E306CF50095ED87 /* AssistantProfile.swift in Sources */,
 				1DA7884A2E306C5A0095ED87 /* ArcanaApp.swift in Sources */,
 				1D01F05B2E327227005E1F64 /* IntelligentWorkspaceCreationDialog.swift in Sources */,
@@ -413,23 +399,21 @@
 				1DA788542E306C9B0095ED87 /* AdapterController.swift .swift in Sources */,
 				1D01F0552E326EF5005E1F64 /* ProjectPromotionSheet.swift in Sources */,
 				1DA7887E2E3120240095ED87 /* WorkspaceManager.swift in Sources */,
-				1D01F0572E326EFD005E1F64 /* IntelligenceEngine+ThreadSupport.swift in Sources */,
 				1DA7885D2E306CC50095ED87 /* ChatView.swift in Sources */,
 				1DA788562E306CA20095ED87 /* MemoryGraph.swift    .swift in Sources */,
 				1DA788622E306CDF0095ED87 /* Project.swift in Sources */,
 				1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */,
 				1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */,
 				1DA7886B2E306D0D0095ED87 /* FileLoader.swift in Sources */,
+				1D01F05D2E327768005E1F64 /* IntelligenceEngine.swift in Sources */,
 				1DA7887C2E307FA30095ED87 /* NewProjectSheet.swift in Sources */,
 				1D01F04B2E326A15005E1F64 /* SharedUIComponents.swift in Sources */,
-				1D01F0512E326EE4005E1F64 /* ContextualSidebar.swift in Sources */,
 				1DA788642E306CE60095ED87 /* ChatMessage.swift in Sources */,
 				1DA788802E3128620095ED87 /* UserSettings.swift in Sources */,
 				1DA788692E306D060095ED87 /* UXAnimations.swift in Sources */,
+				1D01F05F2E327886005E1F64 /* ThreadManager.swift in Sources */,
 				1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */,
 				1DA788522E306C930095ED87 /* ModelManager.swift .swift in Sources */,
-				1D549FC92E31757700583CBF /* IntelligenceEngine.swift in Sources */,
-				1D01F04F2E326EDC005E1F64 /* ThreadPersistenceController.swift in Sources */,
 				1D01F0592E32721A005E1F64 /* IntelligenceEngine+EnhancedWorkspaceGeneration.swift in Sources */,
 				1DA7886D2E306D170095ED87 /* TextUtilities.swift in Sources */,
 			);

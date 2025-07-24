@@ -13,6 +13,7 @@ struct InvisibleChatView: View {
     @FocusState private var isInputFocused: Bool
     @StateObject private var userSettings = UserSettings.shared
     @StateObject private var intelligenceEngine = IntelligenceEngine()
+    @StateObject private var threadManager = ThreadManager.shared
     
     var body: some View {
         VStack(spacing: 0) {
@@ -55,7 +56,7 @@ struct InvisibleChatView: View {
                         }
                         
                         if isAssistantTyping {
-                            TypingIndicator() // Now using shared component
+                            TypingIndicator() // Using shared component
                         }
                     }
                     .padding()
@@ -138,6 +139,11 @@ struct InvisibleChatView: View {
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleFileDrop(providers)
         }
+        .sheet(isPresented: $threadManager.showWorkspaceCreationDialog) {
+            if let context = threadManager.workspaceCreationContext {
+                IntelligentWorkspaceCreationDialog(context: context)
+            }
+        }
     }
     
     private func loadMessages() {
@@ -218,6 +224,9 @@ struct InvisibleChatView: View {
             }
             
             scrollToBottom()
+            
+            // Check if we should suggest workspace creation
+            threadManager.evaluateForWorkspaceCreation(messages)
         }
     }
     

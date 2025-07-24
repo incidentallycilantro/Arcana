@@ -9,22 +9,14 @@ struct MainView: View {
     @StateObject private var threadManager = ThreadManager.shared
     @StateObject private var userSettings = UserSettings.shared
     @State private var showingSidebar = true
-    
+
     var body: some View {
         NavigationSplitView(columnVisibility: .constant(showingSidebar ? .all : .detailOnly)) {
-            // Enhanced sidebar with contextual organization
-            ContextualSidebar()
+            ProjectSidebar()
                 .frame(minWidth: 280, maxWidth: 350)
         } detail: {
-            // Main chat area - always available, contextually smart
-            Group {
-                if let activeThread = threadManager.activeThread {
-                    ContextualChatView(thread: activeThread)
-                } else {
-                    // Default instant chat - no project required
-                    InstantChatView()
-                }
-            }
+            InstantChatView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -36,9 +28,9 @@ struct MainView: View {
                     Image(systemName: "sidebar.left")
                 }
                 .help("Toggle Sidebar")
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     threadManager.createInstantThread()
                 }) {
@@ -48,17 +40,14 @@ struct MainView: View {
             }
         }
         .onAppear {
-            // Always ensure there's an active thread for immediate use
-            if threadManager.activeThread == nil {
-                threadManager.createInstantThread()
-            }
+            threadManager.createInstantThread()
         }
     }
 }
 
 struct InstantChatView: View {
     @StateObject private var threadManager = ThreadManager.shared
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Clean, welcoming header
@@ -67,22 +56,21 @@ struct InstantChatView: View {
                     .font(.system(size: 32, weight: .ultraLight))
                     .foregroundStyle(.blue.gradient)
                     .symbolEffect(.pulse)
-                
+
                 VStack(spacing: 8) {
                     Text("Ready to think together")
                         .font(.title2)
                         .fontWeight(.medium)
-                    
+
                     Text("Start a conversation about anything")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
+
             Divider()
-            
-            // Immediate input area
+
             InstantInputArea()
         }
     }
@@ -93,7 +81,7 @@ struct InstantInputArea: View {
     @FocusState private var isInputFocused: Bool
     @StateObject private var threadManager = ThreadManager.shared
     @StateObject private var intelligenceEngine = IntelligenceEngine()
-    
+
     var body: some View {
         VStack(spacing: 8) {
             HStack(alignment: .bottom, spacing: 12) {
@@ -108,7 +96,7 @@ struct InstantInputArea: View {
                     .onSubmit {
                         startConversation()
                     }
-                
+
                 Button(action: startConversation) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
@@ -117,8 +105,7 @@ struct InstantInputArea: View {
                 .buttonStyle(.plain)
                 .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            
-            // Smart suggestions for getting started
+
             SmartStarterSuggestions()
         }
         .padding()
@@ -126,32 +113,24 @@ struct InstantInputArea: View {
             isInputFocused = true
         }
     }
-    
+
     private func startConversation() {
         let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
-        
-        // Create or use existing instant thread
+
         let thread = threadManager.getOrCreateInstantThread()
-        
-        // Add the message and switch to chat view
         threadManager.addMessage(trimmedText, to: thread)
-        threadManager.activeThread = thread
-        
-        // Clear input
         inputText = ""
-        
-        // Generate contextual response
+
         intelligenceEngine.generateContextualResponse(
             userMessage: trimmedText,
             workspaceType: .general,
             conversationHistory: thread.messages
         ) { response in
             threadManager.addAssistantMessage(response, to: thread)
-            
-            // Offer contextual organization after meaningful exchange
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                threadManager.evaluateForProjectPromotion(thread)
+                threadManager.evaluateForWorkspaceCreation(thread.messages)
             }
         }
     }
@@ -159,14 +138,14 @@ struct InstantInputArea: View {
 
 struct SmartStarterSuggestions: View {
     @StateObject private var threadManager = ThreadManager.shared
-    
+
     private let suggestions = [
         "Help me brainstorm ideas for...",
         "I need to review some code",
         "Can you help me write something?",
         "I want to research a topic"
     ]
-    
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
@@ -186,33 +165,26 @@ struct SmartStarterSuggestions: View {
             .padding(.horizontal, 4)
         }
     }
-    
+
     private func startSuggestedConversation(_ suggestion: String) {
         let thread = threadManager.getOrCreateInstantThread()
         threadManager.addMessage(suggestion, to: thread)
-        threadManager.activeThread = thread
-        
-        // Generate helpful response based on suggestion type
         let response = generateSuggestedResponse(for: suggestion)
         threadManager.addAssistantMessage(response, to: thread)
     }
-    
+
     private func generateSuggestedResponse(for suggestion: String) -> String {
         switch suggestion {
         case let s where s.contains("brainstorm"):
-            return "I'd love to help you brainstorm! What topic or challenge are you working on? I can help generate ideas, explore different angles, or organize your thoughts."
-            
+            return "I'd love to help you brainstorm! What topic or challenge are you working on?"
         case let s where s.contains("code"):
-            return "Great! I can help review code for improvements, debug issues, explain complex logic, or suggest best practices. Feel free to paste your code or describe what you're working on."
-            
+            return "Great! I can help review code, debug, or suggest best practices. What are you working on?"
         case let s where s.contains("write"):
-            return "I'm here to help with your writing! Whether it's creative content, technical documentation, emails, or any other writing project, I can assist with structure, tone, and clarity. What are you looking to write?"
-            
+            return "I'm here to help with your writing! What would you like to write today?"
         case let s where s.contains("research"):
-            return "Perfect! I can help you research topics, analyze information, find connections between ideas, and organize your findings. What subject would you like to explore?"
-            
+            return "Perfect! I can help you dig into topics, find insights, and structure your findings."
         default:
-            return "I'm ready to help with whatever you're thinking about. What would you like to explore together?"
+            return "I'm ready to help with whatever you're thinking about. Let's begin!"
         }
     }
 }

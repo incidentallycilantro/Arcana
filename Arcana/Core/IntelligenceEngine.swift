@@ -1,285 +1,282 @@
-// IntelligenceEngine+EnhancedWorkspaceGeneration.swift
+// IntelligenceEngine.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Privacy-first AI Assistant for macOS
 
 import Foundation
+import SwiftUI
 
-extension IntelligenceEngine {
+class IntelligenceEngine: ObservableObject {
     
-    // MARK: - Intelligent Workspace Title Generation
+    @Published var isProcessing = false
+    @Published var currentTask: String?
     
-    func generateIntelligentWorkspaceTitle(from conversationContent: String) -> String {
-        let keywords = extractKeywords(from: conversationContent)
-        let primaryContext = extractPrimaryContext(from: conversationContent)
-        let detectedType = detectWorkspaceType(from: conversationContent)
-        
-        // Generate title based on actual conversation content
-        if let context = primaryContext {
-            return generateContextualTitle(context: context, type: detectedType, keywords: keywords)
-        } else if let primaryKeyword = keywords.first {
-            return generateKeywordBasedTitle(keyword: primaryKeyword, type: detectedType)
-        } else {
-            return generateFallbackTitle(type: detectedType)
-        }
+    init() {
+        // Initialize intelligence engine
     }
     
-    private func generateContextualTitle(context: String, type: WorkspaceManager.WorkspaceType, keywords: [String]) -> String {
-        let cleanContext = context.trimmingCharacters(in: .whitespacesAndNewlines)
+    // MARK: - Core Intelligence Functions
+    
+    func analyzeInputInRealTime(_ input: String, workspaceType: WorkspaceManager.WorkspaceType) {
+        // Real-time input analysis for smart suggestions
+        guard !input.isEmpty else { return }
         
-        switch type {
-        case .code:
-            // Extract technical focus
-            if cleanContext.localizedCaseInsensitiveContains("API") {
-                return "\(extractAPIContext(from: cleanContext)) API"
-            } else if cleanContext.localizedCaseInsensitiveContains("authentication") || cleanContext.localizedCaseInsensitiveContains("auth") {
-                return "Authentication System"
-            } else if cleanContext.localizedCaseInsensitiveContains("database") || cleanContext.localizedCaseInsensitiveContains("DB") {
-                return "Database Development"
-            } else if cleanContext.localizedCaseInsensitiveContains("react") {
-                return "React Development"
-            } else if cleanContext.localizedCaseInsensitiveContains("mobile") || cleanContext.localizedCaseInsensitiveContains("iOS") || cleanContext.localizedCaseInsensitiveContains("Android") {
-                return "Mobile App Development"
-            } else {
-                return "\(cleanContext.capitalized) Development"
-            }
+        // Provide contextual feedback based on workspace type and input
+        detectIntent(from: input, workspaceType: workspaceType)
+    }
+    
+    func generateContextualResponse(
+        userMessage: String,
+        workspaceType: WorkspaceManager.WorkspaceType,
+        conversationHistory: [ChatMessage]
+    ) -> String {
+        // Generate intelligent contextual responses
+        return generateResponseForType(workspaceType, message: userMessage, history: conversationHistory)
+    }
+    
+    func generateContextualResponse(
+        userMessage: String,
+        workspaceType: WorkspaceManager.WorkspaceType,
+        conversationHistory: [ChatMessage],
+        completion: @escaping (String) -> Void
+    ) {
+        // Async version for background processing
+        DispatchQueue.global(qos: .userInitiated).async {
+            let response = self.generateResponseForType(workspaceType, message: userMessage, history: conversationHistory)
             
-        case .creative:
-            if cleanContext.localizedCaseInsensitiveContains("story") || cleanContext.localizedCaseInsensitiveContains("narrative") {
-                return "\(cleanContext.capitalized) Story"
-            } else if cleanContext.localizedCaseInsensitiveContains("article") || cleanContext.localizedCaseInsensitiveContains("blog") {
-                return "\(cleanContext.capitalized) Writing"
-            } else if cleanContext.localizedCaseInsensitiveContains("marketing") || cleanContext.localizedCaseInsensitiveContains("campaign") {
-                return "\(cleanContext.capitalized) Campaign"
-            } else {
-                return "\(cleanContext.capitalized) Creative Project"
+            DispatchQueue.main.async {
+                completion(response)
             }
+        }
+    }
+    
+    func checkForProactiveAssistance(
+        userMessage: String,
+        workspaceType: WorkspaceManager.WorkspaceType,
+        completion: @escaping (String?) -> Void
+    ) {
+        // Check if proactive help should be offered
+        DispatchQueue.global(qos: .background).async {
+            let assistance = self.evaluateProactiveHelp(message: userMessage, type: workspaceType)
             
-        case .research:
-            if cleanContext.localizedCaseInsensitiveContains("market") {
-                return "\(cleanContext.capitalized) Market Research"
-            } else if cleanContext.localizedCaseInsensitiveContains("user") || cleanContext.localizedCaseInsensitiveContains("customer") {
-                return "\(cleanContext.capitalized) User Research"
-            } else {
-                return "\(cleanContext.capitalized) Research"
+            DispatchQueue.main.async {
+                completion(assistance)
             }
-            
-        case .general:
-            return "\(cleanContext.capitalized) Discussion"
         }
     }
     
-    private func generateKeywordBasedTitle(keyword: String, type: WorkspaceManager.WorkspaceType) -> String {
-        switch type {
-        case .code:
-            return "\(keyword.capitalized) Development"
-        case .creative:
-            return "\(keyword.capitalized) Creative Work"
-        case .research:
-            return "\(keyword.capitalized) Research"
-        case .general:
-            return "\(keyword.capitalized) Project"
+    // MARK: - File Processing
+    
+    func generateFileProcessingResponse(
+        fileName: String,
+        fileExtension: String,
+        workspaceType: WorkspaceManager.WorkspaceType
+    ) -> String {
+        switch fileExtension.lowercased() {
+        case "pdf":
+            return "I've analyzed the PDF '\(fileName)'. What would you like to know about its contents?"
+        case "docx", "doc":
+            return "I've processed the document '\(fileName)'. I can summarize, extract key points, or analyze the content."
+        case "swift", "py", "js", "java", "cpp", "c":
+            return "I've reviewed the code file '\(fileName)'. I can help with analysis, documentation, or improvements."
+        case "md", "txt":
+            return "I've read '\(fileName)'. How can I help you work with this content?"
+        case "csv", "xlsx":
+            return "I've processed the data file '\(fileName)'. I can help analyze patterns or extract insights."
+        case "json":
+            return "I've parsed the JSON file '\(fileName)'. What would you like me to help you with?"
+        default:
+            return "I've processed '\(fileName)'. What would you like me to help you with?"
         }
     }
     
-    private func generateFallbackTitle(type: WorkspaceManager.WorkspaceType) -> String {
-        switch type {
-        case .code:
-            return "Development Project"
-        case .creative:
-            return "Creative Project"
-        case .research:
-            return "Research Project"
-        case .general:
-            return "General Project"
-        }
-    }
+    // MARK: - Thread Management
     
-    // MARK: - Intelligent Workspace Description Generation
-    
-    func generateIntelligentWorkspaceDescription(from conversationContent: String) -> String {
-        let summary = generateConversationSummary(from: parseMessages(conversationContent))
-        let mainTopics = extractMainTopics(from: conversationContent)
-        let detectedType = detectWorkspaceType(from: conversationContent)
-        
-        let purposeStatement = generatePurposeStatement(type: detectedType, topics: mainTopics)
-        
-        if !summary.isEmpty && !mainTopics.isEmpty {
-            return "Workspace for \(summary.lowercased()). \(purposeStatement) Key focus areas: \(mainTopics.joined(separator: ", "))."
-        } else if !summary.isEmpty {
-            return "Workspace for \(summary.lowercased()). \(purposeStatement)"
-        } else {
-            return purposeStatement
-        }
-    }
-    
-    private func generatePurposeStatement(type: WorkspaceManager.WorkspaceType, topics: [String]) -> String {
-        switch type {
-        case .code:
-            return "Ideal for tracking technical solutions, code reviews, and development discussions."
-        case .creative:
-            return "Perfect for brainstorming, content creation, and creative collaboration."
-        case .research:
-            return "Designed for organizing findings, analysis, and research documentation."
-        case .general:
-            return "Organized space for ongoing discussions and collaborative thinking."
-        }
-    }
-    
-    // MARK: - Enhanced Content Analysis
-    
-    func extractKeywords(from content: String) -> [String] {
+    func generateThreadTitle(from content: String) -> String {
         let words = content.components(separatedBy: .whitespacesAndNewlines)
-            .compactMap { word in
-                let cleaned = word.trimmingCharacters(in: .punctuationCharacters).lowercased()
-                return cleaned.count > 3 && !isStopWord(cleaned) ? cleaned.capitalized : nil
-            }
+            .filter { !$0.isEmpty }
+            .prefix(6)
         
-        // Find most frequent meaningful terms
-        let wordCounts = Dictionary(grouping: words) { $0 }
-            .mapValues { $0.count }
-            .sorted { $0.value > $1.value }
-        
-        return wordCounts.prefix(5).map { $0.key }
+        if words.count > 3 {
+            return Array(words.prefix(3)).joined(separator: " ") + "..."
+        } else {
+            return words.joined(separator: " ")
+        }
     }
     
-    func extractPrimaryContext(from content: String) -> String? {
-        // Look for specific technical or project contexts
-        let contextPatterns = [
-            // Technical contexts
-            "API (\\w+)",
-            "(\\w+) authentication",
-            "(\\w+) database",
-            "(React|Vue|Angular) (\\w+)",
-            "(iOS|Android|mobile) (\\w+)",
-            
-            // Creative contexts
-            "(\\w+) story",
-            "(\\w+) article",
-            "(\\w+) campaign",
-            "(\\w+) brand",
-            
-            // Research contexts
-            "(\\w+) research",
-            "(\\w+) analysis",
-            "(\\w+) study",
-            
-            // General project contexts
-            "(\\w+) project",
-            "(\\w+) system",
-            "(\\w+) platform"
-        ]
+    // MARK: - Workspace Type Detection
+    
+    func detectWorkspaceType(from content: String) -> WorkspaceManager.WorkspaceType {
+        let lowercaseContent = content.lowercased()
         
-        for pattern in contextPatterns {
-            if let match = content.firstMatch(of: try! NSRegularExpression(pattern: pattern, options: .caseInsensitive)) {
-                let matchedText = String(content[match.range])
-                return matchedText.components(separatedBy: .whitespacesAndNewlines)
-                    .first { !isStopWord($0.lowercased()) }
+        // Enhanced keyword detection with scoring
+        let codeKeywords = ["code", "programming", "development", "swift", "python", "javascript", "api", "debug", "software", "algorithm", "framework", "repository", "github", "coding", "technical", "architecture", "database", "backend", "frontend", "mobile", "web", "ios", "android", "react", "node", "java", "c++", "html", "css", "sql"]
+        
+        let creativeKeywords = ["creative", "writing", "story", "novel", "poem", "poetry", "art", "design", "music", "screenplay", "character", "plot", "narrative", "fiction", "blog", "content", "marketing", "copy", "brand", "artistic", "illustration", "graphics", "video", "animation", "photography", "brainstorm", "idea", "concept", "vision", "imagination", "inspiration"]
+        
+        let researchKeywords = ["research", "analysis", "study", "report", "data", "market", "survey", "academic", "paper", "thesis", "investigation", "findings", "statistics", "trends", "insights", "analytics", "business", "strategy", "competitive", "industry", "economics", "finance", "science", "methodology", "hypothesis", "experiment", "evidence", "documentation", "review", "evaluation"]
+        
+        let codeScore = calculateTypeScore(lowercaseContent, keywords: codeKeywords)
+        let creativeScore = calculateTypeScore(lowercaseContent, keywords: creativeKeywords)
+        let researchScore = calculateTypeScore(lowercaseContent, keywords: researchKeywords)
+        
+        let maxScore = max(codeScore, creativeScore, researchScore)
+        
+        if maxScore < 1 {
+            return .general
+        } else if codeScore == maxScore {
+            return .code
+        } else if creativeScore == maxScore {
+            return .creative
+        } else {
+            return .research
+        }
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    private func detectIntent(from input: String, workspaceType: WorkspaceManager.WorkspaceType) {
+        // Analyze user intent for real-time suggestions
+        let intent = classifyIntent(input, workspaceType: workspaceType)
+        
+        // Update current task for UI feedback
+        DispatchQueue.main.async {
+            self.currentTask = intent
+        }
+    }
+    
+    private func classifyIntent(_ input: String, workspaceType: WorkspaceManager.WorkspaceType) -> String? {
+        let lowercaseInput = input.lowercased()
+        
+        // Intent classification based on workspace type
+        switch workspaceType {
+        case .code:
+            if lowercaseInput.contains("review") || lowercaseInput.contains("check") {
+                return "Code review detected"
+            } else if lowercaseInput.contains("debug") || lowercaseInput.contains("error") {
+                return "Debugging assistance needed"
+            } else if lowercaseInput.contains("explain") || lowercaseInput.contains("how") {
+                return "Code explanation requested"
             }
+        case .creative:
+            if lowercaseInput.contains("write") || lowercaseInput.contains("draft") {
+                return "Writing assistance requested"
+            } else if lowercaseInput.contains("idea") || lowercaseInput.contains("brainstorm") {
+                return "Creative ideation needed"
+            }
+        case .research:
+            if lowercaseInput.contains("analyze") || lowercaseInput.contains("research") {
+                return "Research analysis requested"
+            } else if lowercaseInput.contains("fact") || lowercaseInput.contains("verify") {
+                return "Fact-checking needed"
+            }
+        case .general:
+            break
         }
         
         return nil
     }
     
-    func extractMainTopics(from content: String) -> [String] {
-        let keywords = extractKeywords(from: content)
-        let technicalTerms = extractTechnicalTerms(from: content)
-        let conceptualTerms = extractConceptualTerms(from: content)
-        
-        // Combine and prioritize
-        let allTerms = Set(keywords + technicalTerms + conceptualTerms)
-        return Array(allTerms).prefix(4).map { String($0) }
-    }
-    
-    private func extractTechnicalTerms(from content: String) -> [String] {
-        let technicalPatterns = [
-            "API", "REST", "GraphQL", "JWT", "OAuth", "SQL", "NoSQL",
-            "React", "Vue", "Angular", "Node", "Express", "MongoDB",
-            "authentication", "authorization", "encryption", "security",
-            "frontend", "backend", "database", "server", "client",
-            "iOS", "Android", "mobile", "responsive", "performance"
-        ]
-        
-        return technicalPatterns.filter {
-            content.localizedCaseInsensitiveContains($0)
-        }.map { $0.capitalized }
-    }
-    
-    private func extractConceptualTerms(from content: String) -> [String] {
-        let conceptualPatterns = [
-            "user experience", "user interface", "workflow", "process",
-            "strategy", "planning", "optimization", "integration",
-            "scalability", "maintainability", "accessibility", "usability",
-            "branding", "marketing", "content", "storytelling",
-            "research", "analysis", "insights", "findings"
-        ]
-        
-        return conceptualPatterns.filter {
-            content.localizedCaseInsensitiveContains($0)
-        }.map { $0.capitalized }
-    }
-    
-    func generateConversationSummary(from messages: [ChatMessage]) -> String {
-        let userMessages = messages.filter { $0.role == .user }
-        guard !userMessages.isEmpty else { return "" }
-        
-        let allContent = userMessages.map { $0.content }.joined(separator: " ")
-        let mainTopics = extractMainTopics(from: allContent)
-        
-        if mainTopics.count >= 2 {
-            return "discussing \(mainTopics[0].lowercased()) and \(mainTopics[1].lowercased())"
-        } else if let firstTopic = mainTopics.first {
-            return "working on \(firstTopic.lowercased())"
-        } else {
-            return "collaborative problem-solving"
+    private func generateResponseForType(
+        _ workspaceType: WorkspaceManager.WorkspaceType,
+        message: String,
+        history: [ChatMessage]
+    ) -> String {
+        switch workspaceType {
+        case .code:
+            return generateCodeResponse(message: message, history: history)
+        case .creative:
+            return generateCreativeResponse(message: message, history: history)
+        case .research:
+            return generateResearchResponse(message: message, history: history)
+        case .general:
+            return generateGeneralResponse(message: message, history: history)
         }
     }
     
-    // MARK: - Helper Methods
-    
-    private func parseMessages(_ content: String) -> [ChatMessage] {
-        // Simplified parsing for analysis - in real implementation,
-        // this would be called with actual ChatMessage array
-        return []
-    }
-    
-    private func extractAPIContext(from content: String) -> String {
-        if content.localizedCaseInsensitiveContains("authentication") {
-            return "Authentication"
-        } else if content.localizedCaseInsensitiveContains("payment") {
-            return "Payment"
-        } else if content.localizedCaseInsensitiveContains("user") {
-            return "User"
-        } else if content.localizedCaseInsensitiveContains("data") {
-            return "Data"
-        } else {
-            return "Service"
-        }
-    }
-    
-    private func isStopWord(_ word: String) -> Bool {
-        let stopWords = [
-            "the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
-            "her", "was", "one", "our", "out", "day", "get", "has", "him", "his",
-            "how", "its", "may", "new", "now", "old", "see", "two", "who", "boy",
-            "did", "what", "with", "have", "this", "will", "been", "from", "they",
-            "she", "when", "where", "why", "some", "that", "there", "their", "would",
-            "like", "into", "time", "very", "only", "just", "then", "than", "also",
-            "back", "after", "first", "well", "way", "even", "want", "because",
-            "these", "give", "most", "us"
+    private func generateCodeResponse(message: String, history: [ChatMessage]) -> String {
+        let responses = [
+            "I can help you analyze this code. Would you like me to check for optimizations?",
+            "Let me review the code structure and suggest improvements.",
+            "I notice this is code-related. I can help with debugging, documentation, or testing.",
+            "I see you're working on a technical solution. Let me help you think through this.",
+            "This looks like a development challenge. I can assist with architecture and best practices."
         ]
-        return stopWords.contains(word.lowercased())
+        return responses.randomElement() ?? "I'm ready to help with your coding project."
     }
-}
-
-// MARK: - String Extension for Regex
-extension String {
-    func firstMatch(of regex: NSRegularExpression) -> NSTextCheckingResult? {
-        return regex.firstMatch(in: self, options: [], range: NSRange(location: 0, length: self.utf16.count))
+    
+    private func generateCreativeResponse(message: String, history: [ChatMessage]) -> String {
+        let responses = [
+            "That's an interesting creative direction! Let me help you develop this further.",
+            "I can help refine the tone and style of your work.",
+            "Great creative thinking! Would you like me to analyze the structure or flow?",
+            "I love the creative energy here. Let's explore this concept deeper.",
+            "This has great potential. I can help you polish and expand on these ideas."
+        ]
+        return responses.randomElement() ?? "I'm here to help with your creative work."
     }
-}
-
-extension NSTextCheckingResult {
-    var range: Range<String.Index> {
-        return Range(NSRange(location: range.location, length: range.length), in: "")!
+    
+    private func generateResearchResponse(message: String, history: [ChatMessage]) -> String {
+        let responses = [
+            "I can help verify those claims and find supporting evidence.",
+            "Let me analyze the data and provide insights on the research.",
+            "I notice this involves research. I can help with fact-checking and analysis.",
+            "Interesting research direction. I can help you organize and evaluate the findings.",
+            "I can assist with methodology and help structure your research approach."
+        ]
+        return responses.randomElement() ?? "I'm ready to help with your research."
+    }
+    
+    private func generateGeneralResponse(message: String, history: [ChatMessage]) -> String {
+        let responses = [
+            "I understand! Let me help you with that.",
+            "That's a great question. Here's what I think...",
+            "Based on what you've shared, I'd suggest...",
+            "I can definitely help you explore this further.",
+            "Let's work through this together step by step."
+        ]
+        return responses.randomElement() ?? "How can I help you with this?"
+    }
+    
+    private func evaluateProactiveHelp(message: String, type: WorkspaceManager.WorkspaceType) -> String? {
+        let lowercaseMessage = message.lowercased()
+        
+        // Evaluate if proactive assistance should be offered
+        switch type {
+        case .code:
+            if lowercaseMessage.contains("stuck") || lowercaseMessage.contains("error") {
+                return "I notice you might be facing a challenge. Would you like me to help debug this step by step?"
+            }
+        case .creative:
+            if lowercaseMessage.count > 200 && lowercaseMessage.contains("write") {
+                return "I see you're working on substantial content. Would you like feedback on structure or tone?"
+            }
+        case .research:
+            if lowercaseMessage.contains("finding") || lowercaseMessage.contains("conclusion") {
+                return "I can help organize your findings or suggest additional research directions if helpful."
+            }
+        case .general:
+            break
+        }
+        
+        return nil
+    }
+    
+    private func calculateTypeScore(_ text: String, keywords: [String]) -> Double {
+        var score = 0.0
+        
+        for keyword in keywords {
+            if text.contains(keyword) {
+                // Weight keywords by length (longer = more specific)
+                let weight = Double(keyword.count) / 5.0
+                score += weight
+                
+                // Bonus for exact word matches
+                if text.components(separatedBy: .whitespacesAndNewlines).contains(keyword) {
+                    score += weight * 0.5
+                }
+            }
+        }
+        
+        return score
     }
 }

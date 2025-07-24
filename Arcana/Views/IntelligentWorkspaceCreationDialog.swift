@@ -175,17 +175,11 @@ struct IntelligentWorkspaceCreationDialog: View {
                             .foregroundStyle(.secondary)
                         
                         HStack(spacing: 16) {
-                            Label("\(context.thread.messages.count) messages", systemImage: "message")
+                            Label("\(context.messages.count) messages", systemImage: "message")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             
-                            if !context.thread.attachedFiles.isEmpty {
-                                Label("\(context.thread.attachedFiles.count) files", systemImage: "paperclip")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            Label("Started \(context.thread.lastModified, style: .relative)", systemImage: "clock")
+                            Label("Started recently", systemImage: "clock")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -252,21 +246,4 @@ struct IntelligentWorkspaceCreationDialog: View {
             selectedExistingWorkspace = nil
         }
     }
-}
-
-#Preview {
-    let thread = ConversationThread(title: "API Discussion", type: .instant, projectId: nil)
-    let context = WorkspaceCreationContext(
-        thread: thread,
-        suggestedType: .code,
-        intelligentTitle: "JWT Authentication API",
-        intelligentDescription: "Workspace for resolving JWT token validation issues and implementing secure authentication handling in React applications.",
-        existingWorkspaceSuggestions: [
-            Project(title: "React Development", description: "Frontend React application development"),
-            Project(title: "API Infrastructure", description: "Backend API development and integration")
-        ],
-        conversationSummary: "JWT authentication and React integration challenges"
-    )
-    
-    IntelligentWorkspaceCreationDialog(context: context)
 }
