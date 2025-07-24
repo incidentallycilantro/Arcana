@@ -16,9 +16,11 @@ class WorkspaceManager: ObservableObject {
     
     // Invisible intelligence state
     private var userPatterns: WorkspacePatterns = WorkspacePatterns()
-    private let persistenceController = WorkspacePersistenceController()
+    // FIXED: Made internal for ThreadManager access
+    internal let persistenceController = WorkspacePersistenceController()
     
-    enum WorkspaceType {
+    // FIXED: Added Codable conformance to WorkspaceType
+    enum WorkspaceType: String, Codable, CaseIterable {
         case code
         case creative
         case research
@@ -188,6 +190,11 @@ class WorkspaceManager: ObservableObject {
         }
         
         return newWorkspace
+    }
+    
+    // FIXED: Added method for external access to persistence
+    func saveWorkspaceFromExternal(_ workspace: Project) {
+        persistenceController.saveWorkspace(workspace)
     }
     
     private func generateIntelligentDescription(_ title: String, type: WorkspaceType) -> String {
