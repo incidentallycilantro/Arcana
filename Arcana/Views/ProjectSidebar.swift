@@ -195,8 +195,8 @@ struct ProjectSidebar: View {
             selectInitialWorkspaceIfNeeded()
         }
         // CRITICAL FIX: Force UI update when workspace manager selection changes
-        .onChange(of: workspaceManager.selectedWorkspace) { newValue in
-            selectedProject = newValue
+        .onChange(of: workspaceManager.selectedWorkspace) {
+            selectedProject = workspaceManager.selectedWorkspace
         }
     }
     

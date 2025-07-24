@@ -125,7 +125,7 @@ struct ConversationView: View {
                 }
                 .padding()
             }
-            .onChange(of: thread.messages.count) { _ in
+            .onChange(of: thread.messages.count) {
                 // Auto-scroll to latest message
                 if let lastMessage = thread.messages.last {
                     withAnimation(.easeOut(duration: 0.3)) {

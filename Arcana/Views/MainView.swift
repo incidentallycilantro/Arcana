@@ -125,7 +125,7 @@ struct FluidConversationView: View {
                     }
                     .padding()
                 }
-                .onChange(of: thread.messages.count) { _ in
+                .onChange(of: thread.messages.count) {
                     scrollToBottom(proxy: proxy)
                 }
             }
@@ -141,7 +141,8 @@ struct FluidConversationView: View {
         }
     }
     
-    private func scrollToBottom(proxy: ScrollViewReader) {
+    // FIXED: Corrected ScrollViewProxy type
+    private func scrollToBottom(proxy: ScrollViewProxy) {
         if let lastMessage = thread.messages.last {
             withAnimation(.easeOut(duration: 0.3)) {
                 proxy.scrollTo(lastMessage.id, anchor: .bottom)

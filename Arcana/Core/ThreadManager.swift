@@ -22,11 +22,13 @@ class ThreadManager: ObservableObject {
 
     // MARK: - Thread Management
 
-    func createNewThread() {
+    @discardableResult
+    func createNewThread() -> ChatThread {
         let newThread = ChatThread()
         threads.insert(newThread, at: 0)
         selectedThread = newThread
         saveThread(newThread)
+        return newThread
     }
 
     func selectThread(_ thread: ChatThread) {
@@ -171,7 +173,7 @@ class ThreadManager: ObservableObject {
         selectedThread = threads.first
     }
 
-    private func saveThread(_ thread: ChatThread) {
+    func saveThread(_ thread: ChatThread) {
         persistenceController.saveThread(thread)
     }
 

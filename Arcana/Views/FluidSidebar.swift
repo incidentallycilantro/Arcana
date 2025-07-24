@@ -292,86 +292,14 @@ struct FluidItemView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Main item content
-            HStack(alignment: .top, spacing: 12) {
-                // Visual evolution indicator
-                EvolutionIndicator(
-                    type: item.type,
-                    workspaceType: item.workspaceType,
-                    eligibility: item.promotionEligibility
-                )
-                
-                // Content
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(item.title)
-                            .font(.headline)
-                            .fontWeight(.medium)
-                            .foregroundColor(isSelected ? .white : .primary)
-                            .lineLimit(1)
-                        
-                        Spacer()
-                        
-                        // Promotion hint
-                        if item.type == .evolvingConversation {
-                            Button("Promote", action: onPromote)
-                                .font(.caption2)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.orange.opacity(0.2))
-                                .foregroundColor(.orange)
-                                .clipShape(Capsule())
-                                .buttonStyle(.plain)
-                        }
-                    }
-                    
-                    // Smart summary
-                    Text(item.summary)
-                        .font(.subheadline)
-                        .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    
-                    // Metadata
-                    HStack(spacing: 8) {
-                        Text("\(item.messageCount) message\(item.messageCount == 1 ? "" : "s")")
-                            .font(.caption2)
-                            .foregroundStyle(isSelected ? .white.opacity(0.7) : .tertiary)
-                        
-                        Text("•")
-                            .font(.caption2)
-                            .foregroundStyle(isSelected ? .white.opacity(0.7) : .tertiary)
-                        
-                        Text(item.lastActivity)
-                            .font(.caption2)
-                            .foregroundStyle(isSelected ? .white.opacity(0.7) : .tertiary)
-                    }
-                }
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 12)
+            itemContent
             
             // Nested threads for workspaces
             if item.type == .workspace, let nestedThreads = item.nestedThreads, !nestedThreads.isEmpty {
-                VStack(spacing: 4) {
-                    ForEach(nestedThreads.prefix(3), id: \.id) { thread in
-                        NestedThreadView(thread: thread, isParentSelected: isSelected)
-                    }
-                    
-                    if nestedThreads.count > 3 {
-                        Text("+ \(nestedThreads.count - 3) more conversations")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 24)
-                            .padding(.vertical, 4)
-                    }
-                }
-                .padding(.bottom, 8)
+                nestedThreadsView(nestedThreads)
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? Color.blue : (isHovered ? Color.black.opacity(0.05) : Color.clear))
-        )
+        .background(itemBackground)
         .padding(.horizontal, 8)
         .onTapGesture(perform: onTap)
         .onHover { hovering in
@@ -382,6 +310,101 @@ struct FluidItemView: View {
         .contextMenu {
             FluidItemContextMenu(item: item, onAction: onAction)
         }
+    }
+    
+    // FIXED: Broken down into separate computed properties to avoid compiler timeout
+    private var itemContent: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // Visual evolution indicator
+            EvolutionIndicator(
+                type: item.type,
+                workspaceType: item.workspaceType,
+                eligibility: item.promotionEligibility
+            )
+            
+            // Content
+            itemTextContent
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+    }
+    
+    private var itemTextContent: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            itemHeader
+            
+            // Smart summary
+            Text(item.summary)
+                .font(.subheadline)
+                .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            // Metadata
+            itemMetadata
+        }
+    }
+    
+    private var itemHeader: some View {
+        HStack {
+            Text(item.title)
+                .font(.headline)
+                .fontWeight(.medium)
+                .foregroundColor(isSelected ? .white : .primary)
+                .lineLimit(1)
+            
+            Spacer()
+            
+            // Promotion hint
+            if item.type == .evolvingConversation {
+                Button("Promote", action: onPromote)
+                    .font(.caption2)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.orange.opacity(0.2))
+                    .foregroundColor(.orange)
+                    .clipShape(Capsule())
+                    .buttonStyle(.plain)
+            }
+        }
+    }
+    
+    private var itemMetadata: some View {
+        HStack(spacing: 8) {
+            Text("\(item.messageCount) message\(item.messageCount == 1 ? "" : "s")")
+                .font(.caption2)
+                .foregroundStyle(isSelected ? .white.opacity(0.7) : Color.secondary.opacity(0.8))
+            
+            Text("•")
+                .font(.caption2)
+                .foregroundStyle(isSelected ? .white.opacity(0.7) : Color.secondary.opacity(0.8))
+            
+            Text(item.lastActivity)
+                .font(.caption2)
+                .foregroundStyle(isSelected ? .white.opacity(0.7) : Color.secondary.opacity(0.8))
+        }
+    }
+    
+    private var itemBackground: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(isSelected ? Color.blue : (isHovered ? Color.black.opacity(0.05) : Color.clear))
+    }
+    
+    private func nestedThreadsView(_ nestedThreads: [ChatThread]) -> some View {
+        VStack(spacing: 4) {
+            ForEach(nestedThreads.prefix(3), id: \.id) { thread in
+                NestedThreadView(thread: thread, isParentSelected: isSelected)
+            }
+            
+            if nestedThreads.count > 3 {
+                Text("+ \(nestedThreads.count - 3) more conversations")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 24)
+                    .padding(.vertical, 4)
+            }
+        }
+        .padding(.bottom, 8)
     }
 }
 
@@ -466,7 +489,7 @@ struct NestedThreadView: View {
             
             Text("\(thread.messages.count)")
                 .font(.caption2)
-                .foregroundStyle(isParentSelected ? .white.opacity(0.6) : .tertiary)
+                .foregroundStyle(isParentSelected ? .white.opacity(0.6) : Color.secondary.opacity(0.8))
         }
         .padding(.leading, 24)
         .padding(.trailing, 12)
