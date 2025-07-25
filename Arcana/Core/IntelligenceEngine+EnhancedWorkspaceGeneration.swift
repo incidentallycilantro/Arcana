@@ -1,3 +1,4 @@
+//
 // IntelligenceEngine+EnhancedWorkspaceGeneration.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Privacy-first AI Assistant for macOS
@@ -11,6 +12,7 @@ extension IntelligenceEngine {
     func generateIntelligentWorkspaceTitle(from conversationContent: String) -> String {
         let keywords = extractKeywords(from: conversationContent)
         let primaryContext = extractPrimaryContext(from: conversationContent)
+        // Use the existing detectWorkspaceType method from IntelligenceEngine
         let detectedType = detectWorkspaceType(from: conversationContent)
         
         if let context = primaryContext {
@@ -33,34 +35,13 @@ extension IntelligenceEngine {
                 return "Authentication System"
             } else if cleanContext.localizedCaseInsensitiveContains("database") || cleanContext.localizedCaseInsensitiveContains("DB") {
                 return "Database Development"
-            } else if cleanContext.localizedCaseInsensitiveContains("react") {
-                return "React Development"
-            } else if cleanContext.localizedCaseInsensitiveContains("mobile") || cleanContext.localizedCaseInsensitiveContains("iOS") || cleanContext.localizedCaseInsensitiveContains("Android") {
-                return "Mobile App Development"
             } else {
                 return "\(cleanContext.capitalized) Development"
             }
-            
         case .creative:
-            if cleanContext.localizedCaseInsensitiveContains("story") || cleanContext.localizedCaseInsensitiveContains("narrative") {
-                return "\(cleanContext.capitalized) Story"
-            } else if cleanContext.localizedCaseInsensitiveContains("article") || cleanContext.localizedCaseInsensitiveContains("blog") {
-                return "\(cleanContext.capitalized) Writing"
-            } else if cleanContext.localizedCaseInsensitiveContains("marketing") || cleanContext.localizedCaseInsensitiveContains("campaign") {
-                return "\(cleanContext.capitalized) Campaign"
-            } else {
-                return "\(cleanContext.capitalized) Creative Project"
-            }
-            
+            return "\(cleanContext.capitalized) Creative Project"
         case .research:
-            if cleanContext.localizedCaseInsensitiveContains("market") {
-                return "\(cleanContext.capitalized) Market Research"
-            } else if cleanContext.localizedCaseInsensitiveContains("user") || cleanContext.localizedCaseInsensitiveContains("customer") {
-                return "\(cleanContext.capitalized) User Research"
-            } else {
-                return "\(cleanContext.capitalized) Research"
-            }
-            
+            return "\(cleanContext.capitalized) Research"
         case .general:
             return "\(cleanContext.capitalized) Discussion"
         }
@@ -96,12 +77,13 @@ extension IntelligenceEngine {
     
     func generateIntelligentWorkspaceDescription(from messages: [ChatMessage]) -> String {
         let userContent = messages
-            .filter { $0.role == .user }
+            .filter { $0.isFromUser }  // Fixed: Use isFromUser instead of role
             .map { $0.content }
             .joined(separator: " ")
         
         let summary = generateConversationSummary(from: messages)
         let mainTopics = extractMainTopics(from: userContent)
+        // Use the existing detectWorkspaceType method from IntelligenceEngine
         let detectedType = detectWorkspaceType(from: userContent)
         
         let purposeStatement = generatePurposeStatement(type: detectedType, topics: mainTopics)
@@ -134,141 +116,85 @@ extension IntelligenceEngine {
         let words = content.components(separatedBy: .whitespacesAndNewlines)
             .compactMap { word in
                 let cleaned = word.trimmingCharacters(in: .punctuationCharacters).lowercased()
-                return cleaned.count > 3 && !isStopWord(cleaned) ? cleaned.capitalized : nil
+                return cleaned.count > 3 && !isStopWord(cleaned) ? cleaned : nil
             }
         
-        let wordCounts = Dictionary(grouping: words, by: { $0 })
-            .mapValues { $0.count }
-            .sorted { $0.value > $1.value }
-        
-        return wordCounts.prefix(5).map { $0.key }
-    }
-    
-    func extractPrimaryContext(from content: String) -> String? {
-        let contextPatterns = [
-            "API (\\w+)",
-            "(\\w+) authentication",
-            "(\\w+) database",
-            "(React|Vue|Angular) (\\w+)",
-            "(iOS|Android|mobile) (\\w+)",
-            "(\\w+) story",
-            "(\\w+) article",
-            "(\\w+) campaign",
-            "(\\w+) brand",
-            "(\\w+) research",
-            "(\\w+) analysis",
-            "(\\w+) study",
-            "(\\w+) project",
-            "(\\w+) system",
-            "(\\w+) platform"
-        ]
-        
-        for pattern in contextPatterns {
-            let regex = try! NSRegularExpression(pattern: pattern, options: .caseInsensitive)
-            if let match = content.firstMatch(of: regex),
-               let range = match.range(in: content) {
-                let matchedText = String(content[range])
-                return matchedText
-                    .components(separatedBy: .whitespacesAndNewlines)
-                    .first { !isStopWord($0.lowercased()) }
-            }
-        }
-        
-        return nil
+        return Array(Set(words)).sorted { word1, word2 in
+            content.lowercased().components(separatedBy: word1).count >
+            content.lowercased().components(separatedBy: word2).count
+        }.prefix(10).map { $0 }
     }
     
     func extractMainTopics(from content: String) -> [String] {
         let keywords = extractKeywords(from: content)
-        let technicalTerms = extractTechnicalTerms(from: content)
-        let conceptualTerms = extractConceptualTerms(from: content)
-        
-        let allTerms = Set(keywords + technicalTerms + conceptualTerms)
-        return Array(allTerms).prefix(4).map { String($0) }
-    }
-    
-    private func extractTechnicalTerms(from content: String) -> [String] {
-        let technicalPatterns = [
-            "API", "REST", "GraphQL", "JWT", "OAuth", "SQL", "NoSQL",
-            "React", "Vue", "Angular", "Node", "Express", "MongoDB",
-            "authentication", "authorization", "encryption", "security",
-            "frontend", "backend", "database", "server", "client",
-            "iOS", "Android", "mobile", "responsive", "performance"
+        let topicGroups = [
+            "Technology": ["swift", "code", "programming", "development", "app", "ios", "web", "api", "database"],
+            "Creative": ["writing", "design", "creative", "story", "content", "art", "music", "video"],
+            "Business": ["business", "strategy", "marketing", "sales", "finance", "management", "planning"],
+            "Research": ["research", "analysis", "study", "data", "science", "investigation", "report"]
         ]
         
-        return technicalPatterns.filter {
-            content.localizedCaseInsensitiveContains($0)
-        }.map { $0.capitalized }
-    }
-    
-    private func extractConceptualTerms(from content: String) -> [String] {
-        let conceptualPatterns = [
-            "user experience", "user interface", "workflow", "process",
-            "strategy", "planning", "optimization", "integration",
-            "scalability", "maintainability", "accessibility", "usability",
-            "branding", "marketing", "content", "storytelling",
-            "research", "analysis", "insights", "findings"
-        ]
+        var detectedTopics: [String] = []
         
-        return conceptualPatterns.filter {
-            content.localizedCaseInsensitiveContains($0)
-        }.map { $0.capitalized }
+        for (topic, relatedWords) in topicGroups {
+            let matches = keywords.filter { keyword in
+                relatedWords.contains { keyword.contains($0) || $0.contains(keyword) }
+            }
+            if matches.count >= 2 {
+                detectedTopics.append(topic)
+            }
+        }
+        
+        return detectedTopics.isEmpty ? Array(keywords.prefix(3)) : detectedTopics
     }
     
     func generateConversationSummary(from messages: [ChatMessage]) -> String {
-        let userMessages = messages.filter { $0.role == .user }
+        let userMessages = messages.filter { $0.isFromUser }  // Fixed: Use isFromUser
         guard !userMessages.isEmpty else { return "" }
         
-        let allContent = userMessages.map { $0.content }.joined(separator: " ")
-        let mainTopics = extractMainTopics(from: allContent)
+        let combinedContent = userMessages.map { $0.content }.joined(separator: " ")
+        let keywords = extractKeywords(from: combinedContent)
         
-        if mainTopics.count >= 2 {
-            return "discussing \(mainTopics[0].lowercased()) and \(mainTopics[1].lowercased())"
-        } else if let firstTopic = mainTopics.first {
-            return "working on \(firstTopic.lowercased())"
+        if let primaryKeyword = keywords.first {
+            return "discussion about \(primaryKeyword)"
         } else {
-            return "collaborative problem-solving"
+            return "general conversation"
         }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func extractPrimaryContext(from content: String) -> String? {
+        let sentences = content.components(separatedBy: .punctuationCharacters)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.count > 10 }
+        
+        return sentences.first
     }
     
     private func extractAPIContext(from content: String) -> String {
-        if content.localizedCaseInsensitiveContains("authentication") {
-            return "Authentication"
-        } else if content.localizedCaseInsensitiveContains("payment") {
-            return "Payment"
-        } else if content.localizedCaseInsensitiveContains("user") {
-            return "User"
-        } else if content.localizedCaseInsensitiveContains("data") {
-            return "Data"
-        } else {
-            return "Service"
+        let patterns = ["REST API", "GraphQL", "API", "endpoint", "service"]
+        for pattern in patterns {
+            if content.localizedCaseInsensitiveContains(pattern) {
+                return pattern
+            }
         }
+        return "API"
     }
     
     private func isStopWord(_ word: String) -> Bool {
-        let stopWords: Set<String> = [
-            "the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
-            "her", "was", "one", "our", "out", "day", "get", "has", "him", "his",
-            "how", "its", "may", "new", "now", "old", "see", "two", "who", "boy",
-            "did", "what", "with", "have", "this", "will", "been", "from", "they",
-            "she", "when", "where", "why", "some", "that", "there", "their", "would",
-            "like", "into", "time", "very", "only", "just", "then", "than", "also",
-            "back", "after", "first", "well", "way", "even", "want", "because",
-            "these", "give", "most", "us"
-        ]
+        let stopWords = Set([
+            "the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
+            "from", "up", "about", "into", "through", "during", "before", "after", "above",
+            "below", "between", "among", "throughout", "despite", "towards", "upon", "concerning",
+            "this", "that", "these", "those", "i", "you", "he", "she", "it", "we", "they",
+            "me", "him", "her", "us", "them", "my", "your", "his", "her", "its", "our", "their",
+            "myself", "yourself", "himself", "herself", "itself", "ourselves", "yourselves", "themselves",
+            "what", "which", "who", "whom", "whose", "where", "when", "why", "how",
+            "all", "any", "both", "each", "few", "more", "most", "other", "some", "such",
+            "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very",
+            "can", "will", "just", "should", "now", "said", "get", "made", "go", "see"
+        ])
         return stopWords.contains(word.lowercased())
-    }
-}
-
-// MARK: - Regex Helpers
-
-extension String {
-    func firstMatch(of regex: NSRegularExpression) -> NSTextCheckingResult? {
-        regex.firstMatch(in: self, options: [], range: NSRange(location: 0, length: utf16.count))
-    }
-}
-
-extension NSTextCheckingResult {
-    func range(in string: String) -> Range<String.Index>? {
-        Range(self.range, in: string)
     }
 }

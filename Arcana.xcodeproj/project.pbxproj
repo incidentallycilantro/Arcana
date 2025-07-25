@@ -22,6 +22,11 @@
 		1D1F77AC2E33D18400D54E2F /* EnsembleOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77AB2E33D18400D54E2F /* EnsembleOrchestrator.swift */; };
 		1D1F77AE2E33D18B00D54E2F /* IntelligentModelRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77AD2E33D18B00D54E2F /* IntelligentModelRouter.swift */; };
 		1D1F77B02E33D19200D54E2F /* ResponseFusionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77AF2E33D19200D54E2F /* ResponseFusionEngine.swift */; };
+		1D1F77B22E34006800D54E2F /* ResponseValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77B12E34006800D54E2F /* ResponseValidator.swift */; };
+		1D1F77B42E34007300D54E2F /* ConfidenceCalibration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77B32E34007300D54E2F /* ConfidenceCalibration.swift */; };
+		1D1F77B62E34007A00D54E2F /* FactCheckingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77B52E34007A00D54E2F /* FactCheckingEngine.swift */; };
+		1D1F77B82E34008600D54E2F /* ResponseQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77B72E34008600D54E2F /* ResponseQuality.swift */; };
+		1D1F77BA2E3402C700D54E2F /* SharedQualityTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77B92E3402C700D54E2F /* SharedQualityTypes.swift */; };
 		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC62E31756700583CBF /* InvisibleChatView.swift */; };
 		1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */; };
@@ -85,6 +90,11 @@
 		1D1F77AB2E33D18400D54E2F /* EnsembleOrchestrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnsembleOrchestrator.swift; sourceTree = "<group>"; };
 		1D1F77AD2E33D18B00D54E2F /* IntelligentModelRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligentModelRouter.swift; sourceTree = "<group>"; };
 		1D1F77AF2E33D19200D54E2F /* ResponseFusionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseFusionEngine.swift; sourceTree = "<group>"; };
+		1D1F77B12E34006800D54E2F /* ResponseValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseValidator.swift; sourceTree = "<group>"; };
+		1D1F77B32E34007300D54E2F /* ConfidenceCalibration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfidenceCalibration.swift; sourceTree = "<group>"; };
+		1D1F77B52E34007A00D54E2F /* FactCheckingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactCheckingEngine.swift; sourceTree = "<group>"; };
+		1D1F77B72E34008600D54E2F /* ResponseQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseQuality.swift; sourceTree = "<group>"; };
+		1D1F77B92E3402C700D54E2F /* SharedQualityTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedQualityTypes.swift; sourceTree = "<group>"; };
 		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1D549FC62E31756700583CBF /* InvisibleChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvisibleChatView.swift; sourceTree = "<group>"; };
 		1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistenceController.swift; sourceTree = "<group>"; };
@@ -212,6 +222,9 @@
 				1D1F77AB2E33D18400D54E2F /* EnsembleOrchestrator.swift */,
 				1D1F77AD2E33D18B00D54E2F /* IntelligentModelRouter.swift */,
 				1D1F77AF2E33D19200D54E2F /* ResponseFusionEngine.swift */,
+				1D1F77B12E34006800D54E2F /* ResponseValidator.swift */,
+				1D1F77B32E34007300D54E2F /* ConfidenceCalibration.swift */,
+				1D1F77B52E34007A00D54E2F /* FactCheckingEngine.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -240,6 +253,8 @@
 				1DA788632E306CE60095ED87 /* ChatMessage.swift */,
 				1DA788652E306CF50095ED87 /* AssistantProfile.swift */,
 				1D01F0622E32B8FC005E1F64 /* ChatThread.swift */,
+				1D1F77B72E34008600D54E2F /* ResponseQuality.swift */,
+				1D1F77B92E3402C700D54E2F /* SharedQualityTypes.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -416,6 +431,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D1F77B42E34007300D54E2F /* ConfidenceCalibration.swift in Sources */,
 				1DA7885B2E306CBC0095ED87 /* ProjectSidebar.swift in Sources */,
 				1DA788662E306CF50095ED87 /* AssistantProfile.swift in Sources */,
 				1DA7884A2E306C5A0095ED87 /* ArcanaApp.swift in Sources */,
@@ -423,9 +439,12 @@
 				1DA788592E306CB30095ED87 /* MainView.swift in Sources */,
 				1D01F0612E32B8F4005E1F64 /* PredictiveInputController.swift in Sources */,
 				1D1F77B02E33D19200D54E2F /* ResponseFusionEngine.swift in Sources */,
+				1D1F77BA2E3402C700D54E2F /* SharedQualityTypes.swift in Sources */,
+				1D1F77B82E34008600D54E2F /* ResponseQuality.swift in Sources */,
 				1DA7885F2E306CCD0095ED87 /* TimelineView.swift in Sources */,
 				1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */,
 				1DA788542E306C9B0095ED87 /* AdapterController.swift .swift in Sources */,
+				1D1F77B22E34006800D54E2F /* ResponseValidator.swift in Sources */,
 				1D01F0552E326EF5005E1F64 /* ProjectPromotionSheet.swift in Sources */,
 				1DA7887E2E3120240095ED87 /* WorkspaceManager.swift in Sources */,
 				1DA7885D2E306CC50095ED87 /* ChatView.swift in Sources */,
@@ -452,6 +471,7 @@
 				1DA788522E306C930095ED87 /* ModelManager.swift .swift in Sources */,
 				1D01F0592E32721A005E1F64 /* IntelligenceEngine+EnhancedWorkspaceGeneration.swift in Sources */,
 				1DA7886D2E306D170095ED87 /* TextUtilities.swift in Sources */,
+				1D1F77B62E34007A00D54E2F /* FactCheckingEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

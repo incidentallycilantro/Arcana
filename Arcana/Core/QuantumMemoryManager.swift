@@ -817,18 +817,6 @@ enum StreamPriority {
     case realtime, background
 }
 
-enum TimeOfDay {
-    case earlyMorning, morning, afternoon, evening, night
-}
-
-enum DayOfWeek {
-    case monday, tuesday, wednesday, thursday, friday, saturday, sunday
-}
-
-enum Season {
-    case spring, summer, fall, winter
-}
-
 // MARK: - ❌ Error Types
 
 enum QuantumMemoryError: Error, LocalizedError {
