@@ -59,7 +59,18 @@ struct MainView: View {
     }
     
     private func initializeApp() {
-        // Initialize the revolutionary system
+        // Initialize the revolutionary PRISM system
+        Task {
+            do {
+                print("🚀 Starting PRISM Engine initialization...")
+                try await PRISMEngine.shared.initialize()
+                print("✅ PRISM Engine fully initialized and ready!")
+            } catch {
+                print("❌ PRISM Engine initialization failed: \(error)")
+            }
+        }
+        
+        // Initialize existing systems
         threadManager.loadThreads()
         
         // Create initial thread if needed
