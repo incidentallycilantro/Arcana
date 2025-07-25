@@ -14,6 +14,11 @@ class ModelManager: ObservableObject {
     func loadAvailableModels() {
         // TODO: Implement model discovery
     }
+    
+    func getAvailableModels() async -> [String] {
+        // Return list of available models
+        return ["Mistral-7B", "CodeLlama-7B", "Phi-2", "TinyLlama-1B"]
+    }
 }
 
 struct LLMModel: Identifiable, Codable {

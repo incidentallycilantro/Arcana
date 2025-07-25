@@ -18,6 +18,7 @@
 		1D01F0652E32B98B005E1F64 /* EnhancedInstantChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F0642E32B98B005E1F64 /* EnhancedInstantChatView.swift */; };
 		1D01F0692E32C215005E1F64 /* FluidSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F0682E32C215005E1F64 /* FluidSidebar.swift */; };
 		1D1F77A82E33BEFA00D54E2F /* QuantumMemoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77A72E33BEFA00D54E2F /* QuantumMemoryManager.swift */; };
+		1D1F77AA2E33C3EC00D54E2F /* PropietaryPRISMCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77A92E33C3EC00D54E2F /* PropietaryPRISMCore.swift */; };
 		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC62E31756700583CBF /* InvisibleChatView.swift */; };
 		1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */; };
@@ -77,6 +78,7 @@
 		1D01F0642E32B98B005E1F64 /* EnhancedInstantChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedInstantChatView.swift; sourceTree = "<group>"; };
 		1D01F0682E32C215005E1F64 /* FluidSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluidSidebar.swift; sourceTree = "<group>"; };
 		1D1F77A72E33BEFA00D54E2F /* QuantumMemoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuantumMemoryManager.swift; sourceTree = "<group>"; };
+		1D1F77A92E33C3EC00D54E2F /* PropietaryPRISMCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropietaryPRISMCore.swift; sourceTree = "<group>"; };
 		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1D549FC62E31756700583CBF /* InvisibleChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvisibleChatView.swift; sourceTree = "<group>"; };
 		1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistenceController.swift; sourceTree = "<group>"; };
@@ -200,6 +202,7 @@
 				1D01F05E2E327886005E1F64 /* ThreadManager.swift */,
 				1D01F0602E32B8F4005E1F64 /* PredictiveInputController.swift */,
 				1D1F77A72E33BEFA00D54E2F /* QuantumMemoryManager.swift */,
+				1D1F77A92E33C3EC00D54E2F /* PropietaryPRISMCore.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -432,6 +435,7 @@
 				1DA788692E306D060095ED87 /* UXAnimations.swift in Sources */,
 				1D01F05F2E327886005E1F64 /* ThreadManager.swift in Sources */,
 				1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */,
+				1D1F77AA2E33C3EC00D54E2F /* PropietaryPRISMCore.swift in Sources */,
 				1D01F0632E32B8FC005E1F64 /* ChatThread.swift in Sources */,
 				1DA788522E306C930095ED87 /* ModelManager.swift .swift in Sources */,
 				1D01F0592E32721A005E1F64 /* IntelligenceEngine+EnhancedWorkspaceGeneration.swift in Sources */,
