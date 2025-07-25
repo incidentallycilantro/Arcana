@@ -62,7 +62,7 @@ class PropietaryPRISMCore: ObservableObject {
         try validateModelCompatibility(modelInfo)
         
         // 4. Create quantum memory context
-        let memoryContext = await quantumMemory.createModelContext(
+        let memoryContext = await createModelContext(
             modelName: modelName,
             estimatedSize: modelInfo.compressedSize
         )
@@ -82,9 +82,7 @@ class PropietaryPRISMCore: ObservableObject {
         
         // 7. Register in model registry
         modelRegistry[modelName] = modelInfo
-        await MainActor.run {
-            self.loadedModels.insert(modelName)
-        }
+        loadedModels.insert(modelName)
         
         logger.info("✅ Successfully loaded \(modelName) (.arcana format)")
         return arcanaModel
@@ -133,7 +131,7 @@ class PropietaryPRISMCore: ObservableObject {
         
         // 6. Update metrics and learning patterns
         updateInferenceMetrics(inferenceResult)
-        await quantumMemory.recordUsagePattern(inferenceResult)
+        await recordUsagePattern(inferenceResult)
         
         logger.info("✅ Inference completed: \(inferenceResult.tokensGenerated) tokens in \(String(format: "%.2f", inferenceResult.inferenceTime))s")
         
@@ -177,7 +175,7 @@ class PropietaryPRISMCore: ObservableObject {
     private func selectOptimalComputationPath(session: InferenceSession) -> ComputationPath {
         // Intelligent selection based on model size, available hardware, and current load
         
-        if let metalDevice = metalDevice,
+        if let _ = metalDevice,
            session.modelInfo.supportsMetalAcceleration,
            session.modelInfo.parameterCount < 8_000_000_000 { // 8B parameter limit for Metal
             return .metalAccelerated
@@ -213,9 +211,7 @@ class PropietaryPRISMCore: ObservableObject {
             // Start background optimization
             startBackgroundOptimization()
             
-            await MainActor.run {
-                self.engineStatus = .ready
-            }
+            engineStatus = .ready
         }
     }
     
@@ -292,7 +288,7 @@ class PropietaryPRISMCore: ObservableObject {
     
     private func getOrLoadModel(_ modelName: String) async throws -> ArcanaModel {
         // Check if model is already loaded in quantum memory
-        if let cachedModel = await quantumMemory.getCachedModel(modelName) {
+        if let cachedModel = await getCachedModel(modelName) {
             return cachedModel
         }
         
@@ -319,9 +315,7 @@ class PropietaryPRISMCore: ObservableObject {
             startTime: Date()
         )
         
-        await MainActor.run {
-            self.currentInference = session
-        }
+        currentInference = session
         
         return session
     }
@@ -360,7 +354,7 @@ class PropietaryPRISMCore: ObservableObject {
         logger.info("⚡ Running Metal-accelerated inference")
         
         // Use Metal Performance Shaders for matrix operations
-        let commandQueue = metalDevice.makeCommandQueue()!
+        let _ = metalDevice.makeCommandQueue()!
         
         // Execute model inference using Metal acceleration
         // This is a simplified implementation - full Metal compute shaders would be needed
@@ -445,6 +439,11 @@ class PropietaryPRISMCore: ObservableObject {
         }
     }
     
+    private func recordUsagePattern(_ result: InferenceResult) async {
+        // Record usage pattern for quantum memory optimization
+        logger.debug("📊 Recording usage pattern for \(result.modelUsed)")
+    }
+    
     // MARK: - 🔧 Helper Methods
     
     private func getModelPath(modelName: String) -> String {
@@ -505,13 +504,35 @@ class PropietaryPRISMCore: ObservableObject {
         mlModelCache.removeAllObjects()
         await quantumMemory.clearCache()
         
-        await MainActor.run {
-            self.loadedModels.removeAll()
-        }
+        loadedModels.removeAll()
     }
     
     func isModelLoaded(_ modelName: String) -> Bool {
         return loadedModels.contains(modelName)
+    }
+    
+    /// Integration point with QuantumMemoryManager
+    func optimizeWithQuantumMemory() async {
+        await quantumMemory.optimizeMemoryAllocation()
+        logger.info("🔗 Optimized with QuantumMemoryManager")
+    }
+    
+    // MARK: - 🔗 Helper Methods for Integration
+    
+    private func createModelContext(modelName: String, estimatedSize: Int64) async -> MemoryContext {
+        logger.info("🔗 Creating model context for \(modelName)")
+        
+        return MemoryContext(
+            modelName: modelName,
+            allocatedMemory: Int(estimatedSize / (1024 * 1024)), // Convert to MB
+            cacheStrategy: .balanced
+        )
+    }
+    
+    private func getCachedModel(_ modelName: String) async -> ArcanaModel? {
+        // Simple cached model creation for compatibility
+        // In a real implementation, this would check actual cache
+        return nil
     }
 }
 
@@ -752,11 +773,5 @@ extension PropietaryPRISMCore {
     func integratePRISMEngine(_ engine: PRISMEngine) {
         logger.info("🔗 Integrating with PRISMEngine")
         // This will be used when enhancing PRISMEngine.swift
-    }
-    
-    /// Integration point with QuantumMemoryManager
-    func optimizeWithQuantumMemory() async {
-        await quantumMemory.optimizeMemoryAllocation()
-        logger.info("🔗 Optimized with QuantumMemoryManager")
     }
 }

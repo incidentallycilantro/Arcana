@@ -75,27 +75,16 @@ class PRISMEngine: ObservableObject {
             parameters: parameters ?? InferenceParameters()
         )
         
-        // 5. Post-process and validate response
-        let validatedResponse = await validateAndEnhanceResponse(
+        // 5. Validate and enhance response
+        let finalResponse = await validateAndEnhanceResponse(
             result: inferenceResult,
             analysis: analysisResult
         )
         
-        // 6. Update learning patterns
-        await updateLearningPatterns(
-            prompt: prompt,
-            response: validatedResponse,
-            performance: inferenceResult
-        )
-        
-        logger.info("✅ Intelligent response generated: \(validatedResponse.response.count) chars in \(String(format: "%.2f", inferenceResult.inferenceTime))s")
-        
-        return validatedResponse
+        return finalResponse
     }
     
-    // MARK: - 🧠 REVOLUTIONARY: Predictive Response Streaming
-    
-    func streamIntelligentResponse(
+    func generateStreamingResponse(
         prompt: String,
         context: ConversationContext,
         workspaceType: WorkspaceManager.WorkspaceType = .general,
@@ -103,13 +92,10 @@ class PRISMEngine: ObservableObject {
         onComplete: @escaping (PRISMResponse) -> Void
     ) async throws {
         
-        logger.info("🌊 Starting intelligent response streaming")
+        logger.info("🌊 Starting streaming response generation")
         
-        isProcessing = true
-        defer { isProcessing = false }
-        
-        // Create streaming inference task
-        let inferenceTask = InferenceTask(
+        let taskId = UUID().uuidString
+        let task = InferenceTask(
             id: UUID(),
             prompt: prompt,
             context: context,
@@ -117,98 +103,98 @@ class PRISMEngine: ObservableObject {
             isStreaming: true
         )
         
-        activeInferences[inferenceTask.id.uuidString] = inferenceTask
+        activeInferences[taskId] = task
+        isProcessing = true
         
-        // Execute streaming inference
+        defer {
+            activeInferences.removeValue(forKey: taskId)
+            isProcessing = activeInferences.count > 0
+        }
+        
         try await executeStreamingInference(
-            task: inferenceTask,
+            task: task,
             onToken: onToken,
             onComplete: onComplete
         )
-        
-        activeInferences.removeValue(forKey: inferenceTask.id.uuidString)
     }
     
-    // MARK: - 🎯 REVOLUTIONARY: Model Intelligence Selection
+    // MARK: - 🎯 Core Inference Engine
+    
+    func initialize() async throws {
+        logger.info("🚀 Initializing PRISMEngine")
+        
+        isProcessing = true
+        defer { isProcessing = false }
+        
+        // 1. Initialize quantum memory system (use existing optimization)
+        await quantumMemory.optimizeMemoryAllocation()
+        
+        // 2. Initialize proprietary core (use existing method)
+        await proprietaryCore.optimizeWithQuantumMemory()
+        
+        // 3. Load available models
+        availableModels = await modelManager.getAvailableModels()
+        currentModel = availableModels.first ?? defaultModelName
+        
+        // 4. Warm up system with cache initialization
+        if let testModel = availableModels.first {
+            // Use existing model loading capabilities
+            let _ = try? await proprietaryCore.loadArcanaModel(
+                path: "\(testModel).arcana",
+                modelName: testModel
+            )
+        }
+        
+        // 5. Start background optimization
+        startBackgroundOptimization()
+        
+        isReady = true
+        logger.info("✅ PRISMEngine initialization complete")
+    }
     
     private func selectOptimalModel(for analysis: PromptAnalysis) async -> ModelConfiguration {
+        // Get system resources
+        let memoryStatus = quantumMemory.getMemoryStatus()
+        let availableRAM = memoryStatus.availableRAM
         
-        // Intelligent model selection based on:
-        // - Query complexity and type
-        // - Available system resources
-        // - Historical performance data
-        // - Current system load
-        
-        let availableRAM = await quantumMemory.getMemoryStatus().availableRAM
-        let currentLoad = calculateSystemLoad()
-        
-        var selectedModel: String
-        var optimizationLevel: OptimizationLevel
+        // Select model based on complexity and available resources
+        let selectedModel: String
+        let optimizationLevel: OptimizationLevel
         
         switch analysis.complexity {
         case .low:
-            if availableRAM > 4000 && currentLoad < 0.5 {
-                selectedModel = "Phi-2"
-                optimizationLevel = .speed
-            } else {
-                selectedModel = "TinyLlama-1B"
-                optimizationLevel = .memory
-            }
-            
+            selectedModel = availableRAM > 8000 ? "Phi-2" : "TinyLlama-1B"
+            optimizationLevel = .speed
         case .medium:
-            if availableRAM > 6000 && currentLoad < 0.7 {
-                selectedModel = "Mistral-7B"
-                optimizationLevel = .balanced
-            } else {
-                selectedModel = "Phi-2"
-                optimizationLevel = .memory
-            }
-            
+            selectedModel = availableRAM > 16000 ? "Mistral-7B" : "Phi-2"
+            optimizationLevel = .balanced
         case .high:
-            if availableRAM > 8000 && currentLoad < 0.6 {
-                selectedModel = analysis.queryType == .code ? "CodeLlama-7B" : "Mistral-7B"
-                optimizationLevel = .quality
+            selectedModel = availableRAM > 32000 ? "CodeLlama-7B" : "Mistral-7B"
+            optimizationLevel = .quality
+        }
+        
+        // Determine optimal computation path
+        let computationPath: ComputationPath = {
+            if availableRAM > 16000 {
+                return .metalAccelerated
+            } else if availableRAM > 8000 {
+                return .coreMLAccelerated
             } else {
-                selectedModel = "Mistral-7B"
-                optimizationLevel = .balanced
+                return .memoryOptimized
             }
-        }
+        }()
         
-        // Override with specialized models for specific tasks
-        if analysis.queryType == .code && availableRAM > 7000 {
-            selectedModel = "CodeLlama-7B"
-        }
-        
-        logger.info("🎯 Selected model: \(selectedModel) with \(optimizationLevel) optimization")
+        // Fixed logger line with proper string conversion
+        let optimizationLevelString = String(describing: optimizationLevel)
+        logger.info("🎯 Selected model: \(selectedModel) with \(optimizationLevelString) optimization")
         
         return ModelConfiguration(
             modelName: selectedModel,
             optimizationLevel: optimizationLevel,
-            computationPath: await selectComputationPath(modelName: selectedModel),
-            memoryBudget: calculateMemoryBudget(availableRAM: availableRAM)
+            computationPath: computationPath,
+            memoryBudget: availableRAM
         )
     }
-    
-    private func selectComputationPath(modelName: String) async -> ComputationPath {
-        // Intelligent computation path selection
-        let engineStatus = proprietaryCore.getEngineStatus()
-        let modelInfo = await getModelInfo(modelName)
-        
-        if case .ready = engineStatus,
-           let info = modelInfo,
-           info.supportsMetalAcceleration {
-            return .metalAccelerated
-        }
-        
-        if let info = modelInfo,
-           info.supportsCoreML {
-            return .coreMLAccelerated
-        }
-        
-        return .cpuOptimized
-    }
-    
-    // MARK: - ⚡ REVOLUTIONARY: Optimized Inference Execution
     
     private func executeOptimizedInference(
         prompt: String,
@@ -217,10 +203,15 @@ class PRISMEngine: ObservableObject {
         parameters: InferenceParameters
     ) async throws -> InferenceResult {
         
-        let startTime = CFAbsoluteTimeGetCurrent()
+        logger.info("⚡ Executing optimized inference with \(modelConfig.modelName)")
         
-        // Update current state
-        currentModel = modelConfig.modelName
+        let _ = CFAbsoluteTimeGetCurrent()
+        
+        // Preload model weights if needed
+        await quantumMemory.preloadModelWeights(
+            modelName: modelConfig.modelName,
+            computationPath: modelConfig.computationPath
+        )
         
         // Execute inference through proprietary core
         let result = try await proprietaryCore.generateResponse(
@@ -277,10 +268,10 @@ class PRISMEngine: ObservableObject {
         workspaceType: WorkspaceManager.WorkspaceType
     ) async -> PromptAnalysis {
         
-        // Use existing intelligence engine with enhancements
-        let complexity = intelligenceEngine.calculateQueryComplexity(prompt)
-        let queryType = intelligenceEngine.detectWorkspaceType(from: prompt)
-        let capabilities = intelligenceEngine.extractRequiredCapabilities(prompt, context: context)
+        // Use quantum memory's built-in analysis capabilities
+        let complexity = quantumMemory.calculateQueryComplexity(prompt)
+        let queryType = quantumMemory.classifyQueryType(prompt, context: context)
+        let capabilities = quantumMemory.extractRequiredCapabilities(prompt, context: context)
         
         return PromptAnalysis(
             prompt: prompt,
@@ -288,7 +279,7 @@ class PRISMEngine: ObservableObject {
             queryType: queryType,
             workspaceType: workspaceType,
             requiredCapabilities: capabilities,
-            estimatedTokens: intelligenceEngine.estimateTokenRequirement(prompt, context: context),
+            estimatedTokens: quantumMemory.estimateTokenRequirement(prompt, context: context),
             contextImportance: calculateContextImportance(context)
         )
     }
@@ -318,6 +309,14 @@ class PRISMEngine: ObservableObject {
             prismResponse = await applyQualityEnhancements(prismResponse)
         }
         
+        // Record usage pattern for future optimization
+        await recordUsagePattern(
+            queryType: analysis.queryType,
+            modelUsed: result.modelUsed,
+            inferenceTime: result.inferenceTime,
+            confidence: result.confidence
+        )
+        
         return prismResponse
     }
     
@@ -327,108 +326,41 @@ class PRISMEngine: ObservableObject {
         return response
     }
     
-    // MARK: - 📊 Performance & Learning
+    private func calculateContextImportance(_ context: ConversationContext) -> Int {
+        // Calculate importance score based on conversation context
+        let messageCount = context.messages.count
+        let totalTokens = context.messages.reduce(0) { $0 + ($1.content.count / 4) }
+        
+        return min(10, messageCount + (totalTokens / 100))
+    }
     
-    private func updateLearningPatterns(
-        prompt: String,
-        response: PRISMResponse,
-        performance: InferenceResult
+    private func recordUsagePattern(
+        queryType: QueryType,
+        modelUsed: String,
+        inferenceTime: TimeInterval,
+        confidence: Double
     ) async {
         
-        // Update quantum memory usage patterns
-        await quantumMemory.recordUsagePattern(
-            QueryAnalysis(
-                query: prompt,
-                complexity: response.metadata.analysis.complexity,
-                type: response.metadata.analysis.queryType,
-                requiredCapabilities: response.metadata.analysis.requiredCapabilities,
-                estimatedTokens: response.metadata.analysis.estimatedTokens,
-                contextLength: response.metadata.analysis.contextImportance
-            )
-        )
-        
-        // Update performance optimizer
+        // Record performance metrics for optimization
         await performanceOptimizer.recordPerformance(
-            modelName: performance.modelUsed,
-            inferenceTime: performance.inferenceTime,
-            memoryUsage: performance.memoryEfficiency,
-            confidence: performance.confidence
+            modelName: modelUsed,
+            inferenceTime: inferenceTime,
+            memoryUsage: Double(quantumMemory.getMemoryStatus().currentUsage),
+            confidence: confidence
         )
-    }
-    
-    private func calculateSystemLoad() -> Double {
-        // Calculate current system load
-        let processInfo = ProcessInfo.processInfo
-        return Double(processInfo.systemUptime) / 100000.0 // Simplified calculation
-    }
-    
-    private func calculateMemoryBudget(availableRAM: Int) -> Int {
-        // Calculate memory budget based on available RAM
-        return min(availableRAM / 2, 4096) // Use at most half of available RAM, max 4GB
-    }
-    
-    private func calculateContextImportance(_ context: ConversationContext) -> Int {
-        // Calculate importance of context for the current query
-        return context.messages.count
-    }
-    
-    private func getModelInfo(_ modelName: String) async -> ArcanaModelInfo? {
-        // Get model information (would be implemented with actual model registry)
-        return nil
-    }
-    
-    // MARK: - 🎯 Public Interface
-    
-    func initialize() async {
-        logger.info("🚀 Initializing PRISM Engine with revolutionary components")
         
-        // Initialize all components
-        await quantumMemory.optimizeMemoryAllocation()
-        await proprietaryCore.optimizeWithQuantumMemory()
-        
-        // Load available models
-        await loadAvailableModels()
-        
-        // Start background optimization
-        startBackgroundOptimization()
-        
-        isReady = true
-        logger.info("✅ PRISM Engine initialization complete")
+        logger.debug("📊 Recorded usage pattern: \(queryType.rawValue) with \(modelUsed)")
     }
     
-    func loadAvailableModels() async {
-        // Load available models from the model manager
-        let models = await modelManager.getAvailableModels()
-        
-        await MainActor.run {
-            self.availableModels = models
-            
-            // Set default model if not already set
-            if self.currentModel == nil && !models.isEmpty {
-                self.currentModel = models.contains(self.defaultModelName) ? self.defaultModelName : models.first
-            }
-        }
-        
-        logger.info("📦 Loaded \(models.count) available models")
-    }
+    // MARK: - 📊 Metrics and Status
     
-    func switchModel(to modelName: String) async throws {
-        guard availableModels.contains(modelName) else {
-            throw PRISMEngineError.modelNotAvailable(modelName)
-        }
-        
-        currentModel = modelName
-        logger.info("🔄 Switched to model: \(modelName)")
-    }
-    
-    func getEngineMetrics() -> PRISMEngineMetrics {
-        let coreMetrics = proprietaryCore.getInferenceMetrics()
+    func getMetrics() -> PRISMEngineMetrics {
         let memoryStatus = quantumMemory.getMemoryStatus()
         
         return PRISMEngineMetrics(
-            totalInferences: coreMetrics.totalInferences,
-            averageResponseTime: coreMetrics.averageInferenceTime,
-            tokensPerSecond: coreMetrics.tokensPerSecond,
+            totalInferences: activeInferences.count,
+            averageResponseTime: lastResponseTime,
+            tokensPerSecond: lastResponseTime > 0 ? Double(1000) / lastResponseTime : 0.0,
             memoryUtilization: memoryStatus.utilization,
             cacheHitRate: memoryStatus.cacheHitRate,
             currentModel: currentModel ?? "None",

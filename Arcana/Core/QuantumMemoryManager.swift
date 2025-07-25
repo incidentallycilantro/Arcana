@@ -320,9 +320,10 @@ class QuantumMemoryManager: ObservableObject {
         }
     }
     
-    // MARK: - 🧮 Helper Calculations
+    // MARK: - 🧮 Public Analysis Methods (Used by PRISMEngine)
     
-    private func calculateQueryComplexity(_ query: String) -> QueryComplexity {
+    /// Public interface for query complexity analysis
+    func calculateQueryComplexity(_ query: String) -> QueryComplexity {
         let wordCount = query.components(separatedBy: .whitespacesAndNewlines).count
         let hasCode = query.contains("```") || query.contains("function") || query.contains("class")
         let hasReasoning = query.lowercased().contains(where: { "analyze|compare|evaluate|reason|think".contains($0) })
@@ -336,8 +337,8 @@ class QuantumMemoryManager: ObservableObject {
         }
     }
     
-    private func classifyQueryType(_ query: String, context: ConversationContext) -> QueryType {
-        // Integrate with your existing intelligence engine
+    /// Public interface for query type classification
+    func classifyQueryType(_ query: String, context: ConversationContext) -> QueryType {
         let lowercased = query.lowercased()
         
         if lowercased.contains("code") || lowercased.contains("function") || lowercased.contains("program") {
@@ -351,13 +352,65 @@ class QuantumMemoryManager: ObservableObject {
         }
     }
     
-    private func estimateTokenRequirement(_ query: String, context: ConversationContext) -> Int {
+    /// Public interface for capability extraction
+    func extractRequiredCapabilities(_ query: String, context: ConversationContext) -> [ModelCapability] {
+        var capabilities: [ModelCapability] = []
+        
+        let queryLower = query.lowercased()
+        
+        if queryLower.contains("code") || queryLower.contains("function") || queryLower.contains("program") {
+            capabilities.append(.codeGeneration)
+        }
+        
+        if queryLower.contains("analyze") || queryLower.contains("reason") || queryLower.contains("think") {
+            capabilities.append(.reasoning)
+        }
+        
+        if queryLower.contains("embed") || queryLower.contains("similar") || queryLower.contains("search") {
+            capabilities.append(.embedding)
+        }
+        
+        // Default capability
+        if capabilities.isEmpty {
+            capabilities.append(.textGeneration)
+        }
+        
+        return capabilities
+    }
+    
+    /// Public interface for token requirement estimation
+    func estimateTokenRequirement(_ query: String, context: ConversationContext) -> Int {
         // Rough estimation - 4 characters per token
         let queryTokens = query.count / 4
         let contextTokens = context.messages.reduce(0) { $0 + ($1.content.count / 4) }
         let responseEstimate = max(queryTokens * 2, 100) // Response usually 2x query length
         
         return queryTokens + contextTokens + responseEstimate
+    }
+    
+    /// Preload model weights for specific computation path
+    func preloadModelWeights(modelName: String, computationPath: ComputationPath) async {
+        let computationPathString = String(describing: computationPath)
+        logger.info("⚡ Preloading model weights for \(modelName) with \(computationPathString)")
+        
+        // Determine required capabilities based on computation path
+        let capability: ModelCapability = {
+            switch computationPath {
+            case .metalAccelerated, .coreMLAccelerated:
+                return .textGeneration
+            case .cpuOptimized:
+                return .reasoning
+            case .memoryOptimized:
+                return .embedding
+            }
+        }()
+        
+        do {
+            let _ = try await streamModelWeights(modelName: modelName, requiredCapability: capability)
+            logger.info("✅ Successfully preloaded \(modelName)")
+        } catch {
+            logger.error("❌ Failed to preload \(modelName): \(error)")
+        }
     }
     
     private func getModelPath(modelName: String) -> URL {
@@ -432,31 +485,6 @@ class QuantumMemoryManager: ObservableObject {
     private func updateCacheStrategy(based prediction: UsagePattern) {
         // Update caching strategy based on usage prediction
         logger.info("📊 Updating cache strategy for \(prediction.queryType.rawValue)")
-    }
-    
-    private func extractRequiredCapabilities(_ query: String, context: ConversationContext) -> [ModelCapability] {
-        var capabilities: [ModelCapability] = []
-        
-        let queryLower = query.lowercased()
-        
-        if queryLower.contains("code") || queryLower.contains("function") || queryLower.contains("program") {
-            capabilities.append(.codeGeneration)
-        }
-        
-        if queryLower.contains("analyze") || queryLower.contains("reason") || queryLower.contains("think") {
-            capabilities.append(.reasoning)
-        }
-        
-        if queryLower.contains("embed") || queryLower.contains("similar") || queryLower.contains("search") {
-            capabilities.append(.embedding)
-        }
-        
-        // Default capability
-        if capabilities.isEmpty {
-            capabilities.append(.textGeneration)
-        }
-        
-        return capabilities
     }
     
     private func calculateTemporalFactors() -> TemporalFactors {
@@ -734,7 +762,7 @@ enum QueryType: String {
     case code, creative, analytical, general
 }
 
-enum ModelCapability: String {
+enum ModelCapability: String, Codable {
     case textGeneration = "text_generation"
     case codeGeneration = "code_generation"
     case reasoning = "reasoning"
@@ -804,6 +832,34 @@ class SystemResourceMonitor {
     func getTotalRAM() -> Int {
         let physicalMemory = ProcessInfo.processInfo.physicalMemory
         return Int(physicalMemory / (1024 * 1024))
+    }
+    
+    /// Get available RAM in real-time (non-async version for synchronous calls)
+    func getAvailableRAM() -> Int {
+        let physicalMemory = ProcessInfo.processInfo.physicalMemory
+        let usedMemory = getCurrentMemoryUsage()
+        let available = max(0, Int(physicalMemory / (1024 * 1024)) - usedMemory)
+        return available
+    }
+    
+    private func getCurrentMemoryUsage() -> Int {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+        
+        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_,
+                         task_flavor_t(MACH_TASK_BASIC_INFO),
+                         $0,
+                         &count)
+            }
+        }
+        
+        if kerr == KERN_SUCCESS {
+            return Int(info.resident_size) / (1024 * 1024) // Convert to MB
+        } else {
+            return 0
+        }
     }
 }
 
