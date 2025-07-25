@@ -1,6 +1,8 @@
+//
 // PropietaryPRISMCore.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Revolutionary Proprietary LLM Engine
+//
 
 import Foundation
 import Metal
@@ -163,12 +165,12 @@ class PropietaryPRISMCore: ObservableObject {
         
         return InferenceResult(
             generatedText: result.text,
-            confidence: result.confidence,
-            inferenceTime: inferenceTime,
-            modelUsed: session.modelName,
             tokensGenerated: result.tokenCount,
-            memoryEfficiency: result.memoryUsage,
-            computationPath: computationPath
+            inferenceTime: inferenceTime,
+            confidence: result.confidence,
+            modelUsed: session.modelName,
+            computationPath: computationPath,
+            memoryEfficiency: result.memoryUsage
         )
     }
     
@@ -193,6 +195,66 @@ class PropietaryPRISMCore: ObservableObject {
         return .memoryOptimized
     }
     
+    private func executeInference(
+        session: InferenceSession,
+        tokens: TokenizedInput,
+        parameters: InferenceParameters,
+        computationPath: ComputationPath
+    ) async throws -> InferenceOutput {
+        
+        logger.info("⚡ Executing inference via \(String(describing: computationPath))")
+        
+        switch computationPath {
+        case .metalAccelerated:
+            guard let metalDevice = metalDevice else {
+                throw PRISMError.hardwareNotAvailable("Metal device not available")
+            }
+            return try await session.model.inferWithMetal(
+                tokens: tokens,
+                device: metalDevice,
+                parameters: parameters
+            )
+            
+        case .coreMLAccelerated:
+            // Convert tokens to MLFeatureProvider for CoreML
+            let mlInput = try convertToMLFeatureProvider(tokens: tokens)
+            return try await session.model.inferWithCoreML(
+                input: mlInput,
+                parameters: parameters
+            )
+            
+        case .cpuOptimized:
+            return try await session.model.inferWithCPU(
+                tokens: tokens,
+                parameters: parameters,
+                useAccelerate: true
+            )
+            
+        case .memoryOptimized:
+            return try await session.model.inferWithMemoryOptimization(
+                tokens: tokens,
+                parameters: parameters,
+                quantumMemory: quantumMemory
+            )
+        
+        case .ensembleOptimized:
+            // For ensemble optimization, we use the best available path
+            if let _ = metalDevice, session.modelInfo.supportsMetalAcceleration {
+                return try await session.model.inferWithMetal(
+                    tokens: tokens,
+                    device: metalDevice!,
+                    parameters: parameters
+                )
+            } else {
+                return try await session.model.inferWithCPU(
+                    tokens: tokens,
+                    parameters: parameters,
+                    useAccelerate: true
+                )
+            }
+        }
+    }
+    
     // MARK: - 🔄 Core Implementation Methods
     
     private func setupPRISMCore() {
@@ -202,68 +264,44 @@ class PropietaryPRISMCore: ObservableObject {
             
             // Setup Metal resources if available
             if let metalDevice = metalDevice {
-                await setupMetalResources(device: metalDevice)
+                await setupMetalOptimization(device: metalDevice)
             }
             
-            // Configure CoreML optimization
+            // Setup CoreML optimization
             await setupCoreMLOptimization()
             
             // Start background optimization
             startBackgroundOptimization()
             
-            engineStatus = .ready
+            await MainActor.run {
+                self.engineStatus = .ready
+            }
+            
+            logger.info("✅ PRISM Core setup complete")
         }
     }
     
     private func loadModelMetadata(from path: String) async throws -> ArcanaModelInfo {
+        // Load and parse .arcana model metadata
         let url = URL(fileURLWithPath: path)
-        
-        // Load compressed metadata from .arcana file
         let data = try Data(contentsOf: url)
         
-        // Verify arcana format signature
-        guard data.prefix(8) == Data("ARCANA10".utf8) else {
-            throw PRISMError.invalidModelFormat("Invalid .arcana signature")
-        }
-        
-        // Extract metadata section
-        let metadataRange = 8..<(8 + Int(data[8..<12].withUnsafeBytes { $0.load(as: UInt32.self) }))
-        let metadataData = data.subdata(in: metadataRange)
-        
-        // Decode model information
-        let modelInfo = try JSONDecoder().decode(ArcanaModelInfo.self, from: metadataData)
-        
-        return modelInfo
+        // Parse JSON metadata from .arcana file
+        let decoder = JSONDecoder()
+        return try decoder.decode(ArcanaModelInfo.self, from: data)
     }
     
-    private func validateModelCompatibility(_ modelInfo: ArcanaModelInfo) throws {
-        // Check format version
-        guard modelInfo.formatVersion == arcanaFormatVersion else {
-            throw PRISMError.incompatibleVersion(
-                expected: arcanaFormatVersion,
-                found: modelInfo.formatVersion
-            )
+    private func validateModelCompatibility(_ info: ArcanaModelInfo) throws {
+        // Verify format version compatibility
+        guard info.formatVersion == arcanaFormatVersion else {
+            throw PRISMError.incompatibleFormat("Format version \(info.formatVersion) not supported")
         }
         
-        // Check minimum system requirements
-        let availableRAM = ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024) // GB
-        guard availableRAM >= modelInfo.minimumRAMGB else {
-            throw PRISMError.insufficientResources(
-                required: "\(modelInfo.minimumRAMGB)GB RAM",
-                available: "\(availableRAM)GB RAM"
-            )
+        // Check system requirements
+        let availableRAM = quantumMemory.getMemoryStatus().availableRAM / 1024 // Convert MB to GB
+        guard availableRAM >= info.minimumRAMGB else {
+            throw PRISMError.insufficientResources("Need \(info.minimumRAMGB)GB RAM, have \(availableRAM)GB")
         }
-        
-        // Check architecture compatibility
-        #if arch(arm64)
-        guard modelInfo.supportedArchitectures.contains("arm64") else {
-            throw PRISMError.unsupportedArchitecture("arm64 not supported by model")
-        }
-        #else
-        guard modelInfo.supportedArchitectures.contains("x86_64") else {
-            throw PRISMError.unsupportedArchitecture("x86_64 not supported by model")
-        }
-        #endif
     }
     
     private func initializeArcanaModel(
@@ -272,7 +310,6 @@ class PropietaryPRISMCore: ObservableObject {
         memoryContext: MemoryContext
     ) async throws -> ArcanaModel {
         
-        // Create model instance with quantum memory backing
         let model = ArcanaModel(
             info: info,
             weights: weights,
@@ -280,22 +317,22 @@ class PropietaryPRISMCore: ObservableObject {
             metalDevice: metalDevice
         )
         
-        // Warm up model with sample inference
+        // Warm up model for optimal performance
         try await model.warmUp()
         
         return model
     }
     
     private func getOrLoadModel(_ modelName: String) async throws -> ArcanaModel {
-        // Check if model is already loaded in quantum memory
+        // Check if model is already loaded
         if let cachedModel = await getCachedModel(modelName) {
+            logger.info("♻️ Using cached model: \(modelName)")
             return cachedModel
         }
         
-        // Find model file
+        // Load model from disk
+        logger.info("📂 Loading model from disk: \(modelName)")
         let modelPath = getModelPath(modelName: modelName)
-        
-        // Load model
         return try await loadArcanaModel(path: modelPath, modelName: modelName)
     }
     
@@ -305,166 +342,70 @@ class PropietaryPRISMCore: ObservableObject {
         parameters: InferenceParameters
     ) async throws -> InferenceSession {
         
+        guard let modelInfo = modelRegistry[model.info.name] else {
+            throw PRISMError.modelNotFound("Model info not found for \(model.info.name)")
+        }
+        
         let session = InferenceSession(
             id: UUID(),
             modelName: model.info.name,
-            modelInfo: model.info,
+            modelInfo: modelInfo,
             model: model,
             context: context,
             parameters: parameters,
             startTime: Date()
         )
         
-        currentInference = session
+        await MainActor.run {
+            self.currentInference = session
+        }
         
         return session
     }
     
-    private func executeInference(
-        session: InferenceSession,
-        tokens: TokenizedInput,
-        parameters: InferenceParameters,
-        computationPath: ComputationPath
-    ) async throws -> InferenceOutput {
-        
-        switch computationPath {
-        case .metalAccelerated:
-            return try await executeMetalInference(session: session, tokens: tokens, parameters: parameters)
-        case .coreMLAccelerated:
-            return try await executeCoreMLInference(session: session, tokens: tokens, parameters: parameters)
-        case .cpuOptimized:
-            return try await executeCPUInference(session: session, tokens: tokens, parameters: parameters)
-        case .memoryOptimized:
-            return try await executeMemoryOptimizedInference(session: session, tokens: tokens, parameters: parameters)
-        }
+    private func convertToMLFeatureProvider(tokens: TokenizedInput) throws -> MLFeatureProvider {
+        // Convert tokenized input to CoreML format
+        // This is a simplified implementation - real one would create proper MLFeatureProvider
+        throw PRISMError.notImplemented("CoreML conversion not yet implemented")
     }
-    
-    // MARK: - 🏃 Optimized Inference Implementations
-    
-    private func executeMetalInference(
-        session: InferenceSession,
-        tokens: TokenizedInput,
-        parameters: InferenceParameters
-    ) async throws -> InferenceOutput {
-        
-        guard let metalDevice = metalDevice else {
-            throw PRISMError.hardwareUnavailable("Metal device not available")
-        }
-        
-        logger.info("⚡ Running Metal-accelerated inference")
-        
-        // Use Metal Performance Shaders for matrix operations
-        let _ = metalDevice.makeCommandQueue()!
-        
-        // Execute model inference using Metal acceleration
-        // This is a simplified implementation - full Metal compute shaders would be needed
-        let result = try await session.model.inferWithMetal(
-            tokens: tokens,
-            device: metalDevice,
-            parameters: parameters
-        )
-        
-        return result
-    }
-    
-    private func executeCoreMLInference(
-        session: InferenceSession,
-        tokens: TokenizedInput,
-        parameters: InferenceParameters
-    ) async throws -> InferenceOutput {
-        
-        logger.info("🧠 Running CoreML-accelerated inference")
-        
-        // Convert to CoreML input format
-        let coreMLInput = try await convertToCoreMLInput(tokens: tokens)
-        
-        // Execute inference using CoreML model
-        let result = try await session.model.inferWithCoreML(
-            input: coreMLInput,
-            parameters: parameters
-        )
-        
-        return result
-    }
-    
-    private func executeCPUInference(
-        session: InferenceSession,
-        tokens: TokenizedInput,
-        parameters: InferenceParameters
-    ) async throws -> InferenceOutput {
-        
-        logger.info("💻 Running CPU-optimized inference")
-        
-        // Use Accelerate framework for optimized CPU computation
-        let result = try await session.model.inferWithCPU(
-            tokens: tokens,
-            parameters: parameters,
-            useAccelerate: true
-        )
-        
-        return result
-    }
-    
-    private func executeMemoryOptimizedInference(
-        session: InferenceSession,
-        tokens: TokenizedInput,
-        parameters: InferenceParameters
-    ) async throws -> InferenceOutput {
-        
-        logger.info("💾 Running memory-optimized inference")
-        
-        // Stream model weights as needed to minimize memory usage
-        let result = try await session.model.inferWithMemoryOptimization(
-            tokens: tokens,
-            parameters: parameters,
-            quantumMemory: quantumMemory
-        )
-        
-        return result
-    }
-    
-    // MARK: - 📊 Performance Monitoring
     
     private func updateInferenceMetrics(_ result: InferenceResult) {
         Task { @MainActor in
-            self.inferenceMetrics.totalInferences += 1
-            self.inferenceMetrics.totalTokensGenerated += result.tokensGenerated
-            self.inferenceMetrics.averageInferenceTime = (
-                self.inferenceMetrics.averageInferenceTime * Double(self.inferenceMetrics.totalInferences - 1) +
-                result.inferenceTime
-            ) / Double(self.inferenceMetrics.totalInferences)
+            inferenceMetrics.totalInferences += 1
+            inferenceMetrics.totalTokensGenerated += result.tokensGenerated
+            inferenceMetrics.lastInferenceTime = result.inferenceTime
             
-            self.inferenceMetrics.lastInferenceTime = result.inferenceTime
-            self.inferenceMetrics.tokensPerSecond = Double(result.tokensGenerated) / result.inferenceTime
+            // Update running average
+            let alpha = 0.1 // Exponential moving average factor
+            inferenceMetrics.averageInferenceTime = alpha * result.inferenceTime +
+                                                  (1 - alpha) * inferenceMetrics.averageInferenceTime
+            
+            // Calculate tokens per second
+            if result.inferenceTime > 0 {
+                inferenceMetrics.tokensPerSecond = Double(result.tokensGenerated) / result.inferenceTime
+            }
         }
     }
     
     private func recordUsagePattern(_ result: InferenceResult) async {
-        // Record usage pattern for quantum memory optimization
-        logger.debug("📊 Recording usage pattern for \(result.modelUsed)")
+        // Record usage patterns for future optimization
+        logger.debug("📊 Recording usage pattern: \(result.modelUsed) - \(String(describing: result.computationPath))")
     }
     
-    // MARK: - 🔧 Helper Methods
-    
     private func getModelPath(modelName: String) -> String {
+        // Get path to .arcana model file
         let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let modelsPath = applicationSupport
+        let modelPath = applicationSupport
             .appendingPathComponent("Arcana")
             .appendingPathComponent("Models")
             .appendingPathComponent("\(modelName).arcana")
         
-        return modelsPath.path
+        return modelPath.path
     }
     
-    private func convertToCoreMLInput(tokens: TokenizedInput) async throws -> MLFeatureProvider {
-        // Convert tokenized input to CoreML format
-        // This would need to be implemented based on specific model requirements
-        fatalError("CoreML conversion not yet implemented")
-    }
-    
-    private func setupMetalResources(device: MTLDevice) async {
-        logger.info("⚡ Setting up Metal resources")
-        // Initialize Metal compute pipelines, command queues, etc.
+    private func setupMetalOptimization(device: MTLDevice) async {
+        logger.info("⚡ Setting up Metal optimization")
+        // Configure Metal resources, command queues, etc.
     }
     
     private func setupCoreMLOptimization() async {
@@ -485,6 +426,12 @@ class PropietaryPRISMCore: ObservableObject {
     private func optimizeModelCache() async {
         // Optimize model cache based on usage patterns
         logger.info("🔧 Optimizing model cache")
+    }
+    
+    private func getCachedModel(_ modelName: String) async -> ArcanaModel? {
+        // Simple cached model creation for compatibility
+        // In a real implementation, this would check actual cache
+        return nil
     }
     
     // MARK: - 🎯 Public Interface
@@ -516,7 +463,7 @@ class PropietaryPRISMCore: ObservableObject {
         return loadedModels.contains(modelName)
     }
     
-    /// Integration point with QuantumMemoryManager
+    /// Integration point with QuantumMemoryManager - THIS FIXES THE BUILD ERROR
     func optimizeWithQuantumMemory() async {
         await quantumMemory.optimizeMemoryAllocation()
         logger.info("🔗 Optimized with QuantumMemoryManager")
@@ -533,11 +480,72 @@ class PropietaryPRISMCore: ObservableObject {
             cacheStrategy: .balanced
         )
     }
+}
+
+// MARK: - 🏗️ Supporting Model Classes
+
+class ArcanaModel {
+    let info: ArcanaModelInfo
+    let weights: ModelWeightStream
+    let memoryContext: MemoryContext
+    let metalDevice: MTLDevice?
     
-    private func getCachedModel(_ modelName: String) async -> ArcanaModel? {
-        // Simple cached model creation for compatibility
-        // In a real implementation, this would check actual cache
-        return nil
+    init(info: ArcanaModelInfo, weights: ModelWeightStream, memoryContext: MemoryContext, metalDevice: MTLDevice?) {
+        self.info = info
+        self.weights = weights
+        self.memoryContext = memoryContext
+        self.metalDevice = metalDevice
+    }
+    
+    func warmUp() async throws {
+        // Warm up model with sample inference to optimize performance
+    }
+    
+    func inferWithMetal(tokens: TokenizedInput, device: MTLDevice, parameters: InferenceParameters) async throws -> InferenceOutput {
+        // Metal-accelerated inference implementation
+        return InferenceOutput(text: "Sample output", tokenCount: 10, confidence: 0.9, memoryUsage: 0.5)
+    }
+    
+    func inferWithCoreML(input: MLFeatureProvider, parameters: InferenceParameters) async throws -> InferenceOutput {
+        // CoreML-accelerated inference implementation
+        return InferenceOutput(text: "Sample output", tokenCount: 10, confidence: 0.9, memoryUsage: 0.3)
+    }
+    
+    func inferWithCPU(tokens: TokenizedInput, parameters: InferenceParameters, useAccelerate: Bool) async throws -> InferenceOutput {
+        // CPU-optimized inference implementation
+        return InferenceOutput(text: "Sample output", tokenCount: 10, confidence: 0.8, memoryUsage: 0.7)
+    }
+    
+    func inferWithMemoryOptimization(tokens: TokenizedInput, parameters: InferenceParameters, quantumMemory: QuantumMemoryManager) async throws -> InferenceOutput {
+        // Memory-optimized inference implementation
+        return InferenceOutput(text: "Sample output", tokenCount: 10, confidence: 0.85, memoryUsage: 0.2)
+    }
+}
+
+class ArcanaTokenizer {
+    private var isInitialized = false
+    
+    func initialize() async {
+        // Initialize tokenizer
+        isInitialized = true
+    }
+    
+    func encode(prompt: String, context: ConversationContext, maxLength: Int) async throws -> TokenizedInput {
+        guard isInitialized else {
+            throw PRISMError.tokenizationError("Tokenizer not initialized")
+        }
+        
+        // Simplified tokenization - real implementation would use proper tokenizer
+        let tokens = prompt.components(separatedBy: .whitespacesAndNewlines)
+            .compactMap { $0.isEmpty ? nil : $0.hash }
+            .prefix(maxLength)
+        
+        return TokenizedInput(
+            tokens: Array(tokens),
+            attentionMask: Array(repeating: 1, count: tokens.count),
+            originalText: prompt,
+            contextLength: tokens.count
+        )
     }
 }
 
@@ -632,16 +640,16 @@ struct InferenceOutput {
     let memoryUsage: Double
 }
 
-struct TokenizerInfo: Codable {
-    let type: String
-    let vocabularySize: Int
-    let specialTokens: [String: Int]
-}
-
 struct MemoryContext {
     let modelName: String
     let allocatedMemory: Int
     let cacheStrategy: CacheStrategy
+}
+
+struct TokenizerInfo: Codable {
+    let type: String
+    let vocabSize: Int
+    let specialTokens: [String: Int]
 }
 
 // MARK: - 🏷️ Enumerations
@@ -650,7 +658,7 @@ enum EngineStatus {
     case uninitialized
     case initializing
     case ready
-    case inference
+    case processing
     case error(String)
 }
 
@@ -663,9 +671,11 @@ enum ComputationPath {
 }
 
 enum ModelType: String, Codable {
-    case decoder = "decoder"
-    case encoder = "encoder"
-    case encoderDecoder = "encoder_decoder"
+    case llama = "llama"
+    case mistral = "mistral"
+    case phi = "phi"
+    case codellama = "codellama"
+    case custom = "custom"
 }
 
 enum CacheStrategy {
@@ -678,97 +688,30 @@ enum CacheStrategy {
 
 enum PRISMError: Error, LocalizedError {
     case invalidModelFormat(String)
-    case incompatibleVersion(expected: String, found: String)
-    case insufficientResources(required: String, available: String)
-    case unsupportedArchitecture(String)
-    case hardwareUnavailable(String)
-    case inferenceError(String)
+    case incompatibleFormat(String)
+    case insufficientResources(String)
+    case modelNotFound(String)
     case tokenizationError(String)
+    case hardwareNotAvailable(String)
+    case notImplemented(String)
     
     var errorDescription: String? {
         switch self {
-        case .invalidModelFormat(let details):
-            return "Invalid model format: \(details)"
-        case .incompatibleVersion(let expected, let found):
-            return "Incompatible version: expected \(expected), found \(found)"
-        case .insufficientResources(let required, let available):
-            return "Insufficient resources: need \(required), have \(available)"
-        case .unsupportedArchitecture(let arch):
-            return "Unsupported architecture: \(arch)"
-        case .hardwareUnavailable(let hardware):
-            return "Hardware unavailable: \(hardware)"
-        case .inferenceError(let details):
-            return "Inference error: \(details)"
-        case .tokenizationError(let details):
-            return "Tokenization error: \(details)"
+        case .invalidModelFormat(let msg):
+            return "Invalid model format: \(msg)"
+        case .incompatibleFormat(let msg):
+            return "Incompatible format: \(msg)"
+        case .insufficientResources(let msg):
+            return "Insufficient resources: \(msg)"
+        case .modelNotFound(let msg):
+            return "Model not found: \(msg)"
+        case .tokenizationError(let msg):
+            return "Tokenization error: \(msg)"
+        case .hardwareNotAvailable(let msg):
+            return "Hardware not available: \(msg)"
+        case .notImplemented(let msg):
+            return "Not implemented: \(msg)"
         }
-    }
-}
-
-// MARK: - 🛠️ Supporting Classes
-
-class ArcanaModel {
-    let info: ArcanaModelInfo
-    let weights: ModelWeightStream
-    let memoryContext: MemoryContext
-    let metalDevice: MTLDevice?
-    
-    init(info: ArcanaModelInfo, weights: ModelWeightStream, memoryContext: MemoryContext, metalDevice: MTLDevice?) {
-        self.info = info
-        self.weights = weights
-        self.memoryContext = memoryContext
-        self.metalDevice = metalDevice
-    }
-    
-    func warmUp() async throws {
-        // Warm up model with sample inference to optimize performance
-    }
-    
-    func inferWithMetal(tokens: TokenizedInput, device: MTLDevice, parameters: InferenceParameters) async throws -> InferenceOutput {
-        // Metal-accelerated inference implementation
-        return InferenceOutput(text: "Sample output", tokenCount: 10, confidence: 0.9, memoryUsage: 0.5)
-    }
-    
-    func inferWithCoreML(input: MLFeatureProvider, parameters: InferenceParameters) async throws -> InferenceOutput {
-        // CoreML-accelerated inference implementation
-        return InferenceOutput(text: "Sample output", tokenCount: 10, confidence: 0.9, memoryUsage: 0.3)
-    }
-    
-    func inferWithCPU(tokens: TokenizedInput, parameters: InferenceParameters, useAccelerate: Bool) async throws -> InferenceOutput {
-        // CPU-optimized inference implementation
-        return InferenceOutput(text: "Sample output", tokenCount: 10, confidence: 0.8, memoryUsage: 0.7)
-    }
-    
-    func inferWithMemoryOptimization(tokens: TokenizedInput, parameters: InferenceParameters, quantumMemory: QuantumMemoryManager) async throws -> InferenceOutput {
-        // Memory-optimized inference implementation
-        return InferenceOutput(text: "Sample output", tokenCount: 10, confidence: 0.85, memoryUsage: 0.2)
-    }
-}
-
-class ArcanaTokenizer {
-    private var isInitialized = false
-    
-    func initialize() async {
-        // Initialize tokenizer
-        isInitialized = true
-    }
-    
-    func encode(prompt: String, context: ConversationContext, maxLength: Int) async throws -> TokenizedInput {
-        guard isInitialized else {
-            throw PRISMError.tokenizationError("Tokenizer not initialized")
-        }
-        
-        // Simplified tokenization - real implementation would use proper tokenizer
-        let tokens = prompt.components(separatedBy: .whitespacesAndNewlines)
-            .compactMap { $0.isEmpty ? nil : $0.hash }
-            .prefix(maxLength)
-        
-        return TokenizedInput(
-            tokens: Array(tokens),
-            attentionMask: Array(repeating: 1, count: tokens.count),
-            originalText: prompt,
-            contextLength: tokens.count
-        )
     }
 }
 
@@ -780,5 +723,4 @@ extension PropietaryPRISMCore {
         logger.info("🔗 Integrating with PRISMEngine")
         // This will be used when enhancing PRISMEngine.swift
     }
-    
 }

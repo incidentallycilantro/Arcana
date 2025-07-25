@@ -218,7 +218,7 @@ class PRISMEngine: ObservableObject {
         }
         
         // Determine optimal computation path
-        let computationPath: PropietaryPRISMCore.ComputationPath = {
+        let computationPath: ComputationPath = {
             if availableRAM > 16000 {
                 return .metalAccelerated
             } else if availableRAM > 8000 {
@@ -243,7 +243,7 @@ class PRISMEngine: ObservableObject {
         context: ConversationContext,
         modelConfig: ModelConfiguration,
         parameters: InferenceParameters
-    ) async throws -> PropietaryPRISMCore.InferenceResult {
+    ) async throws -> InferenceResult {
         
         logger.info("⚡ Executing fallback inference with \(modelConfig.modelName)")
         
@@ -325,7 +325,7 @@ class PRISMEngine: ObservableObject {
     }
     
     private func validateAndEnhanceResponse(
-        result: PropietaryPRISMCore.InferenceResult,
+        result: InferenceResult,
         analysis: PromptAnalysis
     ) async -> PRISMResponse {
         
@@ -450,7 +450,7 @@ struct PRISMResponse {
 
 struct PRISMResponseMetadata {
     let analysis: PromptAnalysis
-    let computationPath: PropietaryPRISMCore.ComputationPath
+    let computationPath: ComputationPath
     let memoryEfficiency: Double
     let optimizationLevel: OptimizationLevel
 }
@@ -468,7 +468,7 @@ struct PromptAnalysis {
 struct ModelConfiguration {
     let modelName: String
     let optimizationLevel: OptimizationLevel
-    let computationPath: PropietaryPRISMCore.ComputationPath
+    let computationPath: ComputationPath
     let memoryBudget: Int
 }
 

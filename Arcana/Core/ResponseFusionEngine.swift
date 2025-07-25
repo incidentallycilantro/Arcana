@@ -13,7 +13,7 @@ class ResponseFusionEngine: ObservableObject {
     static let shared = ResponseFusionEngine()
     
     // MARK: - Published State
-    @Published var currentFusionStrategy: FusionStrategy = .intelligentWeighting
+    @Published var currentFusionStrategy: EnsembleStrategy = .balanced
     @Published var fusionConfidence: Double = 0.0
     @Published var activeFusions: Int = 0
     @Published var fusionMetrics: FusionMetrics = FusionMetrics()
@@ -74,19 +74,16 @@ class ResponseFusionEngine: ObservableObject {
         // 1. Analyze response quality and characteristics
         let analysisResults = await analyzeResponseQualities(responses, prompt: prompt)
         
-        // 2. Determine optimal fusion strategy
-        let optimalStrategy = await determineOptimalFusionStrategy(
-            responses: responses,
-            analysisResults: analysisResults,
-            requestedStrategy: strategy
-        )
+        // 2. Determine optimal fusion approach based on ensemble strategy
+        let fusionApproach = mapEnsembleStrategyToFusionApproach(strategy)
         
         // 3. Execute intelligent fusion
         let fusedResponse = await executeFusion(
             responses: responses,
             analysisResults: analysisResults,
-            strategy: optimalStrategy,
-            prompt: prompt
+            approach: fusionApproach,
+            prompt: prompt,
+            strategy: strategy
         )
         
         // 4. Validate and enhance fused response
@@ -101,12 +98,12 @@ class ResponseFusionEngine: ObservableObject {
             responses: responses,
             fusedResponse: validatedResponse,
             fusionTime: Date().timeIntervalSince(fusionStartTime),
-            strategy: optimalStrategy
+            strategy: strategy
         )
         
         activeFusions -= 1
         fusionConfidence = validatedResponse.confidence
-        currentFusionStrategy = optimalStrategy
+        currentFusionStrategy = strategy
         
         logger.info("✅ Fusion completed with confidence: \(validatedResponse.confidence)")
         
@@ -137,7 +134,7 @@ class ResponseFusionEngine: ObservableObject {
         let allResponses = [originalAsResponse] + additional
         
         // Re-fuse with enhanced strategy
-        let enhancedStrategy = enhanceStrategy(strategy)
+        let enhancedStrategy = enhanceEnsembleStrategy(strategy)
         return await fuseResponses(
             responses: allResponses,
             prompt: "Enhanced fusion request",
@@ -220,349 +217,9 @@ class ResponseFusionEngine: ObservableObject {
         )
     }
     
-    // MARK: - 🎯 Fusion Strategy Determination
+    // MARK: - 🎯 Strategy Mapping and Fusion Execution
     
-    private func determineOptimalFusionStrategy(
-        responses: [ModelResponse],
-        analysisResults: [ResponseAnalysis],
-        requestedStrategy: EnsembleStrategy
-    ) async -> FusionStrategy {
-        
-        // 1. Analyze response diversity
-        let diversity = calculateResponseDiversity(responses)
-        
-        // 2. Check quality variance
-        let qualityVariance = calculateQualityVariance(analysisResults)
-        
-        // 3. Assess consensus level
-        let consensusLevel = await consensusBuilder.calculateConsensus(responses)
-        
-        // 4. Determine optimal strategy
-        let optimalStrategy: FusionStrategy
-        
-        if consensusLevel > 0.85 {
-            // High consensus - use consensus-based fusion
-            optimalStrategy = .consensusBased
-        } else if qualityVariance < 0.2 {
-            // Similar quality - use averaging
-            optimalStrategy = .qualityAveraging
-        } else if diversity > 0.7 {
-            // High diversity - use selective best
-            optimalStrategy = .selectiveBest
-        } else {
-            // Default to intelligent weighting
-            optimalStrategy = .intelligentWeighting
-        }
-        
-        logger.info("🎯 Selected fusion strategy: \(optimalStrategy) (consensus: \(consensusLevel), diversity: \(diversity))")
-        
-        return optimalStrategy
-    }
-    
-    // MARK: - 🧩 Fusion Execution
-    
-    private func executeFusion(
-        responses: [ModelResponse],
-        analysisResults: [ResponseAnalysis],
-        strategy: FusionStrategy,
-        prompt: String
-    ) async -> FusedResponse {
-        
-        logger.info("🧩 Executing fusion with strategy: \(strategy)")
-        
-        switch strategy {
-        case .intelligentWeighting:
-            return await executeIntelligentWeightedFusion(analysisResults, prompt: prompt)
-            
-        case .consensusBased:
-            return await executeConsensusFusion(analysisResults, prompt: prompt)
-            
-        case .qualityAveraging:
-            return await executeQualityAveragingFusion(analysisResults, prompt: prompt)
-            
-        case .selectiveBest:
-            return await executeSelectiveBestFusion(analysisResults, prompt: prompt)
-            
-        case .hierarchicalMerging:
-            return await executeHierarchicalFusion(analysisResults, prompt: prompt)
-        }
-    }
-    
-    // MARK: - 🏆 Intelligent Weighted Fusion
-    
-    private func executeIntelligentWeightedFusion(
-        _ analyses: [ResponseAnalysis],
-        prompt: String
-    ) async -> FusedResponse {
-        
-        logger.info("🏆 Executing intelligent weighted fusion")
-        
-        // 1. Calculate adaptive weights based on multiple factors
-        var weights: [Double] = []
-        var totalWeight: Double = 0
-        
-        for analysis in analyses {
-            let baseWeight = analysis.overallQuality
-            let reliabilityBoost = analysis.reliability * 0.2
-            let relevanceBoost = analysis.relevance * 0.3
-            
-            let adaptiveWeight = baseWeight + reliabilityBoost + relevanceBoost
-            weights.append(adaptiveWeight)
-            totalWeight += adaptiveWeight
-        }
-        
-        // Normalize weights
-        weights = weights.map { $0 / totalWeight }
-        
-        // 2. Create weighted content fusion
-        var fusedContent = ""
-        var weightedConfidence: Double = 0
-        
-        // Find highest quality response as base
-        guard let bestAnalysis = analyses.first else {
-            return FusedResponse(
-                content: "Fusion failed",
-                confidence: 0.0,
-                contributingModels: [],
-                strategy: .intelligentWeighting
-            )
-        }
-        
-        fusedContent = bestAnalysis.response.response
-        
-        // 3. Enhance with insights from other responses
-        for (index, analysis) in analyses.enumerated() {
-            let weight = weights[index]
-            weightedConfidence += analysis.response.confidence * weight
-            
-            // Extract unique insights from other responses
-            if index > 0 && weight > 0.2 {
-                let uniqueInsights = await extractUniqueInsights(
-                    from: analysis.response.response,
-                    compared: fusedContent
-                )
-                
-                if !uniqueInsights.isEmpty {
-                    fusedContent = await integrateInsights(
-                        base: fusedContent,
-                        insights: uniqueInsights,
-                        weight: weight
-                    )
-                }
-            }
-        }
-        
-        // 4. Calculate final confidence
-        let qualityBonus = analyses.first?.overallQuality ?? 0.8
-        let consensusBonus = await consensusBuilder.calculateConsensus(analyses.map { $0.response }) * 0.1
-        let finalConfidence = min(weightedConfidence + qualityBonus * 0.1 + consensusBonus, 0.99)
-        
-        return FusedResponse(
-            content: fusedContent,
-            confidence: finalConfidence,
-            contributingModels: analyses.map { $0.response.model },
-            strategy: .intelligentWeighting
-        )
-    }
-    
-    // MARK: - 🛠️ Helper Methods for Content Processing
-    
-    private func extractUniqueInsights(from response: String, compared baseline: String) async -> [String] {
-        // Extract unique insights that aren't present in baseline
-        let responseWords = Set(response.components(separatedBy: .whitespacesAndNewlines))
-        let baselineWords = Set(baseline.components(separatedBy: .whitespacesAndNewlines))
-        
-        let uniqueWords = responseWords.subtracting(baselineWords)
-        
-        // Simple insight extraction based on unique content
-        let insights = uniqueWords.compactMap { word in
-            word.count > 3 ? word : nil
-        }
-        
-        return Array(insights.prefix(5)) // Limit to top 5 insights
-    }
-    
-    private func integrateInsights(base: String, insights: [String], weight: Double) async -> String {
-        guard weight > 0.1 && !insights.isEmpty else { return base }
-        
-        // Simple integration - append insights with weight consideration
-        let insightText = insights.joined(separator: ", ")
-        
-        if weight > 0.5 {
-            return "\(base)\n\nAdditional insights: \(insightText)"
-        } else {
-            return "\(base) (Note: \(insightText))"
-        }
-    }
-    
-    // MARK: - 🤝 Other Fusion Strategies (Simplified)
-    
-    private func executeConsensusFusion(
-        _ analyses: [ResponseAnalysis],
-        prompt: String
-    ) async -> FusedResponse {
-        
-        logger.info("🤝 Executing consensus-based fusion")
-        
-        // Use the highest quality response as base for consensus
-        guard let bestAnalysis = analyses.first else {
-            return FusedResponse(
-                content: "No consensus possible",
-                confidence: 0.0,
-                contributingModels: [],
-                strategy: .consensusBased
-            )
-        }
-        
-        let consensusScore = await consensusBuilder.calculateConsensus(analyses.map { $0.response })
-        
-        return FusedResponse(
-            content: bestAnalysis.response.response,
-            confidence: consensusScore * 0.9 + 0.1,
-            contributingModels: analyses.map { $0.response.model },
-            strategy: .consensusBased
-        )
-    }
-    
-    private func executeQualityAveragingFusion(
-        _ analyses: [ResponseAnalysis],
-        prompt: String
-    ) async -> FusedResponse {
-        
-        logger.info("📊 Executing quality averaging fusion")
-        
-        guard let bestAnalysis = analyses.first else {
-            return FusedResponse(
-                content: "No responses to average",
-                confidence: 0.0,
-                contributingModels: [],
-                strategy: .qualityAveraging
-            )
-        }
-        
-        let averageConfidence = analyses.reduce(0.0) { $0 + $1.response.confidence } / Double(analyses.count)
-        
-        return FusedResponse(
-            content: bestAnalysis.response.response,
-            confidence: min(averageConfidence, 0.95),
-            contributingModels: analyses.map { $0.response.model },
-            strategy: .qualityAveraging
-        )
-    }
-    
-    private func executeSelectiveBestFusion(
-        _ analyses: [ResponseAnalysis],
-        prompt: String
-    ) async -> FusedResponse {
-        
-        logger.info("🎯 Executing selective best fusion")
-        
-        guard let bestAnalysis = analyses.first else {
-            return FusedResponse(
-                content: "No best response found",
-                confidence: 0.0,
-                contributingModels: [],
-                strategy: .selectiveBest
-            )
-        }
-        
-        return FusedResponse(
-            content: bestAnalysis.response.response,
-            confidence: bestAnalysis.response.confidence,
-            contributingModels: [bestAnalysis.response.model],
-            strategy: .selectiveBest
-        )
-    }
-    
-    private func executeHierarchicalFusion(
-        _ analyses: [ResponseAnalysis],
-        prompt: String
-    ) async -> FusedResponse {
-        
-        logger.info("🏗️ Executing hierarchical fusion")
-        
-        // Group by quality tiers and use best from highest tier
-        let highQuality = analyses.filter { $0.overallQuality >= 0.8 }
-        
-        if let bestHighQuality = highQuality.first {
-            return FusedResponse(
-                content: bestHighQuality.response.response,
-                confidence: bestHighQuality.response.confidence,
-                contributingModels: analyses.map { $0.response.model },
-                strategy: .hierarchicalMerging
-            )
-        } else if let bestOverall = analyses.first {
-            return FusedResponse(
-                content: bestOverall.response.response,
-                confidence: bestOverall.response.confidence,
-                contributingModels: analyses.map { $0.response.model },
-                strategy: .hierarchicalMerging
-            )
-        } else {
-            return FusedResponse(
-                content: "Hierarchical fusion failed",
-                confidence: 0.0,
-                contributingModels: [],
-                strategy: .hierarchicalMerging
-            )
-        }
-    }
-    
-    // MARK: - 🔬 Validation and Enhancement
-    
-    private func validateAndEnhanceFusion(
-        fusedResponse: FusedResponse,
-        originalResponses: [ModelResponse],
-        prompt: String
-    ) async -> FusedResponse {
-        
-        logger.info("🔬 Validating and enhancing fused response")
-        
-        // Simple validation - just ensure response quality
-        let qualityScore = await qualityAnalyzer.analyzeContentQuality(
-            fusedResponse.content,
-            prompt: prompt
-        )
-        
-        let enhancedConfidence = min(fusedResponse.confidence + qualityScore * 0.1, 0.99)
-        
-        return FusedResponse(
-            content: fusedResponse.content,
-            confidence: enhancedConfidence,
-            contributingModels: fusedResponse.contributingModels,
-            strategy: fusedResponse.strategy
-        )
-    }
-    
-    // MARK: - 🛠️ Utility Methods
-    
-    private func calculateResponseDiversity(_ responses: [ModelResponse]) -> Double {
-        guard responses.count > 1 else { return 0.0 }
-        
-        let contentLengths = responses.map { $0.response.count }
-        let avgLength = Double(contentLengths.reduce(0, +)) / Double(contentLengths.count)
-        let lengthVariance = contentLengths.map { pow(Double($0) - avgLength, 2) }.reduce(0, +) / Double(contentLengths.count)
-        
-        let uniqueWords = Set(responses.flatMap { $0.response.components(separatedBy: .whitespacesAndNewlines) })
-        let totalWords = responses.flatMap { $0.response.components(separatedBy: .whitespacesAndNewlines) }.count
-        
-        let wordDiversity = Double(uniqueWords.count) / Double(max(totalWords, 1))
-        let lengthDiversity = min(sqrt(lengthVariance) / avgLength, 1.0)
-        
-        return (wordDiversity + lengthDiversity) / 2.0
-    }
-    
-    private func calculateQualityVariance(_ analyses: [ResponseAnalysis]) -> Double {
-        guard analyses.count > 1 else { return 0.0 }
-        
-        let qualities = analyses.map { $0.overallQuality }
-        let avgQuality = qualities.reduce(0, +) / Double(qualities.count)
-        let variance = qualities.map { pow($0 - avgQuality, 2) }.reduce(0, +) / Double(qualities.count)
-        
-        return sqrt(variance)
-    }
-    
-    private func enhanceStrategy(_ strategy: EnsembleStrategy) -> FusionStrategy {
+    private func mapEnsembleStrategyToFusionApproach(_ strategy: EnsembleStrategy) -> FusionApproach {
         switch strategy {
         case .speedOptimized:
             return .selectiveBest
@@ -577,6 +234,227 @@ class ResponseFusionEngine: ObservableObject {
         case .creativeCollaborative:
             return .intelligentWeighting
         }
+    }
+    
+    private func executeFusion(
+        responses: [ModelResponse],
+        analysisResults: [ResponseAnalysis],
+        approach: FusionApproach,
+        prompt: String,
+        strategy: EnsembleStrategy
+    ) async -> FusedResponse {
+        
+        logger.info("🧩 Executing fusion with approach: \(String(describing: approach))")
+        
+        switch approach {
+        case .intelligentWeighting:
+            return await executeIntelligentWeightedFusion(analysisResults, prompt: prompt, strategy: strategy)
+            
+        case .consensusBased:
+            return await executeConsensusFusion(analysisResults, prompt: prompt, strategy: strategy)
+            
+        case .qualityAveraging:
+            return await executeQualityAveragingFusion(analysisResults, prompt: prompt, strategy: strategy)
+            
+        case .selectiveBest:
+            return await executeSelectiveBestFusion(analysisResults, prompt: prompt, strategy: strategy)
+            
+        case .hierarchicalMerging:
+            return await executeHierarchicalFusion(analysisResults, prompt: prompt, strategy: strategy)
+        }
+    }
+    
+    // MARK: - 🏆 Fusion Implementation Methods
+    
+    private func executeIntelligentWeightedFusion(
+        _ analyses: [ResponseAnalysis],
+        prompt: String,
+        strategy: EnsembleStrategy
+    ) async -> FusedResponse {
+        
+        logger.info("🏆 Executing intelligent weighted fusion")
+        
+        // 1. Calculate weights based on analysis results
+        let weights = analyses.map { analysis in
+            analysis.overallQuality * (modelWeights[analysis.response.model] ?? 0.8)
+        }
+        
+        // 2. Normalize weights
+        let totalWeight = weights.reduce(0, +)
+        let normalizedWeights = weights.map { $0 / max(totalWeight, 0.001) }
+        
+        // 3. Create weighted fusion
+        let fusedContent = createWeightedContent(analyses, weights: normalizedWeights)
+        let fusedConfidence = zip(analyses, normalizedWeights).map { $0.0.overallQuality * $0.1 }.reduce(0, +)
+        
+        return FusedResponse(
+            content: fusedContent,
+            confidence: fusedConfidence,
+            contributingModels: analyses.map { $0.response.model },
+            strategy: strategy
+        )
+    }
+    
+    private func executeConsensusFusion(
+        _ analyses: [ResponseAnalysis],
+        prompt: String,
+        strategy: EnsembleStrategy
+    ) async -> FusedResponse {
+        
+        logger.info("🤖 Executing consensus-based fusion")
+        
+        let consensusLevel = await consensusBuilder.calculateConsensus(analyses.map { $0.response })
+        
+        // Select responses with highest consensus
+        let _ = 0.7 // consensusThreshold - placeholder for future implementation
+        let consensusContent = analyses.first?.response.response ?? "Consensus not reached"
+        let consensusConfidence = consensusLevel * 0.9
+        
+        return FusedResponse(
+            content: consensusContent,
+            confidence: consensusConfidence,
+            contributingModels: analyses.map { $0.response.model },
+            strategy: strategy
+        )
+    }
+    
+    private func executeQualityAveragingFusion(
+        _ analyses: [ResponseAnalysis],
+        prompt: String,
+        strategy: EnsembleStrategy
+    ) async -> FusedResponse {
+        
+        logger.info("📊 Executing quality averaging fusion")
+        
+        let averageQuality = analyses.map { $0.overallQuality }.reduce(0, +) / Double(analyses.count)
+        let bestResponse = analyses.max { $0.overallQuality < $1.overallQuality }?.response.response ?? "No quality response found"
+        
+        return FusedResponse(
+            content: bestResponse,
+            confidence: averageQuality,
+            contributingModels: analyses.map { $0.response.model },
+            strategy: strategy
+        )
+    }
+    
+    private func executeSelectiveBestFusion(
+        _ analyses: [ResponseAnalysis],
+        prompt: String,
+        strategy: EnsembleStrategy
+    ) async -> FusedResponse {
+        
+        logger.info("🎯 Executing selective best fusion")
+        
+        guard let bestAnalysis = analyses.max(by: { $0.overallQuality < $1.overallQuality }) else {
+            return FusedResponse(
+                content: "No responses available for selection",
+                confidence: 0.0,
+                contributingModels: [],
+                strategy: strategy
+            )
+        }
+        
+        return FusedResponse(
+            content: bestAnalysis.response.response,
+            confidence: bestAnalysis.overallQuality,
+            contributingModels: [bestAnalysis.response.model],
+            strategy: strategy
+        )
+    }
+    
+    private func executeHierarchicalFusion(
+        _ analyses: [ResponseAnalysis],
+        prompt: String,
+        strategy: EnsembleStrategy
+    ) async -> FusedResponse {
+        
+        logger.info("🏗️ Executing hierarchical merging fusion")
+        
+        // Sort by quality and merge hierarchically
+        let sortedAnalyses = analyses.sorted { $0.overallQuality > $1.overallQuality }
+        
+        var fusedContent = ""
+        var totalConfidence = 0.0
+        
+        for (index, analysis) in sortedAnalyses.enumerated() {
+            let weight = 1.0 / Double(index + 1) // Decreasing weight
+            fusedContent += analysis.response.response
+            totalConfidence += analysis.overallQuality * weight
+            
+            if index < sortedAnalyses.count - 1 {
+                fusedContent += "\n\n"
+            }
+        }
+        
+        return FusedResponse(
+            content: fusedContent,
+            confidence: totalConfidence / Double(analyses.count),
+            contributingModels: analyses.map { $0.response.model },
+            strategy: strategy
+        )
+    }
+    
+    // MARK: - 🔧 Helper Methods
+    
+    private func createWeightedContent(_ analyses: [ResponseAnalysis], weights: [Double]) -> String {
+        // For simplicity, return the highest weighted response
+        // In a real implementation, this would intelligently merge content
+        guard let maxIndex = weights.enumerated().max(by: { $0.element < $1.element })?.offset else {
+            return "Fusion error"
+        }
+        
+        return analyses[maxIndex].response.response
+    }
+    
+    private func validateAndEnhanceFusion(
+        fusedResponse: FusedResponse,
+        originalResponses: [ModelResponse],
+        prompt: String
+    ) async -> FusedResponse {
+        
+        // Basic validation - in real implementation, this would be more sophisticated
+        let minLength = 50
+        if fusedResponse.content.count < minLength {
+            logger.warning("⚠️ Fused response too short, enhancing...")
+            
+            // Return the longest original response as fallback
+            let longestResponse = originalResponses.max { $0.response.count < $1.response.count }
+            return FusedResponse(
+                content: longestResponse?.response ?? fusedResponse.content,
+                confidence: max(fusedResponse.confidence, 0.7),
+                contributingModels: fusedResponse.contributingModels,
+                strategy: fusedResponse.strategy
+            )
+        }
+        
+        return fusedResponse
+    }
+    
+    private func enhanceEnsembleStrategy(_ strategy: EnsembleStrategy) -> EnsembleStrategy {
+        switch strategy {
+        case .speedOptimized:
+            return .balanced
+        case .balanced:
+            return .deepReasoning
+        default:
+            return strategy
+        }
+    }
+    
+    private func calculateResponseDiversity(_ responses: [ModelResponse]) -> Double {
+        guard responses.count > 1 else { return 0.0 }
+        
+        let lengths = responses.map { Double($0.response.count) }
+        let avgLength = lengths.reduce(0, +) / Double(lengths.count)
+        let lengthVariance = lengths.map { pow($0 - avgLength, 2) }.reduce(0, +) / Double(lengths.count)
+        
+        let uniqueWords = Set(responses.flatMap { $0.response.components(separatedBy: .whitespacesAndNewlines) })
+        let totalWords = responses.flatMap { $0.response.components(separatedBy: .whitespacesAndNewlines) }.count
+        
+        let wordDiversity = Double(uniqueWords.count) / Double(max(totalWords, 1))
+        let lengthDiversity = min(sqrt(lengthVariance) / avgLength, 1.0)
+        
+        return (wordDiversity + lengthDiversity) / 2.0
     }
     
     private func initializeModelWeights() {
@@ -602,7 +480,7 @@ class ResponseFusionEngine: ObservableObject {
         responses: [ModelResponse],
         fusedResponse: FusedResponse,
         fusionTime: TimeInterval,
-        strategy: FusionStrategy
+        strategy: EnsembleStrategy
     ) async {
         
         let record = FusionRecord(
@@ -625,7 +503,7 @@ class ResponseFusionEngine: ObservableObject {
             fusionHistory.removeFirst(50)
         }
         
-        logger.info("📊 Recorded fusion performance: \(strategy) - \(fusedResponse.confidence) confidence")
+        logger.info("📊 Recorded fusion performance: \(String(describing: strategy)) - \(fusedResponse.confidence) confidence")
     }
 }
 
@@ -650,7 +528,7 @@ struct ModelReliabilityMetrics {
 struct FusionRecord {
     let inputResponses: [ModelResponse]
     let fusedResponse: FusedResponse
-    let strategy: FusionStrategy
+    let strategy: EnsembleStrategy
     let fusionTime: TimeInterval
     let timestamp: Date
 }
@@ -659,17 +537,17 @@ struct FusionMetrics {
     var totalFusions: Int = 0
     var averageConfidence: Double = 0.0
     var averageFusionTime: TimeInterval = 0.0
-    var strategySuccessRates: [FusionStrategy: Double] = [:]
+    var strategySuccessRates: [EnsembleStrategy: Double] = [:]
 }
 
 // MARK: - 🏷️ Enumerations
 
-enum FusionStrategy: String, CaseIterable {
-    case intelligentWeighting = "intelligent_weighting"
-    case consensusBased = "consensus_based"
-    case qualityAveraging = "quality_averaging"
-    case selectiveBest = "selective_best"
-    case hierarchicalMerging = "hierarchical_merging"
+enum FusionApproach {
+    case intelligentWeighting
+    case consensusBased
+    case qualityAveraging
+    case selectiveBest
+    case hierarchicalMerging
 }
 
 // MARK: - 🧠 Supporting Classes
@@ -678,30 +556,21 @@ class QualityAnalyzer {
     func analyzeContentQuality(_ content: String, prompt: String) async -> Double {
         let lengthScore = min(Double(content.count) / 500.0, 1.0)
         let structureScore = content.contains("\n") ? 0.8 : 0.6
-        let relevanceKeywords = extractRelevanceKeywords(prompt)
-        let relevanceScore = calculateKeywordPresence(content, keywords: relevanceKeywords)
-        
-        return (lengthScore + structureScore + relevanceScore) / 3.0
+        return (lengthScore + structureScore) / 2.0
     }
     
     func assessFactualAccuracy(_ content: String, model: String) async -> Double {
-        let baseAccuracy = getModelBaseAccuracy(model)
-        let confidenceIndicators = ["research shows", "studies indicate", "data suggests"]
-        let hasIndicators = confidenceIndicators.contains { content.localizedCaseInsensitiveContains($0) }
-        
-        return hasIndicators ? min(baseAccuracy + 0.1, 0.99) : baseAccuracy
+        // Placeholder - real implementation would use fact-checking
+        return getModelBaseAccuracy(model)
     }
     
     func calculateRelevance(_ content: String, prompt: String) async -> Double {
-        let promptWords = Set(prompt.lowercased().components(separatedBy: .whitespacesAndNewlines))
-        let contentWords = Set(content.lowercased().components(separatedBy: .whitespacesAndNewlines))
-        
-        let intersection = promptWords.intersection(contentWords)
-        return Double(intersection.count) / Double(max(promptWords.count, 1))
+        let keywords = extractRelevanceKeywords(prompt)
+        return calculateKeywordPresence(content, keywords: keywords)
     }
     
     func assessCoherence(_ content: String) async -> Double {
-        let sentences = content.components(separatedBy: ". ").filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        let sentences = content.components(separatedBy: ".").filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         
         if sentences.count < 2 { return 0.5 }
         
@@ -764,7 +633,7 @@ class ConsensusBuilder {
 }
 
 class AdaptiveFusionLearner {
-    private var strategyPerformance: [FusionStrategy: [Double]] = [:]
+    private var strategyPerformance: [EnsembleStrategy: [Double]] = [:]
     
     func performLearningCycle(_ history: [FusionRecord]) async {
         for record in history.suffix(50) {

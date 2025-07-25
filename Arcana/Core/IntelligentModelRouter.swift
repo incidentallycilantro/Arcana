@@ -131,7 +131,7 @@ class IntelligentModelRouter: ObservableObject {
     
     func selectOptimalModel(for analysis: PromptAnalysis, requestedModel: String) async -> String {
         
-        logger.info("🧠 Analyzing optimal model for query type: \(analysis.queryType)")
+        logger.info("🧠 Analyzing optimal model for query type: \(String(describing: analysis.queryType))")
         
         // 1. Get base scores from specialization matrix
         var modelScores: [String: Double] = [:]
@@ -191,9 +191,9 @@ class IntelligentModelRouter: ObservableObject {
                 modelName: model,
                 context: context,
                 parameters: InferenceParameters(
+                    maxTokens: modelParams["max_tokens"] as? Int ?? 1024,
                     temperature: modelParams["temperature"] as? Double ?? 0.7,
-                    topP: modelParams["top_p"] as? Double ?? 0.9,
-                    maxTokens: modelParams["max_tokens"] as? Int ?? 1024
+                    topP: modelParams["top_p"] as? Double ?? 0.9
                 )
             )
             
@@ -419,7 +419,7 @@ class IntelligentModelRouter: ObservableObject {
     private func postProcessResponse(_ response: String, model: String, originalPrompt: String) async -> ProcessedResponse {
         // Apply model-specific post-processing
         
-        var processedContent = response
+        let processedContent = response
         var confidence = 0.8
         
         switch model {
@@ -673,15 +673,19 @@ class AdaptiveLearningEngine {
         for queryType in QueryType.allCases {
             let recordsForType = recentRecords.filter { $0.queryType == queryType }
             
-            if let bestModel = recordsForType
-                .reduce(into: [String: [Double]]()) { dict, record in
-                    dict[record.selectedModel, default: []].append(record.performance)
-                }
-                .mapValues { performances in
-                    performances.reduce(0, +) / Double(performances.count)
-                }
-                .max(by: { $0.value < $1.value })?.key {
-                
+            // Build performance dictionary
+            var modelPerformance: [String: [Double]] = [:]
+            for record in recordsForType {
+                modelPerformance[record.selectedModel, default: []].append(record.performance)
+            }
+            
+            // Calculate average performance for each model
+            let modelAverages = modelPerformance.mapValues { performances in
+                performances.reduce(0, +) / Double(performances.count)
+            }
+            
+            // Find best performing model
+            if let bestModel = modelAverages.max(by: { $0.value < $1.value })?.key {
                 modelPreferences[queryType] = bestModel
             }
         }

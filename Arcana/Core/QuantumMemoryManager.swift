@@ -219,10 +219,12 @@ class QuantumMemoryManager: ObservableObject {
             return [.attentionLayers, .feedForward, .outputHead]
         case .codeGeneration:
             return [.attentionLayers, .feedForward, .codeSpecificLayers, .outputHead]
-        case .reasoning:
+        case .logicalReasoning:
             return [.attentionLayers, .feedForward, .reasoningLayers, .outputHead]
-        case .embedding:
+        case .knowledgeRetrieval:
             return [.inputEmbedding, .attentionLayers]
+        default:
+            return [.attentionLayers, .feedForward, .outputHead]
         }
     }
     
@@ -342,11 +344,11 @@ class QuantumMemoryManager: ObservableObject {
         let lowercased = query.lowercased()
         
         if lowercased.contains("code") || lowercased.contains("function") || lowercased.contains("program") {
-            return .code
+            return .coding
         } else if lowercased.contains("write") || lowercased.contains("create") || lowercased.contains("story") {
             return .creative
         } else if lowercased.contains("analyze") || lowercased.contains("research") || lowercased.contains("data") {
-            return .analytical
+            return .analysis
         } else {
             return .general
         }
@@ -363,11 +365,11 @@ class QuantumMemoryManager: ObservableObject {
         }
         
         if queryLower.contains("analyze") || queryLower.contains("reason") || queryLower.contains("think") {
-            capabilities.append(.reasoning)
+            capabilities.append(.logicalReasoning)
         }
         
         if queryLower.contains("embed") || queryLower.contains("similar") || queryLower.contains("search") {
-            capabilities.append(.embedding)
+            capabilities.append(.knowledgeRetrieval)
         }
         
         // Default capability
@@ -397,11 +399,13 @@ class QuantumMemoryManager: ObservableObject {
         let capability: ModelCapability = {
             switch computationPath {
             case .metalAccelerated, .coreMLAccelerated:
-                return .textGeneration
+                return .textGeneration  // This will now work
             case .cpuOptimized:
-                return .reasoning
+                return .generalReasoning
             case .memoryOptimized:
-                return .embedding
+                return .knowledgeRetrieval
+            case .ensembleOptimized:  // ADD this case
+                return .generalReasoning
             }
         }()
         
@@ -429,7 +433,7 @@ class QuantumMemoryManager: ObservableObject {
         
         // Base segments for query type
         switch queryAnalysis.type {
-        case .code:
+        case .coding:
             predictions.append(SegmentPrediction(
                 modelName: "CodeLlama-7B",
                 capability: .codeGeneration,
@@ -443,16 +447,23 @@ class QuantumMemoryManager: ObservableObject {
                 segments: [.attentionLayers, .feedForward, .outputHead],
                 priority: 0.8
             ))
-        case .analytical:
+        case .analysis:
             predictions.append(SegmentPrediction(
                 modelName: "Mistral-7B",
-                capability: .reasoning,
+                capability: .logicalReasoning,
                 segments: [.attentionLayers, .reasoningLayers, .outputHead],
                 priority: 0.85
             ))
         case .general:
             predictions.append(SegmentPrediction(
                 modelName: "Phi-2",
+                capability: .textGeneration,
+                segments: [.attentionLayers, .feedForward, .outputHead],
+                priority: 0.7
+            ))
+        default:
+            predictions.append(SegmentPrediction(
+                modelName: "Mistral-7B",
                 capability: .textGeneration,
                 segments: [.attentionLayers, .feedForward, .outputHead],
                 priority: 0.7
@@ -535,7 +546,7 @@ class QuantumMemoryManager: ObservableObject {
         
         // Base prediction based on query type
         switch queryAnalysis.type {
-        case .code:
+        case .coding:
             predictions.append(ModelPrediction(
                 modelName: "CodeLlama-7B",
                 capability: .codeGeneration,
@@ -549,10 +560,10 @@ class QuantumMemoryManager: ObservableObject {
                 confidence: 0.8,
                 estimatedTime: 1.5
             ))
-        case .analytical:
+        case .analysis:
             predictions.append(ModelPrediction(
                 modelName: "Mistral-7B",
-                capability: .reasoning,
+                capability: .logicalReasoning,
                 confidence: 0.85,
                 estimatedTime: 2.5
             ))
@@ -562,6 +573,13 @@ class QuantumMemoryManager: ObservableObject {
                 capability: .textGeneration,
                 confidence: 0.7,
                 estimatedTime: 1.0
+            ))
+        default:
+            predictions.append(ModelPrediction(
+                modelName: "Mistral-7B",
+                capability: .textGeneration,
+                confidence: 0.7,
+                estimatedTime: 1.5
             ))
         }
         
@@ -774,6 +792,7 @@ enum QueryType: String, Codable, CaseIterable {
 }
 
 enum ModelCapability: String, Codable, CaseIterable {
+    case textGeneration = "text_generation"
     case codeGeneration = "code_generation"
     case syntaxAnalysis = "syntax_analysis"
     case logicalReasoning = "logical_reasoning"

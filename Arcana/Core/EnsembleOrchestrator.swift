@@ -189,7 +189,7 @@ class EnsembleOrchestrator: ObservableObject {
         activeModels = resourceOptimizedModels
         currentStrategy = strategy
         
-        logger.info("🎯 Selected models for \(strategy): \(resourceOptimizedModels.joined(separator: ", "))")
+        logger.info("🎯 Selected models for \(String(describing: strategy)): \(resourceOptimizedModels.joined(separator: ", "))")
         return resourceOptimizedModels
     }
     
@@ -239,32 +239,26 @@ class EnsembleOrchestrator: ObservableObject {
         
         let startTime = Date()
         
-        do {
-            // Route to appropriate model via intelligent router
-            let response = await modelRouter.routeInference(
-                model: model,
-                prompt: prompt,
-                context: context
-            )
-            
-            let inferenceTime = Date().timeIntervalSince(startTime)
-            
-            let modelResponse = ModelResponse(
-                model: model,
-                response: response.content,
-                confidence: response.confidence,
-                inferenceTime: inferenceTime,
-                timestamp: Date(),
-                metadata: response.metadata
-            )
-            
-            logger.info("✅ Model \(model) completed in \(inferenceTime)s with confidence \(response.confidence)")
-            return modelResponse
-            
-        } catch {
-            logger.error("❌ Model \(model) inference failed: \(error.localizedDescription)")
-            return nil
-        }
+        // Route to appropriate model via intelligent router
+        let response = await modelRouter.routeInference(
+            model: model,
+            prompt: prompt,
+            context: context
+        )
+        
+        let inferenceTime = Date().timeIntervalSince(startTime)
+        
+        let modelResponse = ModelResponse(
+            model: model,
+            response: response.content,
+            confidence: response.confidence,
+            inferenceTime: inferenceTime,
+            timestamp: Date(),
+            metadata: response.metadata
+        )
+        
+        logger.info("✅ Model \(model) completed in \(inferenceTime)s with confidence \(response.confidence)")
+        return modelResponse
     }
     
     // MARK: - 🔬 Validation and Calibration
