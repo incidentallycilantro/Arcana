@@ -66,9 +66,8 @@ class ThreadManager: ObservableObject {
         let conversationContent = messages.map { $0.content }.joined(separator: " ")
 
         if shouldSuggestWorkspaceCreation(for: conversationContent) {
-            let context = generateWorkspaceCreationContext(from: messages, content: conversationContent)
-
-            DispatchQueue.main.async {
+            Task { @MainActor in
+                let context = await generateWorkspaceCreationContext(from: messages, content: conversationContent)
                 self.workspaceCreationContext = context
                 self.showWorkspaceCreationDialog = true
             }
@@ -94,11 +93,13 @@ class ThreadManager: ObservableObject {
         return matches >= 3
     }
 
-    private func generateWorkspaceCreationContext(from messages: [ChatMessage], content: String) -> WorkspaceCreationContext {
+    // FIXED: Made async and MainActor to handle actor isolation
+    @MainActor
+    private func generateWorkspaceCreationContext(from messages: [ChatMessage], content: String) async -> WorkspaceCreationContext {
         let detectedType = intelligenceEngine.detectWorkspaceType(from: content)
         let intelligentTitle = intelligenceEngine.generateIntelligentWorkspaceTitle(from: content)
         let intelligentDescription = intelligenceEngine.generateIntelligentWorkspaceDescription(from: messages)
-        let existingSuggestions = findRelevantExistingWorkspaces(for: content)
+        let existingSuggestions = await findRelevantExistingWorkspaces(for: content)
 
         return WorkspaceCreationContext(
             messages: messages,
@@ -110,7 +111,9 @@ class ThreadManager: ObservableObject {
         )
     }
 
-    private func findRelevantExistingWorkspaces(for content: String) -> [Project] {
+    // FIXED: Made async and MainActor to handle actor isolation
+    @MainActor
+    private func findRelevantExistingWorkspaces(for content: String) async -> [Project] {
         let contentKeywords = intelligenceEngine.extractKeywords(from: content)
         let workspaces = WorkspaceManager.shared.workspaces
 
@@ -143,156 +146,41 @@ class ThreadManager: ObservableObject {
         let finalTitle = customTitle?.isEmpty == false ? customTitle! : context.intelligentTitle
         let finalDescription = customDescription?.isEmpty == false ? customDescription! : context.intelligentDescription
 
-        let project = WorkspaceManager.shared.createWorkspace(title: finalTitle, description: finalDescription)
-        WorkspaceManager.shared.selectedWorkspace = project
+        let newWorkspace = Project(
+            title: finalTitle,
+            description: finalDescription
+        )
 
+        // Transfer conversation context (note: this would require adding conversations property to Project model in the future)
+        // newWorkspace.conversations = context.messages
+
+        WorkspaceManager.shared.workspaces.insert(newWorkspace, at: 0)
+        WorkspaceManager.shared.selectedWorkspace = newWorkspace
+        WorkspaceManager.shared.saveWorkspaceFromExternal(newWorkspace)
+
+        // Clear dialog
         workspaceCreationContext = nil
         showWorkspaceCreationDialog = false
     }
 
-    func assignToExistingWorkspace(
-        from context: WorkspaceCreationContext,
-        workspace: Project
-    ) {
-        WorkspaceManager.shared.selectedWorkspace = workspace
-        workspaceCreationContext = nil
-        showWorkspaceCreationDialog = false
-    }
+    // MARK: - Persistence
 
-    func dismissWorkspaceCreation() {
-        workspaceCreationContext = nil
-        showWorkspaceCreationDialog = false
-    }
-
-    // MARK: - Thread Persistence
-
-    func loadThreads() {
+    private func loadThreads() {
         threads = persistenceController.loadThreads()
-        
-        // Auto-select the most recent thread
-        selectedThread = threads.first
     }
 
-    func saveThread(_ thread: ChatThread) {
+    private func saveThread(_ thread: ChatThread) {
         persistenceController.saveThread(thread)
     }
 
     func saveAllThreads() {
         for thread in threads {
-            persistenceController.saveThread(thread)
-        }
-    }
-
-    // MARK: - Thread Intelligence
-
-    func getThreadsEligibleForPromotion() -> [ChatThread] {
-        return threads.filter { $0.shouldPromoteToWorkspace }
-    }
-
-    func getThreadsByType(_ type: WorkspaceManager.WorkspaceType) -> [ChatThread] {
-        return threads.filter { $0.detectedType == type }
-    }
-
-    func searchThreads(query: String) -> [ChatThread] {
-        guard !query.isEmpty else { return threads }
-        
-        return threads.filter { thread in
-            thread.title.localizedCaseInsensitiveContains(query) ||
-            thread.contextualTags.contains { $0.localizedCaseInsensitiveContains(query) } ||
-            thread.messages.contains { $0.content.localizedCaseInsensitiveContains(query) }
+            saveThread(thread)
         }
     }
 }
 
-// MARK: - Thread Persistence Controller
-
-class ThreadPersistenceController {
-    private let fileManager = FileManager.default
-    
-    private var threadsDirectory: URL {
-        let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let arcanaURL = appSupportURL.appendingPathComponent("Arcana")
-        
-        // Create directory if it doesn't exist
-        try? fileManager.createDirectory(at: arcanaURL, withIntermediateDirectories: true)
-        
-        return arcanaURL.appendingPathComponent("Threads")
-    }
-    
-    init() {
-        setupDirectories()
-    }
-    
-    private func setupDirectories() {
-        do {
-            try fileManager.createDirectory(at: threadsDirectory, withIntermediateDirectories: true)
-            print("📁 Thread storage ready at: \(threadsDirectory.path)")
-        } catch {
-            print("❌ Failed to create threads directory: \(error)")
-        }
-    }
-    
-    func saveThread(_ thread: ChatThread) {
-        let threadURL = threadsDirectory.appendingPathComponent("\(thread.id.uuidString).json")
-        
-        do {
-            let data = try JSONEncoder().encode(thread)
-            try data.write(to: threadURL)
-            print("💾 Saved thread: \(thread.title)")
-        } catch {
-            print("❌ Failed to save thread \(thread.title): \(error)")
-        }
-    }
-    
-    func loadThreads() -> [ChatThread] {
-        var threads: [ChatThread] = []
-        
-        do {
-            let threadURLs = try fileManager.contentsOfDirectory(
-                at: threadsDirectory,
-                includingPropertiesForKeys: [.contentModificationDateKey],
-                options: .skipsHiddenFiles
-            ).filter { $0.pathExtension == "json" }
-            
-            for url in threadURLs {
-                if let thread = loadThread(from: url) {
-                    threads.append(thread)
-                }
-            }
-            
-            print("📂 Loaded \(threads.count) threads from disk")
-            
-        } catch {
-            print("❌ Failed to load threads: \(error)")
-        }
-        
-        return threads.sorted { $0.lastModified > $1.lastModified }
-    }
-    
-    private func loadThread(from url: URL) -> ChatThread? {
-        do {
-            let data = try Data(contentsOf: url)
-            let thread = try JSONDecoder().decode(ChatThread.self, from: data)
-            return thread
-        } catch {
-            print("❌ Failed to load thread from \(url.lastPathComponent): \(error)")
-            return nil
-        }
-    }
-    
-    func deleteThread(_ thread: ChatThread) {
-        let threadURL = threadsDirectory.appendingPathComponent("\(thread.id.uuidString).json")
-        
-        do {
-            try fileManager.removeItem(at: threadURL)
-            print("🗑️ Deleted thread: \(thread.title)")
-        } catch {
-            print("❌ Failed to delete thread \(thread.title): \(error)")
-        }
-    }
-}
-
-// MARK: - Enhanced Data Models
+// MARK: - Workspace Creation Context
 
 struct WorkspaceCreationContext {
     let messages: [ChatMessage]
@@ -301,4 +189,49 @@ struct WorkspaceCreationContext {
     let intelligentDescription: String
     let existingWorkspaceSuggestions: [Project]
     let conversationSummary: String
+}
+
+// MARK: - Thread Persistence Controller
+
+class ThreadPersistenceController {
+    private let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+    private var threadsDirectory: URL {
+        documentsPath.appendingPathComponent("Arcana/Threads", isDirectory: true)
+    }
+
+    init() {
+        createDirectoryIfNeeded()
+    }
+
+    private func createDirectoryIfNeeded() {
+        try? FileManager.default.createDirectory(at: threadsDirectory, withIntermediateDirectories: true)
+    }
+
+    func loadThreads() -> [ChatThread] {
+        guard let threadFiles = try? FileManager.default.contentsOfDirectory(at: threadsDirectory, includingPropertiesForKeys: nil) else {
+            return []
+        }
+
+        return threadFiles.compactMap { url in
+            guard url.pathExtension == "json",
+                  let data = try? Data(contentsOf: url),
+                  let thread = try? JSONDecoder().decode(ChatThread.self, from: data) else {
+                return nil
+            }
+            return thread
+        }.sorted { $0.lastModified > $1.lastModified }
+    }
+
+    func saveThread(_ thread: ChatThread) {
+        let threadURL = threadsDirectory.appendingPathComponent("\(thread.id.uuidString).json")
+        
+        if let data = try? JSONEncoder().encode(thread) {
+            try? data.write(to: threadURL)
+        }
+    }
+
+    func deleteThread(_ thread: ChatThread) {
+        let threadURL = threadsDirectory.appendingPathComponent("\(thread.id.uuidString).json")
+        try? FileManager.default.removeItem(at: threadURL)
+    }
 }

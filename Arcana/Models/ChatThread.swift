@@ -96,184 +96,187 @@ class ChatThread: ObservableObject, Identifiable, Codable {
     }
     
     func updateThreadIntelligence() {
-        // Update conversation depth
         conversationDepth = messages.count
         
-        // Calculate topic consistency
-        topicConsistency = calculateTopicConsistency()
-        
-        // Calculate user engagement
-        userEngagement = calculateUserEngagement()
-        
-        // Calculate promotion eligibility
-        promotionEligibility = calculatePromotionEligibility()
-        
-        // Update title if needed
-        if messages.count >= 2 && title == "New Conversation" {
-            updateIntelligentTitle()
+        // Calculate topic consistency by analyzing content similarity
+        if messages.count >= 2 {
+            let content = messages.map { $0.content }.joined(separator: " ")
+            let words = Set(content.lowercased().components(separatedBy: .whitespacesAndNewlines))
+            topicConsistency = min(1.0, Double(words.count) / Double(content.count / 10))
         }
+        
+        // Calculate user engagement based on message frequency and length
+        // FIXED: Use isFromUser instead of role
+        let userMessages = messages.filter { $0.isFromUser }
+        if !userMessages.isEmpty {
+            let avgLength = userMessages.map { $0.content.count }.reduce(0, +) / userMessages.count
+            userEngagement = min(1.0, Double(avgLength) / 100.0)
+        }
+        
+        // Update promotion eligibility
+        updatePromotionEligibility()
         
         // Update contextual tags
         updateContextualTags()
         
-        // Detect workspace type
-        detectedType = detectWorkspaceType()
-    }
-    
-    private func calculateTopicConsistency() -> Double {
-        guard messages.count > 2 else { return 0.0 }
-        
-        let userMessages = messages.filter { $0.role == .user }
-        guard userMessages.count > 1 else { return 0.0 }
-        
-        // Simple keyword overlap analysis
-        let allKeywords = userMessages.flatMap { extractKeywords(from: $0.content) }
-        let uniqueKeywords = Set(allKeywords)
-        
-        // More repeated keywords = higher consistency
-        let consistency = Double(allKeywords.count - uniqueKeywords.count) / Double(max(allKeywords.count, 1))
-        return min(1.0, consistency * 2.0) // Scale to 0-1
-    }
-    
-    private func calculateUserEngagement() -> Double {
-        guard messages.count > 0 else { return 0.0 }
-        
-        let userMessages = messages.filter { $0.role == .user }
-        let avgMessageLength = userMessages.reduce(0) { $0 + $1.content.count } / max(userMessages.count, 1)
-        
-        // Longer messages and more turns = higher engagement
-        let lengthScore = min(1.0, Double(avgMessageLength) / 200.0) // Normalize to 0-1
-        let turnScore = min(1.0, Double(messages.count) / 10.0) // Normalize to 0-1
-        
-        return (lengthScore + turnScore) / 2.0
-    }
-    
-    private func calculatePromotionEligibility() -> Double {
-        let depthScore = min(1.0, Double(conversationDepth) / 6.0)
-        let consistencyScore = topicConsistency
-        let engagementScore = userEngagement
-        
-        // Weighted average with emphasis on consistency and engagement
-        return (depthScore * 0.2 + consistencyScore * 0.4 + engagementScore * 0.4)
-    }
-    
-    private func updateIntelligentTitle() {
-        let conversationContent = messages.map { $0.content }.joined(separator: " ")
-        let keywords = extractKeywords(from: conversationContent)
-        
-        if let primaryKeyword = keywords.first {
-            switch detectedType {
-            case .code:
-                title = "\(primaryKeyword) Development"
-            case .creative:
-                title = "\(primaryKeyword) Creative Work"
-            case .research:
-                title = "\(primaryKeyword) Research"
-            case .general:
-                title = "\(primaryKeyword) Discussion"
-            }
-        } else {
-            title = "\(detectedType.displayName) Conversation"
+        // Update title if still default
+        if title == "New Conversation" && messages.count >= 2 {
+            updateIntelligentTitle()
         }
     }
     
-    private func updateContextualTags() {
-        let allContent = messages.map { $0.content }.joined(separator: " ")
-        let keywords = extractKeywords(from: allContent)
-        contextualTags = Array(keywords.prefix(5))
+    private func updatePromotionEligibility() {
+        let depthScore = min(1.0, Double(conversationDepth) / 10.0)
+        let consistencyScore = topicConsistency
+        let engagementScore = userEngagement
+        let lengthScore = messages.map { $0.content.count }.reduce(0, +) > 500 ? 1.0 : 0.5
+        
+        promotionEligibility = (depthScore + consistencyScore + engagementScore + lengthScore) / 4.0
     }
     
-    private func detectWorkspaceType() -> WorkspaceManager.WorkspaceType {
+    private func updateContextualTags() {
+        let allContent = messages.map { $0.content }.joined(separator: " ").lowercased()
+        
+        let codeKeywords = ["code", "function", "variable", "class", "import", "export", "debug", "error", "bug", "syntax"]
+        let creativeKeywords = ["story", "write", "creative", "character", "plot", "narrative", "draft", "edit"]
+        let researchKeywords = ["research", "analysis", "study", "data", "statistics", "survey", "report", "findings"]
+        let businessKeywords = ["business", "strategy", "market", "revenue", "profit", "customer", "sales", "marketing"]
+        
+        contextualTags.removeAll()
+        
+        if codeKeywords.contains(where: { allContent.contains($0) }) {
+            contextualTags.append("Development")
+        }
+        if creativeKeywords.contains(where: { allContent.contains($0) }) {
+            contextualTags.append("Creative")
+        }
+        if researchKeywords.contains(where: { allContent.contains($0) }) {
+            contextualTags.append("Research")
+        }
+        if businessKeywords.contains(where: { allContent.contains($0) }) {
+            contextualTags.append("Business")
+        }
+    }
+    
+    private func updateIntelligentTitle() {
+        // FIXED: Use isFromUser instead of role
+        let userMessages = messages.filter { $0.isFromUser }
+        guard let firstUserMessage = userMessages.first else { return }
+        
+        let content = firstUserMessage.content
+        let words = content.components(separatedBy: .whitespacesAndNewlines)
+        
+        if words.count > 6 {
+            title = words.prefix(6).joined(separator: " ") + "..."
+        } else {
+            title = content.count > 50 ? String(content.prefix(50)) + "..." : content
+        }
+    }
+    
+    // MARK: - Workspace Detection and Promotion
+    
+    // FIXED: Made async and MainActor to handle actor isolation
+    @MainActor
+    func detectWorkspaceType() async -> WorkspaceManager.WorkspaceType {
         let allContent = messages.map { $0.content }.joined(separator: " ")
         return IntelligenceEngine.shared.detectWorkspaceType(from: allContent)
     }
     
-    private func extractKeywords(from content: String) -> [String] {
-        let words = content.components(separatedBy: .whitespacesAndNewlines)
-            .compactMap { word in
-                let cleaned = word.trimmingCharacters(in: .punctuationCharacters).lowercased()
-                return cleaned.count > 3 && !isStopWord(cleaned) ? cleaned.capitalized : nil
-            }
-        
-        let wordCounts = Dictionary(grouping: words, by: { $0 })
-            .mapValues { $0.count }
-            .sorted { $0.value > $1.value }
-        
-        return wordCounts.prefix(5).map { $0.key }
-    }
-    
-    private func isStopWord(_ word: String) -> Bool {
-        let stopWords: Set<String> = [
-            "the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
-            "her", "was", "one", "our", "out", "day", "get", "has", "him", "his",
-            "how", "its", "may", "new", "now", "old", "see", "two", "who", "boy",
-            "did", "what", "with", "have", "this", "will", "been", "from", "they",
-            "she", "when", "where", "why", "some", "that", "there", "their", "would"
-        ]
-        return stopWords.contains(word.lowercased())
-    }
-    
-    // MARK: - Workspace Promotion
-    
     func promoteToWorkspace() -> Project {
-        let workspace = Project(title: title, description: generateWorkspaceDescription())
-        workspaceId = workspace.id
+        let workspace = Project(
+            title: title,
+            description: generateWorkspaceDescription()
+        )
+        
+        // Transfer all conversation history (note: this would require adding conversations property to Project model in the future)
+        // workspace.conversations = messages
+        
+        // Mark this thread as promoted
         isPromotedToWorkspace = true
+        workspaceId = workspace.id
+        
         return workspace
     }
     
     private func generateWorkspaceDescription() -> String {
-        switch detectedType {
-        case .code:
-            return "Development workspace for technical discussions and coding solutions."
-        case .creative:
-            return "Creative workspace for writing, brainstorming, and artistic exploration."
-        case .research:
-            return "Research workspace for analysis, investigation, and knowledge gathering."
-        case .general:
-            return "General workspace for discussions and collaborative thinking."
+        if !summary.isEmpty {
+            return summary
         }
+        
+        let allContent = messages.map { $0.content }.joined(separator: " ")
+        if allContent.count > 200 {
+            return String(allContent.prefix(200)) + "..."
+        }
+        return allContent
     }
     
-    // MARK: - Helper Properties
+    // MARK: - Quality Assessment
     
-    var shouldPromoteToWorkspace: Bool {
-        return !isPromotedToWorkspace && promotionEligibility > 0.6 && conversationDepth >= 4
+    var hasHighQualityContent: Bool {
+        return promotionEligibility > 0.7 && conversationDepth >= 4
     }
     
-    var displayTitle: String {
-        return title == "New Conversation" ? "Quick Chat" : title
+    var isWorkspaceWorthy: Bool {
+        return hasHighQualityContent && topicConsistency > 0.6
     }
     
-    var lastActivity: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.dateTimeStyle = .named
-        return formatter.localizedString(for: lastModified, relativeTo: Date())
-    }
+    // MARK: - Sample Data (for preview/testing)
     
-    var messageCount: String {
-        return "\(messages.count) message\(messages.count == 1 ? "" : "s")"
+    static var sampleThread: ChatThread {
+        let thread = ChatThread()
+        thread.title = "JWT Authentication Help"
+        
+        // FIXED: Use correct ChatMessage initializer with isFromUser
+        let messages = [
+            ChatMessage(content: "I'm having trouble with JWT authentication in my React app", isFromUser: true, threadId: thread.id),
+            ChatMessage(content: "I can help you with JWT authentication! What specific issue are you encountering?", isFromUser: false, threadId: thread.id),
+            ChatMessage(content: "The token keeps expiring and I'm not sure how to handle the refresh properly", isFromUser: true, threadId: thread.id)
+        ]
+        
+        for message in messages {
+            thread.addMessage(message)
+        }
+        
+        return thread
     }
 }
 
-// MARK: - Sample Data for Development
+// MARK: - Thread Extensions for UI
+
 extension ChatThread {
-    static var sampleThread: ChatThread {
-        let thread = ChatThread()
-        thread.title = "React Authentication"
-        thread.detectedType = .code
-        thread.conversationDepth = 6
-        thread.topicConsistency = 0.8
-        thread.userEngagement = 0.7
-        thread.promotionEligibility = 0.75
-        
-        let messages = [
-            ChatMessage(content: "I'm having trouble with JWT authentication in my React app", role: .user, projectId: UUID()),
-            ChatMessage(content: "I can help you with JWT authentication! What specific issue are you encountering?", role: .assistant, projectId: UUID()),
-            ChatMessage(content: "The token keeps expiring and I'm not sure how to handle the refresh properly", role: .user, projectId: UUID())
-        ]
-        
-        messages.forEach { thread.addMessage($0) }
-        return thread
+    var displayTitle: String {
+        return title.isEmpty ? "New Conversation" : title
+    }
+    
+    var lastMessagePreview: String {
+        guard let lastMessage = messages.last else { return "No messages" }
+        let preview = lastMessage.content.count > 60 ? String(lastMessage.content.prefix(60)) + "..." : lastMessage.content
+        return preview
+    }
+    
+    var messageCount: Int {
+        return messages.count
+    }
+    
+    var hasMessages: Bool {
+        return !messages.isEmpty
+    }
+    
+    var promotionBadgeText: String? {
+        if isPromotedToWorkspace {
+            return "Workspace"
+        } else if isWorkspaceWorthy {
+            return "Ready"
+        }
+        return nil
+    }
+    
+    var qualityIndicatorColor: String {
+        switch promotionEligibility {
+        case 0.8...1.0: return "green"
+        case 0.6..<0.8: return "blue"
+        case 0.4..<0.6: return "yellow"
+        default: return "gray"
+        }
     }
 }
