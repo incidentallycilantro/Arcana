@@ -70,7 +70,7 @@ struct InvisibleWorkspaceTypeIndicator: View {
                     Circle()
                         .stroke(typeColor.opacity(0.6), lineWidth: 1)
                 )
-                .help(workspaceType.displayName + " workspace")
+                .help((workspaceType as WorkspaceManager.WorkspaceType).displayName + " workspace")
         } else {
             // In sidebar: only visible on hover or selection
             Text(workspaceType.displayName)

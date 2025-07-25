@@ -496,7 +496,7 @@ struct CalibrationMetrics {
 // MARK: - 🔗 Extensions for Better Integration
 
 extension ConversationContext {
-    var workspaceType: WorkspaceManager.WorkspaceType {
+    var detectedWorkspaceType: WorkspaceManager.WorkspaceType {
         // This would be properly implemented based on your ConversationContext structure
         return .general // Default fallback
     }

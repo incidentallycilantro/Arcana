@@ -7,7 +7,7 @@ import SwiftUI
 struct EnhancedInstantChatView: View {
     @StateObject private var threadManager = ThreadManager.shared
     @StateObject private var predictiveController = PredictiveInputController()
-    @StateObject private var intelligenceEngine = IntelligenceEngine()
+    private let intelligenceEngine = IntelligenceEngine.shared
     
     var currentThread: ChatThread {
         return threadManager.selectedThread ?? threadManager.threads.first ?? ChatThread()
@@ -243,7 +243,7 @@ struct EnhancedInputArea: View {
     @State private var inputText = ""
     @State private var isAssistantTyping = false
     @FocusState private var isInputFocused: Bool
-    @StateObject private var intelligenceEngine = IntelligenceEngine()
+    private let intelligenceEngine = IntelligenceEngine.shared
     @StateObject private var threadManager = ThreadManager.shared
 
     var body: some View {

@@ -12,7 +12,7 @@ class PredictiveInputController: ObservableObject {
     
     private var lastAnalysisTime = Date()
     private let analysisThrottle: TimeInterval = 0.5 // Analyze every 500ms
-    private let intelligenceEngine = IntelligenceEngine()
+    @MainActor private lazy var intelligenceEngine = IntelligenceEngine.shared
     
     // 🧠 BREAKTHROUGH: Predictive Response Generation
     func analyzeInput(

@@ -13,7 +13,7 @@ class ThreadManager: ObservableObject {
     @Published var showWorkspaceCreationDialog = false
     @Published var workspaceCreationContext: WorkspaceCreationContext?
 
-    private let intelligenceEngine = IntelligenceEngine()
+    @MainActor private lazy var intelligenceEngine = IntelligenceEngine.shared
     private let persistenceController = ThreadPersistenceController()
 
     private init() {

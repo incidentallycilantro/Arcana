@@ -7,7 +7,7 @@ import SwiftUI
 struct FluidSidebar: View {
     @StateObject private var threadManager = ThreadManager.shared
     @StateObject private var workspaceManager = WorkspaceManager.shared
-    @StateObject private var intelligenceEngine = IntelligenceEngine()
+    private let intelligenceEngine = IntelligenceEngine.shared
     
     @State private var searchText = ""
     @State private var showingNewWorkspaceSheet = false

@@ -63,7 +63,7 @@ enum VerificationStatus: String, Codable, CaseIterable {
 }
 
 struct FactCheckResult: Codable, Hashable, Identifiable {
-    let id = UUID()
+    var id = UUID()
     let claim: String
     let status: VerificationStatus
     let confidence: Double
@@ -159,7 +159,7 @@ class FactCheckingEngine: ObservableObject {
         let overallAccuracy = calculateOverallAccuracy(results)
         
         // 4. Update state
-        await MainActor.run {
+        Task { @MainActor in
             recentResults = results
             totalFactChecks += results.count
         }

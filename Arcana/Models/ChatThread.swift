@@ -185,7 +185,7 @@ class ChatThread: ObservableObject, Identifiable, Codable {
     
     private func detectWorkspaceType() -> WorkspaceManager.WorkspaceType {
         let allContent = messages.map { $0.content }.joined(separator: " ")
-        return IntelligenceEngine().detectWorkspaceType(from: allContent)
+        return IntelligenceEngine.shared.detectWorkspaceType(from: allContent)
     }
     
     private func extractKeywords(from content: String) -> [String] {

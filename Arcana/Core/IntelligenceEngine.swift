@@ -11,7 +11,7 @@ import OSLog
 @MainActor
 class IntelligenceEngine: ObservableObject {
     // MARK: - Singleton Pattern
-    static let shared = IntelligenceEngine.shared
+    static let shared = IntelligenceEngine()
     
     // MARK: - Published State
     @Published var isProcessing = false
@@ -123,26 +123,16 @@ class IntelligenceEngine: ObservableObject {
             "idea", "concept", "inspiration", "artistic", "creative brief"
         ]
         
-        // Business-related patterns
-        let businessPatterns = [
-            "business", "strategy", "market", "customer", "revenue",
-            "profit", "sales", "marketing", "competition", "analysis",
-            "plan", "proposal", "meeting", "presentation", "report",
-            "kpi", "metrics", "roi", "budget", "financial"
-        ]
-        
         // Calculate scores for each type
         let codeScore = calculatePatternScore(content: lowercaseContent, patterns: codePatterns)
         let researchScore = calculatePatternScore(content: lowercaseContent, patterns: researchPatterns)
         let creativeScore = calculatePatternScore(content: lowercaseContent, patterns: creativePatterns)
-        let businessScore = calculatePatternScore(content: lowercaseContent, patterns: businessPatterns)
         
         // Determine the highest scoring type
         let scores = [
             (WorkspaceManager.WorkspaceType.code, codeScore),
             (WorkspaceManager.WorkspaceType.research, researchScore),
-            (WorkspaceManager.WorkspaceType.creative, creativeScore),
-            (WorkspaceManager.WorkspaceType.business, businessScore)
+            (WorkspaceManager.WorkspaceType.creative, creativeScore)
         ]
         
         let bestMatch = scores.max { $0.1 < $1.1 }
@@ -198,11 +188,6 @@ class IntelligenceEngine: ObservableObject {
             let creativeIndicators = ["story", "creative", "content", "brand", "campaign", "design"]
             let matches = creativeIndicators.filter { content.lowercased().contains($0) }
             return Double(matches.count) / Double(creativeIndicators.count)
-            
-        case .business:
-            let businessIndicators = ["business", "strategy", "market", "revenue", "plan", "analysis"]
-            let matches = businessIndicators.filter { content.lowercased().contains($0) }
-            return Double(matches.count) / Double(businessIndicators.count)
             
         case .general:
             return 0.6 // Moderate confidence for general type
@@ -263,8 +248,6 @@ class IntelligenceEngine: ObservableObject {
             return "Research analysis and academic work"
         case .creative:
             return "Creative writing and content development"
-        case .business:
-            return "Business strategy and professional analysis"
         case .general:
             return "General conversation and assistance"
         }
@@ -371,53 +354,4 @@ struct PromptAnalysisResult {
     let confidence: Double
     let keywords: [String]
     let primaryContext: String?
-}
-
-// MARK: - Workspace Type Extension
-
-extension WorkspaceManager.WorkspaceType {
-    var displayName: String {
-        switch self {
-        case .code:
-            return "Development"
-        case .research:
-            return "Research"
-        case .creative:
-            return "Creative"
-        case .business:
-            return "Business"
-        case .general:
-            return "General"
-        }
-    }
-    
-    var emoji: String {
-        switch self {
-        case .code:
-            return "💻"
-        case .research:
-            return "🔬"
-        case .creative:
-            return "🎨"
-        case .business:
-            return "📊"
-        case .general:
-            return "💬"
-        }
-    }
-    
-    var description: String {
-        switch self {
-        case .code:
-            return "Software development, programming, and technical projects"
-        case .research:
-            return "Research analysis, academic work, and data investigation"
-        case .creative:
-            return "Creative writing, content development, and artistic projects"
-        case .business:
-            return "Business strategy, professional analysis, and corporate planning"
-        case .general:
-            return "General conversations and multi-purpose discussions"
-        }
-    }
 }

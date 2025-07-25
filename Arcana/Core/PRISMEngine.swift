@@ -25,7 +25,7 @@ class PRISMEngine: ObservableObject {
     private let proprietaryCore = PropietaryPRISMCore.shared
     private let quantumMemory = QuantumMemoryManager.shared
     private let modelManager = ModelManager()
-    private let intelligenceEngine = IntelligenceEngine()
+    private let intelligenceEngine = IntelligenceEngine.shared
     
     // MARK: - Revolutionary Ensemble Components
     private let ensembleOrchestrator = EnsembleOrchestrator.shared

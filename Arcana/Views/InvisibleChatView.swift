@@ -12,7 +12,7 @@ struct InvisibleChatView: View {
     @State private var liveWordCount = 0
     @FocusState private var isInputFocused: Bool
     @StateObject private var userSettings = UserSettings.shared
-    @StateObject private var intelligenceEngine = IntelligenceEngine()
+    private let intelligenceEngine = IntelligenceEngine.shared
     @StateObject private var threadManager = ThreadManager.shared
     
     var body: some View {

@@ -168,7 +168,7 @@ struct ChatView: View {
     }
     
     private func loadMessages() {
-        messages = ChatMessage.sampleMessages(for: project.id)
+        messages = []
         lastMessageCount = messages.count
     }
     
@@ -177,7 +177,7 @@ struct ChatView: View {
         guard !trimmedText.isEmpty else { return }
         
         // Add user message
-        let userMessage = ChatMessage(content: trimmedText, role: .user, projectId: project.id)
+        let userMessage = ChatMessage(content: trimmedText, isFromUser: true)
         messages.append(userMessage)
         
         // Scroll to bottom
@@ -206,13 +206,8 @@ struct ChatView: View {
             let randomResponse = responses.randomElement() ?? "I can help you with that."
             
             // Create assistant message with metadata
-            var assistantMessage = ChatMessage(content: randomResponse, role: .assistant, projectId: project.id)
-            assistantMessage.metadata = MessageMetadata(
-                modelUsed: "Mistral-7B",
-                tokensGenerated: Int.random(in: 50...200),
-                responseTime: Double.random(in: 0.5...2.0),
-                wasSpeculative: Bool.random()
-            )
+            var assistantMessage = ChatMessage(content: randomResponse, isFromUser: false)
+            assistantMessage.metadata = MessageMetadata()
             
             withAnimation(.easeOut) {
                 messages.append(assistantMessage)
@@ -364,19 +359,19 @@ struct MessageBubble: View {
     
     var body: some View {
         HStack {
-            if message.role == .user {
+            if message.isFromUser {
                 Spacer()
             }
             
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
+            VStack(alignment: message.isFromUser ? .trailing : .leading, spacing: 4) {
                 Text(message.content)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(message.role == .user ? Color.blue : Color(NSColor.controlBackgroundColor))
+                            .fill(message.isFromUser ? Color.blue : Color(NSColor.controlBackgroundColor))
                     )
-                    .foregroundStyle(message.role == .user ? .white : .primary)
+                    .foregroundStyle(message.isFromUser ? .white : .primary)
                 
                 // Enhanced message metadata
                 HStack(spacing: 4) {
@@ -384,7 +379,7 @@ struct MessageBubble: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     
-                    if showModelInfo && message.role == .assistant {
+                    if showModelInfo && !message.isFromUser {
                         if let metadata = message.metadata {
                             Text("•")
                                 .font(.caption2)
@@ -419,7 +414,7 @@ struct MessageBubble: View {
                 }
                 .padding(.horizontal, 4)
             }
-            .frame(maxWidth: 400, alignment: message.role == .user ? .trailing : .leading)
+            .frame(maxWidth: 400, alignment: message.isFromUser ? .trailing : .leading)
             
             if message.role == .assistant {
                 Spacer()

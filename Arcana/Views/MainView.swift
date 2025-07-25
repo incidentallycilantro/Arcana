@@ -244,7 +244,7 @@ struct FluidInputArea: View {
     
     @State private var inputText = ""
     @FocusState private var isInputFocused: Bool
-    @StateObject private var intelligenceEngine = IntelligenceEngine()
+    private let intelligenceEngine = IntelligenceEngine.shared
     @StateObject private var threadManager = ThreadManager.shared
     
     var body: some View {
