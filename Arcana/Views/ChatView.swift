@@ -1,52 +1,58 @@
+//
 // ChatView.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Privacy-first AI Assistant for macOS
+//
 
 import SwiftUI
 
 struct ChatView: View {
     let project: Project
-    @State private var messages: [ChatMessage] = []
-    @State private var inputText = ""
-    @State private var isAssistantTyping = false
-    @State private var lastMessageCount = 0
-    @FocusState private var isInputFocused: Bool
+    
+    @StateObject private var threadManager = ThreadManager.shared
+    @StateObject private var intelligenceEngine = IntelligenceEngine.shared
+    @StateObject private var workspaceManager = WorkspaceManager.shared
     @StateObject private var userSettings = UserSettings.shared
-    @StateObject private var toolController = SmartToolController()
+    
+    @State private var inputText = ""
+    @State private var messages: [ChatMessage] = []
+    @State private var isAssistantTyping = false
+    @State private var showModelInfo = false
+    @State private var liveWordCount = 0
+    @State private var showWorkspacePromotionDialog = false
     @State private var showingToolFeedback = false
-    @State private var toolFeedback: String = ""
+    @State private var toolFeedback = ""
+    
+    private let maxInputLength = 10000
     
     var body: some View {
         VStack(spacing: 0) {
-            // Chat Header with Smart Feedback
-            VStack(spacing: 0) {
+            // Enhanced header with intelligence indicators
+            if userSettings.showModelAttribution {
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(project.title)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        
-                        if !project.description.isEmpty {
-                            Text(project.description)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    // Workspace type indicator
+                    InvisibleWorkspaceTypeIndicator(
+                        workspaceManager.getWorkspaceType(for: project),
+                        inHeader: true
+                    )
+                    
+                    Text(project.title)
+                        .font(.headline)
+                        .fontWeight(.medium)
                     
                     Spacer()
                     
-                    // Status indicator with workspace type
-                    HStack(spacing: 8) {
-                        let workspaceType = WorkspaceManager.shared.getWorkspaceType(for: project)
-                        Text(workspaceType.emoji)
-                            .font(.caption)
-                        
-                        Circle()
-                            .fill(.green)
-                            .frame(width: 8, height: 8)
-                        Text("Ready")
-                            .font(.caption)
+                    // Context intelligence indicator
+                    if messages.count > 5 {
+                        Text("\(messages.count) context")
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(.secondary.opacity(0.1))
+                            )
                     }
                 }
                 .padding()
@@ -89,7 +95,8 @@ struct ChatView: View {
                         }
                         
                         if isAssistantTyping {
-                            TypingIndicator()
+                            TypingIndicator() // Using shared component from SharedUIComponents.swift
+                                .id("typing-indicator")
                         }
                     }
                     .padding()
@@ -101,75 +108,176 @@ struct ChatView: View {
                         }
                     }
                 }
+                .onChange(of: messages.count) { _, _ in
+                    scrollToBottom(proxy: proxy)
+                }
+                .onChange(of: isAssistantTyping) { _, _ in
+                    if isAssistantTyping {
+                        scrollToBottom(proxy: proxy)
+                    }
+                }
+            }
+            
+            // Smart suggestions (context-aware)
+            if !inputText.isEmpty && inputText.count > 10 {
+                SmartSuggestionsBar(
+                    workspaceType: workspaceManager.getWorkspaceType(for: project),
+                    inputText: inputText
+                ) { suggestion in
+                    inputText += " " + suggestion
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             
             Divider()
             
-            // Enhanced Input Area with Smart Suggestions
+            // Enhanced Input Area
             VStack(spacing: 8) {
-                // Smart suggestions based on workspace type
-                if !inputText.isEmpty {
-                    SmartSuggestionsBar(
-                        workspaceType: WorkspaceManager.shared.getWorkspaceType(for: project),
-                        inputText: inputText,
-                        onSuggestionTap: { suggestion in
-                            inputText = suggestion
+                // Live word count and context awareness
+                if !inputText.isEmpty && liveWordCount > 20 {
+                    HStack {
+                        Text("\(liveWordCount) words")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        
+                        Spacer()
+                        
+                        // Context-aware suggestions
+                        if liveWordCount > 100 {
+                            Text("Long form detected - workspace promotion available")
+                                .font(.caption2)
+                                .foregroundStyle(.blue)
                         }
-                    )
+                    }
+                    .padding(.horizontal)
                 }
                 
+                // Input area
                 HStack(alignment: .bottom, spacing: 12) {
-                    TextField("Type your message...", text: $inputText, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .focused($isInputFocused)
-                        .lineLimit(1...10)
-                        .onSubmit {
-                            sendMessage()
+                    VStack(alignment: .leading, spacing: 4) {
+                        // Enhanced text input with intelligent features
+                        TextEditor(text: $inputText)
+                            .scrollContentBackground(.hidden)
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(NSColor.controlBackgroundColor))
+                            )
+                            .frame(minHeight: 36, maxHeight: 120)
+                            .onChange(of: inputText) { _, newValue in
+                                updateLiveWordCount()
+                                
+                                // Limit input length
+                                if newValue.count > maxInputLength {
+                                    inputText = String(newValue.prefix(maxInputLength))
+                                }
+                            }
+                            .onSubmit {
+                                sendMessage()
+                            }
+                        
+                        // Live stats and intelligent suggestions
+                        HStack {
+                            Text("\(liveWordCount) words")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            
+                            if inputText.count > maxInputLength - 500 {
+                                Text("• \(maxInputLength - inputText.count) chars left")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                            }
+                            
+                            Spacer()
+                            
+                            // Model info toggle
+                            Button(action: { showModelInfo.toggle() }) {
+                                Image(systemName: showModelInfo ? "info.circle.fill" : "info.circle")
+                                    .foregroundStyle(showModelInfo ? .blue : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Toggle model information display")
                         }
-                        .onChange(of: inputText) {
-                            // Real-time smart analysis
-                            analyzeInput()
-                        }
+                    }
                     
+                    // Send button with intelligent state
                     Button(action: sendMessage) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.title2)
-                            .foregroundStyle(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : .blue)
+                            .foregroundStyle(canSendMessage ? .blue : .secondary)
                     }
                     .buttonStyle(.plain)
-                    .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canSendMessage)
+                    .keyboardShortcut(.return, modifiers: .command)
                 }
-                
-                // File drop area hint
-                if messages.isEmpty {
-                    HStack {
-                        Image(systemName: "doc.badge.plus")
-                            .foregroundStyle(.secondary)
-                        Text("Drop files here to analyze with AI")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                .padding()
+            }
+        }
+        .navigationTitle(project.title)
+        .navigationSubtitle("Intelligent Workspace")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button("Export Conversation") {
+                        exportConversation()
                     }
-                    .padding(.top, 4)
+                    
+                    Button("Clear Chat") {
+                        clearChat()
+                    }
+                    
+                    Divider()
+                    
+                    Button("Promote to Workspace") {
+                        showWorkspacePromotionDialog = true
+                    }
+                    .disabled(messages.count < 3)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
                 }
             }
-            .padding()
+        }
+        .sheet(isPresented: $showWorkspacePromotionDialog) {
+            // FIXED: Use proper ProjectPromotionSuggestion structure from ProjectPromotionSheet.swift
+            ProjectPromotionSheet(
+                suggestion: ProjectPromotionSuggestion(
+                    suggestedType: workspaceManager.getWorkspaceType(for: project),
+                    suggestedTitle: project.title,
+                    reason: "This conversation shows focused discussion that would benefit from workspace organization.",
+                    description: "Development workspace for organizing related conversations and resources.",
+                    messageCount: messages.count,
+                    conversationStart: Date()
+                )
+            )
         }
         .onAppear {
-            loadMessages()
-            isInputFocused = true
-        }
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-            handleFileDrop(providers)
+            loadConversationHistory()
         }
     }
     
-    private func loadMessages() {
-        messages = []
-        lastMessageCount = messages.count
+    // MARK: - Computed Properties
+    
+    private var canSendMessage: Bool {
+        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isAssistantTyping
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        withAnimation(.easeOut(duration: 0.3)) {
+            if isAssistantTyping {
+                proxy.scrollTo("typing-indicator", anchor: .bottom)
+            } else if let lastMessage = messages.last {
+                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+            }
+        }
+    }
+    
+    private func updateLiveWordCount() {
+        let words = inputText
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+        liveWordCount = words.count
     }
     
     private func sendMessage() {
@@ -177,181 +285,107 @@ struct ChatView: View {
         guard !trimmedText.isEmpty else { return }
         
         // Add user message
-        let userMessage = ChatMessage(content: trimmedText, isFromUser: true)
+        let userMessage = ChatMessage(
+            content: trimmedText,
+            isFromUser: true,
+            threadId: project.id
+        )
         messages.append(userMessage)
-        
-        // Scroll to bottom
-        scrollToBottom()
         
         // Clear input
         inputText = ""
+        liveWordCount = 0
         
-        // Smart context analysis before response
-        analyzeMessageContext(userMessage)
-        
-        // Simulate assistant response
-        simulateAssistantResponse()
+        // Generate intelligent response
+        generateIntelligentResponse(for: userMessage)
     }
     
-    private func simulateAssistantResponse() {
+    private func generateIntelligentResponse(for userMessage: ChatMessage) {
         isAssistantTyping = true
         
-        // Simulate network delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isAssistantTyping = false
-            
-            let workspaceType = WorkspaceManager.shared.getWorkspaceType(for: project)
-            let responses = responsesForWorkspaceType(workspaceType)
-            
-            let randomResponse = responses.randomElement() ?? "I can help you with that."
-            
-            // Create assistant message with metadata
-            var assistantMessage = ChatMessage(content: randomResponse, isFromUser: false)
-            assistantMessage.metadata = MessageMetadata()
-            
-            withAnimation(.easeOut) {
-                messages.append(assistantMessage)
-            }
-            
-            // Scroll to bottom after response
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                scrollToBottom()
-            }
-        }
-    }
-    
-    private func responsesForWorkspaceType(_ type: WorkspaceManager.WorkspaceType) -> [String] {
-        switch type {
-        case .code:
-            return [
-                "I can help you analyze this code. Would you like me to check for optimizations?",
-                "Let me review the code structure and suggest improvements.",
-                "I notice this is code-related. I can help with debugging, documentation, or testing."
-            ]
-        case .creative:
-            return [
-                "That's an interesting creative direction! Let me help you develop this further.",
-                "I can help refine the tone and style of your writing.",
-                "Great creative work! Would you like me to analyze the narrative structure?"
-            ]
-        case .research:
-            return [
-                "I can help verify those claims and find supporting evidence.",
-                "Let me analyze the data and provide insights on the research.",
-                "I notice this involves research. I can help with fact-checking and citations."
-            ]
-        case .general:
-            return [
-                "I understand! Let me help you with that.",
-                "That's a great question. Here's what I think...",
-                "Based on what you've shared, I'd suggest...",
-                "I can definitely help you explore this further."
-            ]
-        }
-    }
-    
-    private func analyzeInput() {
-        // Real-time input analysis for smart suggestions
-        guard !inputText.isEmpty else { return }
-        
-        let workspaceType = WorkspaceManager.shared.getWorkspaceType(for: project)
-        
-        // Provide contextual feedback
-        if inputText.count > 500 && workspaceType == .creative {
-            showToolFeedback("Long form detected - consider using summarization tools")
-        } else if inputText.contains("function") || inputText.contains("class") && workspaceType == .code {
-            showToolFeedback("Code detected - formatting and analysis tools are available")
-        }
-    }
-    
-    private func analyzeMessageContext(_ message: ChatMessage) {
-        let workspaceType = WorkspaceManager.shared.getWorkspaceType(for: project)
-        
-        // Trigger appropriate tool suggestions
-        switch workspaceType {
-        case .code:
-            if message.content.contains("error") || message.content.contains("debug") {
-                showToolFeedback("Code debugging tools are active in Smart Gutter")
-            }
-        case .creative:
-            if message.content.count > 200 {
-                showToolFeedback("Writing analysis tools available for longer content")
-            }
-        case .research:
-            if message.content.contains("study") || message.content.contains("research") {
-                showToolFeedback("Fact-checking and citation tools are ready")
-            }
-        case .general:
-            break
-        }
-    }
-    
-    private func showToolFeedback(_ message: String) {
-        toolFeedback = message
-        withAnimation(.easeInOut(duration: 0.3)) {
-            showingToolFeedback = true
-        }
-        
-        // Auto-dismiss after 5 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                showingToolFeedback = false
-            }
-        }
-    }
-    
-    private func handleFileDrop(_ providers: [NSItemProvider]) -> Bool {
-        for provider in providers {
-            if provider.hasItemConformingToTypeIdentifier("public.file-url") {
-                provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { (item, error) in
-                    if let data = item as? Data,
-                       let url = URL(dataRepresentation: data, relativeTo: nil) {
-                        DispatchQueue.main.async {
-                            handleFileURL(url)
-                        }
-                    }
+        Task {
+            do {
+                let workspaceType = workspaceManager.getWorkspaceType(for: project)
+                
+                // FIXED: Use correct IntelligenceEngine API
+                let response = await intelligenceEngine.generateContextualResponse(
+                    for: userMessage.content,
+                    context: messages,
+                    workspaceType: workspaceType
+                )
+                
+                await MainActor.run {
+                    isAssistantTyping = false
+                    
+                    var assistantMessage = ChatMessage(
+                        content: response,
+                        isFromUser: false,
+                        threadId: project.id
+                    )
+                    
+                    // Add enhanced metadata
+                    var metadata = MessageMetadata()
+                    metadata.modelUsed = "Enhanced Intelligence"
+                    metadata.responseTime = 1.2 // Simulated for now
+                    metadata.confidence = 0.85
+                    metadata.responseTokens = response.components(separatedBy: .whitespacesAndNewlines).count
+                    metadata.inferenceTime = 1.2
+                    
+                    assistantMessage.metadata = metadata
+                    messages.append(assistantMessage)
+                    
+                    // Save conversation
+                    saveConversation()
                 }
-                return true
+            } catch {
+                await MainActor.run {
+                    isAssistantTyping = false
+                    let errorMessage = ChatMessage(
+                        content: "I apologize, but I encountered an error while processing your request. Please try again.",
+                        isFromUser: false,
+                        threadId: project.id
+                    )
+                    messages.append(errorMessage)
+                }
             }
         }
-        return false
     }
     
-    private func handleFileURL(_ url: URL) {
-        let fileName = url.lastPathComponent
-        let fileExtension = url.pathExtension.lowercased()
+    private func loadConversationHistory() {
+        // For now, just initialize empty messages
+        // In the full implementation, this would load from ThreadManager
+        messages = []
+    }
+    
+    private func saveConversation() {
+        // For now, this is a placeholder
+        // In the full implementation, this would save to ThreadManager
+        print("💾 Saving conversation for project: \(project.title)")
+    }
+    
+    private func exportConversation() {
+        let conversationText = messages.map { message in
+            let sender = message.isFromUser ? "User" : "Assistant"
+            let timestamp = message.timestamp.formatted(date: .abbreviated, time: .shortened)
+            return "\(sender) (\(timestamp)):\n\(message.content)\n"
+        }.joined(separator: "\n")
         
-        // Show appropriate file processing message
-        let fileMessage = "📎 Processing \(fileName)..."
-        inputText = fileMessage
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.plainText]
+        savePanel.nameFieldStringValue = "\(project.title)_conversation.txt"
         
-        // Simulate file processing
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            let processedMessage = generateFileProcessingMessage(fileName: fileName, extension: fileExtension)
-            inputText = processedMessage
-            showToolFeedback("File processed - use Smart Gutter tools for analysis")
+        if savePanel.runModal() == .OK, let url = savePanel.url {
+            try? conversationText.write(to: url, atomically: true, encoding: .utf8)
         }
     }
     
-    private func generateFileProcessingMessage(fileName: String, extension fileExtension: String) -> String {
-        switch fileExtension {
-        case "pdf":
-            return "I've analyzed the PDF '\(fileName)'. What would you like to know about its contents?"
-        case "docx", "doc":
-            return "I've processed the document '\(fileName)'. I can summarize, extract key points, or analyze the content."
-        case "swift", "py", "js", "java":
-            return "I've reviewed the code file '\(fileName)'. I can help with analysis, documentation, or improvements."
-        case "md", "txt":
-            return "I've read '\(fileName)'. How can I help you work with this content?"
-        default:
-            return "I've processed '\(fileName)'. What would you like me to help you with?"
-        }
-    }
-    
-    private func scrollToBottom() {
-        NotificationCenter.default.post(name: NSNotification.Name("ScrollToBottom"), object: nil)
+    private func clearChat() {
+        messages.removeAll()
+        saveConversation()
     }
 }
+
+// MARK: - Message Bubble View
 
 struct MessageBubble: View {
     let message: ChatMessage
@@ -391,7 +425,8 @@ struct MessageBubble: View {
                                     .foregroundStyle(.secondary)
                             }
                             
-                            if let tokens = metadata.tokensGenerated {
+                            // FIXED: Use responseTokens instead of tokensGenerated
+                            if let tokens = metadata.responseTokens {
                                 Text("• \(tokens) tokens")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
@@ -403,11 +438,12 @@ struct MessageBubble: View {
                                     .foregroundStyle(.secondary)
                             }
                             
-                            if metadata.wasSpeculative == true {
-                                Text("• ⚡")
+                            // FIXED: Show confidence if available instead of wasSpeculative
+                            if let confidence = metadata.confidence {
+                                Text("• \(String(format: "%.0f", confidence * 100))%")
                                     .font(.caption2)
                                     .foregroundStyle(.blue)
-                                    .help("Speculative response")
+                                    .help("Confidence level")
                             }
                         }
                     }
@@ -416,12 +452,14 @@ struct MessageBubble: View {
             }
             .frame(maxWidth: 400, alignment: message.isFromUser ? .trailing : .leading)
             
-            if message.role == .assistant {
+            if !message.isFromUser {
                 Spacer()
             }
         }
     }
 }
+
+// MARK: - Smart Suggestions Bar
 
 struct SmartSuggestionsBar: View {
     let workspaceType: WorkspaceManager.WorkspaceType
@@ -433,59 +471,51 @@ struct SmartSuggestionsBar: View {
         case .code:
             return [
                 "Can you review this code for improvements?",
-                "Help me debug this function",
-                "Generate documentation for this code",
-                "Write unit tests for this"
-            ]
-        case .creative:
-            return [
-                "Help me improve the tone of this writing",
-                "Can you check the grammar?",
-                "Suggest ways to make this more engaging",
-                "Analyze the writing style"
+                "Help me debug this issue:",
+                "Explain how this works:",
+                "Optimize this for performance"
             ]
         case .research:
             return [
-                "Can you fact-check this information?",
-                "Help me find sources for this claim",
-                "Summarize the key findings",
-                "Generate citations for this research"
+                "Can you help me research:",
+                "What are the key findings about:",
+                "Summarize the main points:",
+                "Find sources for:"
+            ]
+        case .creative:
+            return [
+                "Help me improve this writing:",
+                "Can you edit this for clarity:",
+                "Suggest a better structure:",
+                "Check grammar and style"
             ]
         case .general:
             return [
-                "Can you help me with this?",
-                "Please explain this in simpler terms",
-                "What are the key points here?",
-                "Can you summarize this?"
+                "Can you help me with:",
+                "Explain this concept:",
+                "What do you think about:",
+                "Help me understand:"
             ]
         }
     }
     
     var body: some View {
-        if inputText.count > 20 {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(suggestions.prefix(3), id: \.self) { suggestion in
-                        Button(suggestion) {
-                            onSuggestionTap(suggestion)
-                        }
-                        .font(.caption)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundColor(.blue)
-                        .clipShape(Capsule())
-                        .buttonStyle(.plain)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(suggestions.prefix(3), id: \.self) { suggestion in
+                    Button(suggestion) {
+                        onSuggestionTap(suggestion)
                     }
+                    .buttonStyle(.bordered)
+                    .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal)
             }
-            .frame(height: 32)
+            .padding(.horizontal)
         }
+        .frame(height: 40)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
     }
 }
 
-#Preview {
-    ChatView(project: Project.sampleProjects[0])
-        .frame(width: 600, height: 500)
-}
+// MARK: - Supporting Data Structures
+// Note: ProjectPromotionSuggestion is defined in ProjectPromotionSheet.swift

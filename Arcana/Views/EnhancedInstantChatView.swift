@@ -1,99 +1,355 @@
+//
 // EnhancedInstantChatView.swift
 // Created by Dylan E. | Spectral Labs
-// Arcana - Privacy-first AI Assistant for macOS
+// Arcana - Revolutionary Instant Chat with Quantum Intelligence
+//
 
 import SwiftUI
 
 struct EnhancedInstantChatView: View {
     @StateObject private var threadManager = ThreadManager.shared
-    @StateObject private var predictiveController = PredictiveInputController()
-    private let intelligenceEngine = IntelligenceEngine.shared
+    @StateObject private var intelligenceEngine = IntelligenceEngine.shared
+    @StateObject private var workspaceManager = WorkspaceManager.shared
     
-    var currentThread: ChatThread {
-        return threadManager.selectedThread ?? threadManager.threads.first ?? ChatThread()
+    @State private var selectedThread: ChatThread?
+    @State private var showingNewConversationDialog = false
+    @State private var isCreatingThread = false
+    
+    var body: some View {
+        NavigationSplitView {
+            // Thread sidebar with intelligent organization
+            InstantThreadSidebar(
+                selectedThread: $selectedThread,
+                showingNewConversationDialog: $showingNewConversationDialog
+            )
+        } detail: {
+            if let thread = selectedThread {
+                ConversationView(thread: thread)
+            } else {
+                // Welcome state
+                EnhancedWelcomeView()
+            }
+        }
+        .navigationTitle("Instant Chat")
+        .sheet(isPresented: $showingNewConversationDialog) {
+            NewConversationDialog { workspaceType in
+                createNewThread(type: workspaceType)
+            }
+        }
+        .onAppear {
+            setupInitialState()
+        }
     }
+    
+    private func setupInitialState() {
+        if threadManager.threads.isEmpty {
+            createNewThread(type: .general)
+        } else {
+            selectedThread = threadManager.threads.first
+        }
+    }
+    
+    private func createNewThread(type: WorkspaceManager.WorkspaceType) {
+        let newThread = threadManager.createNewThread()
+        newThread.detectedType = type
+        selectedThread = newThread
+        showingNewConversationDialog = false
+    }
+}
+
+struct InstantThreadSidebar: View {
+    @StateObject private var threadManager = ThreadManager.shared
+    @Binding var selectedThread: ChatThread?
+    @Binding var showingNewConversationDialog: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            if currentThread.messages.isEmpty {
-                // Welcome state - ready to chat
-                WelcomeState()
-            } else {
-                // Active conversation view
-                ConversationView(thread: currentThread)
+            // Header with new thread button
+            HStack {
+                Text("Conversations")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button {
+                    showingNewConversationDialog = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+                .help("New conversation")
             }
-
+            .padding()
+            
             Divider()
-
-            // Enhanced input with predictive intelligence
-            EnhancedInputArea(
-                thread: currentThread,
-                predictiveController: predictiveController
-            )
+            
+            // Thread list with invisible intelligence
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(threadManager.threads) { thread in
+                        InstantThreadRow(
+                            thread: thread,
+                            isSelected: selectedThread?.id == thread.id
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedThread = thread
+                        }
+                        .contextMenu {
+                            ThreadContextMenu(thread: thread)
+                        }
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            // Quick stats
+            if !threadManager.threads.isEmpty {
+                Text("\(threadManager.threads.count) conversations")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding()
+            }
         }
     }
 }
 
-struct WelcomeState: View {
+struct InstantThreadRow: View {
+    let thread: ChatThread
+    let isSelected: Bool
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Type indicator
+            Text(thread.detectedType.emoji)
+                .font(.title2)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(thread.displayTitle)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                
+                if let lastMessage = thread.messages.last {
+                    Text(lastMessage.content)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(thread.lastActivity)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                
+                if thread.messages.count > 0 {
+                    Text("\(thread.messages.count)")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(.secondary.opacity(0.2))
+                        )
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+        )
+        .contentShape(Rectangle())
+    }
+}
+
+struct ThreadContextMenu: View {
+    let thread: ChatThread
+    @StateObject private var threadManager = ThreadManager.shared
+    
+    var body: some View {
+        Button("Rename") {
+            // TODO: Implement rename
+        }
+        
+        Button("Duplicate") {
+            // TODO: Implement duplicate
+        }
+        
+        Divider()
+        
+        if thread.shouldPromoteToWorkspace {
+            Button("Promote to Workspace") {
+                // TODO: Implement promotion
+            }
+        }
+        
+        Divider()
+        
+        Button("Delete", role: .destructive) {
+            threadManager.deleteThread(thread)
+        }
+    }
+}
+
+struct NewConversationDialog: View {
+    let onWorkspaceTypeSelected: (WorkspaceManager.WorkspaceType) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Start New Conversation")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Text("Choose the type of conversation you'd like to have:")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                ForEach([
+                    WorkspaceManager.WorkspaceType.general,
+                    .code,
+                    .creative,
+                    .research
+                ], id: \.self) { type in
+                    Button {
+                        onWorkspaceTypeSelected(type)
+                    } label: {
+                        VStack(spacing: 8) {
+                            Text(type.emoji)
+                                .font(.largeTitle)
+                            
+                            Text(type.displayName)
+                                .font(.headline)
+                                .fontWeight(.medium)
+                            
+                            Text(type.description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.thinMaterial)
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            
+            HStack {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+                
+                Spacer()
+            }
+        }
+        .padding(24)
+        .frame(width: 480, height: 400)
+    }
+}
+
+struct EnhancedWelcomeView: View {
     var body: some View {
         VStack(spacing: 24) {
-            // Animated welcome icon
-            Image(systemName: "sparkles")
-                .font(.system(size: 48, weight: .ultraLight))
-                .foregroundStyle(.blue.gradient)
-                .symbolEffect(.pulse)
-            
+            // Welcome header
             VStack(spacing: 12) {
-                Text("Ready to think together")
-                    .font(.title2)
-                    .fontWeight(.medium)
+                Image(systemName: "sparkles")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.blue)
                 
-                Text("Start a conversation about anything")
-                    .font(.subheadline)
+                Text("Welcome to Instant Chat")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                
+                Text("Start a conversation or select an existing thread from the sidebar")
+                    .font(.title3)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
             
-            // Feature hints
-            VStack(spacing: 8) {
-                FeatureHint(
-                    icon: "brain.head.profile",
-                    text: "AI suggests workspaces as you chat"
-                )
+            // Quick start suggestions
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Quick Start Ideas:")
+                    .font(.headline)
+                    .fontWeight(.semibold)
                 
-                FeatureHint(
-                    icon: "text.cursor",
-                    text: "Predictive completions help you express ideas"
-                )
-                
-                FeatureHint(
-                    icon: "folder.badge.gearshape",
-                    text: "Conversations organize themselves intelligently"
-                )
+                VStack(alignment: .leading, spacing: 8) {
+                    SuggestionRow(
+                        icon: "swift",
+                        title: "Code Help",
+                        description: "Get assistance with programming and development"
+                    )
+                    
+                    SuggestionRow(
+                        icon: "lightbulb",
+                        title: "Creative Writing",
+                        description: "Brainstorm ideas, write content, or get feedback"
+                    )
+                    
+                    SuggestionRow(
+                        icon: "magnifyingglass",
+                        title: "Research",
+                        description: "Analyze information, find insights, or explore topics"
+                    )
+                    
+                    SuggestionRow(
+                        icon: "message",
+                        title: "General Chat",
+                        description: "Have a casual conversation about anything"
+                    )
+                }
             }
-            .padding(.top, 16)
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.regularMaterial)
+            )
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(40)
     }
 }
 
-struct FeatureHint: View {
+struct SuggestionRow: View {
     let icon: String
-    let text: String
+    let title: String
+    let description: String
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.title3)
                 .foregroundStyle(.blue)
-                .frame(width: 24)
+                .frame(width: 20)
             
-            Text(text)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             
             Spacer()
         }
-        .padding(.horizontal, 32)
     }
 }
 
@@ -162,156 +418,82 @@ struct ConversationHeader: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             
-                            if thread.topicConsistency > 0.6 {
-                                Label("Focused", systemImage: "target")
-                                    .font(.caption)
-                                    .foregroundStyle(.green)
-                            }
+                            Text("•")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             
-                            if thread.shouldPromoteToWorkspace {
-                                Label("Ready for workspace", systemImage: "arrow.up.circle")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                            }
+                            Text("Depth: \(thread.conversationDepth)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
                 
                 Spacer()
-                
-                // Thread actions
-                HStack(spacing: 8) {
-                    if thread.shouldPromoteToWorkspace {
-                        Button("Promote") {
-                            ThreadManager.shared.promoteThreadToWorkspace(thread)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                    
-                    Menu {
-                        Button("Rename Thread") {
-                            // TODO: Implement rename
-                        }
-                        
-                        Button("Export Thread") {
-                            // TODO: Implement export
-                        }
-                        
-                        Divider()
-                        
-                        Button("Delete Thread", role: .destructive) {
-                            ThreadManager.shared.deleteThread(thread)
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .foregroundStyle(.secondary)
-                    }
-                    .menuStyle(.borderlessButton)
-                }
             }
             
-            // Contextual tags
-            if !thread.contextualTags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(thread.contextualTags, id: \.self) { tag in
-                            Text(tag)
-                                .font(.caption2)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(.blue.opacity(0.1))
-                                        .stroke(.blue.opacity(0.3), lineWidth: 0.5)
-                                )
-                                .foregroundStyle(.blue)
-                        }
-                    }
-                    .padding(.horizontal, 4)
-                }
+            // Intelligent conversation summary
+            if !thread.summary.isEmpty {
+                Text(thread.summary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.thinMaterial)
+                    )
             }
         }
-        .padding(.bottom, 8)
+        .padding(.horizontal, 32)
     }
 }
 
-struct EnhancedInputArea: View {
+struct EnhancedInstantInputArea: View {
     let thread: ChatThread
-    @ObservedObject var predictiveController: PredictiveInputController
+    @StateObject private var threadManager = ThreadManager.shared
+    @StateObject private var intelligenceEngine = IntelligenceEngine.shared
     
     @State private var inputText = ""
+    @State private var isInputFocused = false
     @State private var isAssistantTyping = false
-    @FocusState private var isInputFocused: Bool
-    private let intelligenceEngine = IntelligenceEngine.shared
-    @StateObject private var threadManager = ThreadManager.shared
-
+    
     var body: some View {
         VStack(spacing: 8) {
-            // 🚀 BREAKTHROUGH: Contextual suggestions (appear as you type)
-            if !predictiveController.contextualSuggestions.isEmpty && !inputText.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(predictiveController.contextualSuggestions, id: \.self) { suggestion in
-                            Button(suggestion) {
-                                inputText = suggestion
-                            }
-                            .font(.caption)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
-                            .clipShape(Capsule())
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .frame(height: 32)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
-
+            // Smart input with predictive text
             HStack(alignment: .bottom, spacing: 12) {
-                // Enhanced text input with predictive overlay
-                ZStack(alignment: .topLeading) {
-                    TextField("Continue the conversation...", text: $inputText, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .clipShape(RoundedRectangle(cornerRadius: 24))
-                        .focused($isInputFocused)
-                        .lineLimit(1...10)
-                        .onSubmit {
-                            sendMessage()
+                VStack(alignment: .leading, spacing: 4) {
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: $inputText)
+                            .scrollContentBackground(.hidden)
+                            .focused($isInputFocused)
+                            .padding(8)
+                        
+                        // Ghost text for smart suggestions
+                        if inputText.isEmpty {
+                            Text("Ask anything...")
+                                .foregroundStyle(.tertiary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 12)
+                                .allowsHitTesting(false)
                         }
-                        .onChange(of: inputText) {
-                            // 🧠 BREAKTHROUGH: Real-time predictive analysis
-                            predictiveController.analyzeInput(
-                                inputText,
-                                conversationHistory: thread.messages,
-                                workspaceType: thread.detectedType
-                            )
-                        }
+                    }
+                    .frame(minHeight: 36, maxHeight: 120)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(NSColor.controlBackgroundColor))
+                    )
                     
-                    // 🔮 BREAKTHROUGH: Ghost text prediction
-                    if predictiveController.showPrediction && !inputText.isEmpty {
-                        Text(inputText + predictiveController.predictiveText)
-                            .font(.system(.body))
-                            .foregroundStyle(.clear)
-                            .overlay(
-                                Text(predictiveController.predictiveText)
-                                    .font(.system(.body))
-                                    .foregroundStyle(.secondary.opacity(0.6))
-                                    .offset(x: textWidth(inputText))
-                            )
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .allowsHitTesting(false)
-                            .lineLimit(1)
+                    // Live word count
+                    if !inputText.isEmpty {
+                        Text("\(inputText.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count) words")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
-
+                
+                // Send button
                 Button(action: sendMessage) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
@@ -339,8 +521,12 @@ struct EnhancedInputArea: View {
         let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
 
-        // Create and add user message
-        let userMessage = ChatMessage(content: trimmedText, role: .user, projectId: thread.workspaceId ?? UUID())
+        // FIXED: Create user message with correct initializer
+        let userMessage = ChatMessage(
+            content: trimmedText,
+            isFromUser: true,
+            threadId: thread.workspaceId ?? UUID()
+        )
         threadManager.addMessage(userMessage, to: thread)
         
         inputText = ""
@@ -353,27 +539,31 @@ struct EnhancedInputArea: View {
     private func generateResponse(for userMessage: ChatMessage) {
         isAssistantTyping = true
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            isAssistantTyping = false
-            
-            let response = intelligenceEngine.generateContextualResponse(
-                userMessage: userMessage.content,
-                workspaceType: thread.detectedType,
-                conversationHistory: thread.messages
+        Task {
+            // FIXED: Use correct IntelligenceEngine API
+            let response = await intelligenceEngine.generateContextualResponse(
+                for: userMessage.content,
+                context: thread.messages,
+                workspaceType: thread.detectedType
             )
             
-            let assistantMessage = ChatMessage(
-                content: response,
-                role: .assistant,
-                projectId: userMessage.projectId
-            )
-            
-            threadManager.addMessage(assistantMessage, to: thread)
-            
-            // 🎯 BREAKTHROUGH: Evaluate for intelligent workspace creation
-            if thread.messages.count >= 4 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    threadManager.evaluateForWorkspaceCreation(thread.messages)
+            await MainActor.run {
+                isAssistantTyping = false
+                
+                // FIXED: Create assistant message with correct initializer
+                let assistantMessage = ChatMessage(
+                    content: response,
+                    isFromUser: false,
+                    threadId: userMessage.threadId
+                )
+                
+                threadManager.addMessage(assistantMessage, to: thread)
+                
+                // 🎯 BREAKTHROUGH: Evaluate for intelligent workspace creation
+                if thread.messages.count >= 4 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        threadManager.evaluateForWorkspaceCreation(thread.messages)
+                    }
                 }
             }
         }
@@ -394,19 +584,20 @@ struct EnhancedMessageBubble: View {
     
     var body: some View {
         HStack(alignment: .top) {
-            if message.role == .user {
+            // FIXED: Use isFromUser instead of role
+            if message.isFromUser {
                 Spacer()
             }
             
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 6) {
+            VStack(alignment: message.isFromUser ? .trailing : .leading, spacing: 6) {
                 Text(message.content)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(message.role == .user ? .blue : Color(NSColor.controlBackgroundColor))
+                            .fill(message.isFromUser ? .blue : Color(NSColor.controlBackgroundColor))
                     )
-                    .foregroundStyle(message.role == .user ? .white : .primary)
+                    .foregroundStyle(message.isFromUser ? .white : .primary)
                 
                 // Message metadata
                 HStack(spacing: 4) {
@@ -414,7 +605,8 @@ struct EnhancedMessageBubble: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     
-                    if message.role == .assistant {
+                    // FIXED: Use isFromUser instead of role
+                    if !message.isFromUser {
                         if let metadata = message.metadata {
                             if let model = metadata.modelUsed {
                                 Text("• \(model)")
@@ -422,20 +614,21 @@ struct EnhancedMessageBubble: View {
                                     .foregroundStyle(.secondary)
                             }
                             
-                            if metadata.wasSpeculative == true {
-                                Text("• ⚡")
+                            if let confidence = metadata.confidence {
+                                Text("• \(String(format: "%.0f", confidence * 100))%")
                                     .font(.caption2)
                                     .foregroundStyle(.blue)
-                                    .help("Predictive response")
+                                    .help("Confidence level")
                             }
                         }
                     }
                 }
                 .padding(.horizontal, 4)
             }
-            .frame(maxWidth: 500, alignment: message.role == .user ? .trailing : .leading)
+            .frame(maxWidth: 500, alignment: message.isFromUser ? .trailing : .leading)
             
-            if message.role == .assistant {
+            // FIXED: Use isFromUser instead of role
+            if !message.isFromUser {
                 Spacer()
             }
         }
@@ -460,47 +653,48 @@ struct SmartStarterSuggestions: View {
                 "Help me write...",
                 "I need ideas for...",
                 "Can you improve this text?",
-                "What's a better way to say..."
+                "What's a creative approach to..."
             ]
         case .research:
             return [
-                "Help me research...",
-                "What are the implications of...",
+                "I'm researching...",
                 "Can you analyze...",
-                "What evidence supports..."
+                "What are the implications of...",
+                "Help me understand..."
             ]
         case .general:
             return [
-                "Help me brainstorm ideas for...",
-                "I need to understand...",
-                "Can you explain...",
+                "I have a question about...",
+                "Can you help me with...",
+                "I'm curious about...",
                 "What do you think about..."
             ]
         }
     }
-
+    
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 ForEach(suggestions, id: \.self) { suggestion in
                     Button(suggestion) {
                         onSuggestionTap(suggestion)
                     }
                     .font(.caption)
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundColor(.blue)
-                    .clipShape(Capsule())
-                    .buttonStyle(.plain)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(.thinMaterial)
+                    )
+                    .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal)
         }
+        .frame(height: 32)
     }
 }
 
 #Preview {
     EnhancedInstantChatView()
-        .frame(width: 800, height: 600)
 }
