@@ -1,6 +1,8 @@
+//
 // PRISMEngine.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Revolutionary PRISM Unified Intelligence Engine
+//
 
 import Foundation
 import Combine
@@ -25,6 +27,11 @@ class PRISMEngine: ObservableObject {
     private let modelManager = ModelManager()
     private let intelligenceEngine = IntelligenceEngine()
     
+    // MARK: - Revolutionary Ensemble Components
+    private let ensembleOrchestrator = EnsembleOrchestrator.shared
+    private let modelRouter = IntelligentModelRouter.shared
+    private let fusionEngine = ResponseFusionEngine.shared
+    
     // MARK: - Revolutionary Intelligence State
     private var activeInferences: [String: InferenceTask] = [:]
     private var responseQueue: OperationQueue = OperationQueue()
@@ -44,7 +51,7 @@ class PRISMEngine: ObservableObject {
         responseQueue.maxConcurrentOperationCount = maxConcurrentInferences
         responseQueue.qualityOfService = .userInitiated
         
-        logger.info("🎯 PRISMEngine initialized with revolutionary components")
+        logger.info("🎯 PRISMEngine initialized with revolutionary ensemble components")
     }
     
     // MARK: - 🚀 REVOLUTIONARY: Unified Intelligence Interface
@@ -56,32 +63,65 @@ class PRISMEngine: ObservableObject {
         parameters: InferenceParameters? = nil
     ) async throws -> PRISMResponse {
         
-        logger.info("🧠 Starting intelligent response generation")
+        logger.info("🧠 Starting revolutionary ensemble intelligence")
         
         // 1. Pre-analysis and optimization
         let analysisResult = await analyzePromptIntelligence(prompt, context: context, workspaceType: workspaceType)
         
-        // 2. Select optimal model and configuration
-        let modelConfig = await selectOptimalModel(for: analysisResult)
-        
-        // 3. Quantum memory predictive preload
+        // 2. Quantum memory predictive preload
         await quantumMemory.predictivePreload(for: prompt, context: context)
         
-        // 4. Execute inference with performance monitoring
-        let inferenceResult = try await executeOptimizedInference(
-            prompt: prompt,
-            context: context,
-            modelConfig: modelConfig,
-            parameters: parameters ?? InferenceParameters()
-        )
-        
-        // 5. Validate and enhance response
-        let finalResponse = await validateAndEnhanceResponse(
-            result: inferenceResult,
-            analysis: analysisResult
-        )
-        
-        return finalResponse
+        // 3. REVOLUTIONARY: Use ensemble orchestration for superior intelligence
+        do {
+            let ensembleResponse = try await ensembleOrchestrator.orchestrateIntelligentResponse(
+                prompt: prompt,
+                context: context,
+                workspaceType: workspaceType,
+                requiredConfidence: 0.85
+            )
+            
+            // Convert ensemble response to PRISM format
+            let prismResponse = PRISMResponse(
+                response: ensembleResponse.content,
+                confidence: ensembleResponse.confidence,
+                inferenceTime: ensembleResponse.totalInferenceTime,
+                modelUsed: ensembleResponse.contributingModels.joined(separator: "+"),
+                tokensGenerated: Int(ensembleResponse.content.count / 4), // Estimate
+                metadata: PRISMResponseMetadata(
+                    analysis: analysisResult,
+                    computationPath: .ensembleOptimized,
+                    memoryEfficiency: 0.95,
+                    optimizationLevel: .quality
+                )
+            )
+            
+            // Update metrics
+            lastResponseTime = ensembleResponse.totalInferenceTime
+            confidenceScore = ensembleResponse.confidence
+            currentModel = ensembleResponse.contributingModels.joined(separator: "+")
+            
+            logger.info("✅ Ensemble response completed with \(ensembleResponse.contributingModels.count) models")
+            
+            return prismResponse
+            
+        } catch {
+            // FALLBACK: Use single-model inference if ensemble fails
+            logger.warning("⚠️ Ensemble failed, falling back to single model: \(error.localizedDescription)")
+            
+            let modelConfig = await selectOptimalModel(for: analysisResult)
+            
+            let inferenceResult = try await executeOptimizedInference(
+                prompt: prompt,
+                context: context,
+                modelConfig: modelConfig,
+                parameters: parameters ?? InferenceParameters()
+            )
+            
+            return await validateAndEnhanceResponse(
+                result: inferenceResult,
+                analysis: analysisResult
+            )
+        }
     }
     
     func generateStreamingResponse(
@@ -121,35 +161,41 @@ class PRISMEngine: ObservableObject {
     // MARK: - 🎯 Core Inference Engine
     
     func initialize() async throws {
-        logger.info("🚀 Initializing PRISMEngine")
+        logger.info("🚀 Initializing PRISMEngine with revolutionary ensemble")
         
         isProcessing = true
         defer { isProcessing = false }
         
-        // 1. Initialize quantum memory system (use existing optimization)
+        // 1. Initialize quantum memory system
         await quantumMemory.optimizeMemoryAllocation()
         
-        // 2. Initialize proprietary core (use existing method)
+        // 2. Initialize proprietary core
         await proprietaryCore.optimizeWithQuantumMemory()
         
-        // 3. Load available models
+        // 3. Initialize ensemble components
+        logger.info("🎭 Initializing ensemble orchestrator...")
+        // Ensemble components are already initialized as shared instances
+        
+        // 4. Load available models
         availableModels = await modelManager.getAvailableModels()
         currentModel = availableModels.first ?? defaultModelName
         
-        // 4. Warm up system with cache initialization
-        if let testModel = availableModels.first {
-            // Use existing model loading capabilities
-            let _ = try? await proprietaryCore.loadArcanaModel(
-                path: "\(testModel).arcana",
-                modelName: testModel
+        // 5. Warm up system with ensemble test
+        if !availableModels.isEmpty {
+            logger.info("🔥 Warming up ensemble with test inference...")
+            let testContext = ConversationContext()
+            let _ = try? await generateIntelligentResponse(
+                prompt: "Test ensemble initialization",
+                context: testContext,
+                workspaceType: .general
             )
         }
         
-        // 5. Start background optimization
+        // 6. Start background optimization
         startBackgroundOptimization()
         
         isReady = true
-        logger.info("✅ PRISMEngine initialization complete")
+        logger.info("✅ PRISMEngine with revolutionary ensemble ready")
     }
     
     private func selectOptimalModel(for analysis: PromptAnalysis) async -> ModelConfiguration {
@@ -157,24 +203,22 @@ class PRISMEngine: ObservableObject {
         let memoryStatus = quantumMemory.getMemoryStatus()
         let availableRAM = memoryStatus.availableRAM
         
-        // Select model based on complexity and available resources
-        let selectedModel: String
-        let optimizationLevel: OptimizationLevel
+        // Use intelligent model router for selection
+        let optimalModel = await modelRouter.selectOptimalModel(for: analysis, requestedModel: defaultModelName)
         
+        // Determine optimization level based on analysis
+        let optimizationLevel: OptimizationLevel
         switch analysis.complexity {
         case .low:
-            selectedModel = availableRAM > 8000 ? "Phi-2" : "TinyLlama-1B"
             optimizationLevel = .speed
         case .medium:
-            selectedModel = availableRAM > 16000 ? "Mistral-7B" : "Phi-2"
             optimizationLevel = .balanced
         case .high:
-            selectedModel = availableRAM > 32000 ? "CodeLlama-7B" : "Mistral-7B"
             optimizationLevel = .quality
         }
         
         // Determine optimal computation path
-        let computationPath: ComputationPath = {
+        let computationPath: PropietaryPRISMCore.ComputationPath = {
             if availableRAM > 16000 {
                 return .metalAccelerated
             } else if availableRAM > 8000 {
@@ -184,12 +228,10 @@ class PRISMEngine: ObservableObject {
             }
         }()
         
-        // Fixed logger line with proper string conversion
-        let optimizationLevelString = String(describing: optimizationLevel)
-        logger.info("🎯 Selected model: \(selectedModel) with \(optimizationLevelString) optimization")
+        logger.info("🎯 Router selected model: \(optimalModel) with \(String(describing: optimizationLevel)) optimization")
         
         return ModelConfiguration(
-            modelName: selectedModel,
+            modelName: optimalModel,
             optimizationLevel: optimizationLevel,
             computationPath: computationPath,
             memoryBudget: availableRAM
@@ -201,11 +243,9 @@ class PRISMEngine: ObservableObject {
         context: ConversationContext,
         modelConfig: ModelConfiguration,
         parameters: InferenceParameters
-    ) async throws -> InferenceResult {
+    ) async throws -> PropietaryPRISMCore.InferenceResult {
         
-        logger.info("⚡ Executing optimized inference with \(modelConfig.modelName)")
-        
-        let _ = CFAbsoluteTimeGetCurrent()
+        logger.info("⚡ Executing fallback inference with \(modelConfig.modelName)")
         
         // Preload model weights if needed
         await quantumMemory.preloadModelWeights(
@@ -234,16 +274,16 @@ class PRISMEngine: ObservableObject {
         onComplete: @escaping (PRISMResponse) -> Void
     ) async throws {
         
-        // Simulate streaming by chunking response
-        // In real implementation, this would stream tokens from the model
+        logger.info("🌊 Executing streaming inference through ensemble")
         
+        // For streaming, we'll use the ensemble but stream the final result
         let fullResponse = try await generateIntelligentResponse(
             prompt: task.prompt,
             context: task.context,
             workspaceType: task.workspaceType
         )
         
-        // Stream response in chunks
+        // Stream response in chunks to simulate real-time delivery
         let words = fullResponse.response.components(separatedBy: .whitespacesAndNewlines)
         var streamedText = ""
         
@@ -285,7 +325,7 @@ class PRISMEngine: ObservableObject {
     }
     
     private func validateAndEnhanceResponse(
-        result: InferenceResult,
+        result: PropietaryPRISMCore.InferenceResult,
         analysis: PromptAnalysis
     ) async -> PRISMResponse {
         
@@ -300,7 +340,7 @@ class PRISMEngine: ObservableObject {
                 analysis: analysis,
                 computationPath: result.computationPath,
                 memoryEfficiency: result.memoryEfficiency,
-                optimizationLevel: .balanced // This would be passed from model config
+                optimizationLevel: .balanced
             )
         )
         
@@ -368,6 +408,16 @@ class PRISMEngine: ObservableObject {
         )
     }
     
+    func getEnsembleMetrics() -> EnsembleMetrics {
+        // Get metrics from ensemble orchestrator
+        return ensembleOrchestrator.performanceMetrics
+    }
+    
+    func getModelPerformanceScores() -> [String: Double] {
+        // Get performance scores from model router
+        return modelRouter.modelPerformanceScores
+    }
+    
     func clearCache() async {
         await quantumMemory.clearCache()
         await proprietaryCore.clearModelCache()
@@ -379,8 +429,8 @@ class PRISMEngine: ObservableObject {
     private func startBackgroundOptimization() {
         Task.detached(priority: .background) {
             while !Task.isCancelled {
-                // Run optimization every 5 minutes
-                try? await Task.sleep(nanoseconds: 300_000_000_000)
+                // Run optimization every 30 seconds (more frequent for ensemble)
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
                 await self.performanceOptimizer.optimize()
             }
         }
@@ -400,7 +450,7 @@ struct PRISMResponse {
 
 struct PRISMResponseMetadata {
     let analysis: PromptAnalysis
-    let computationPath: ComputationPath
+    let computationPath: PropietaryPRISMCore.ComputationPath
     let memoryEfficiency: Double
     let optimizationLevel: OptimizationLevel
 }
@@ -418,7 +468,7 @@ struct PromptAnalysis {
 struct ModelConfiguration {
     let modelName: String
     let optimizationLevel: OptimizationLevel
-    let computationPath: ComputationPath
+    let computationPath: PropietaryPRISMCore.ComputationPath
     let memoryBudget: Int
 }
 
@@ -456,6 +506,7 @@ enum PRISMEngineError: Error, LocalizedError {
     case modelNotAvailable(String)
     case inferenceError(String)
     case initializationError(String)
+    case ensembleError(String)
     
     var errorDescription: String? {
         switch self {
@@ -465,6 +516,8 @@ enum PRISMEngineError: Error, LocalizedError {
             return "Inference error: \(details)"
         case .initializationError(let details):
             return "Initialization error: \(details)"
+        case .ensembleError(let details):
+            return "Ensemble error: \(details)"
         }
     }
 }
@@ -517,8 +570,17 @@ struct PerformanceRecord {
 extension PRISMEngine {
     /// Integration with existing models
     func enhanceExistingResponse(_ response: String, context: ConversationContext) async -> String {
-        // Enhance responses from existing chat views
-        return response
+        // Enhance responses from existing chat views using ensemble intelligence
+        do {
+            let enhancedResponse = try await generateIntelligentResponse(
+                prompt: "Enhance and improve this response: \(response)",
+                context: context
+            )
+            return enhancedResponse.response
+        } catch {
+            logger.error("❌ Failed to enhance response: \(error.localizedDescription)")
+            return response
+        }
     }
     
     /// Backwards compatibility
@@ -530,5 +592,14 @@ extension PRISMEngine {
         } catch {
             return "Error generating response: \(error.localizedDescription)"
         }
+    }
+    
+    /// Get ensemble status for UI
+    func getEnsembleStatus() -> (isActive: Bool, activeModels: [String], confidence: Double) {
+        return (
+            isActive: ensembleOrchestrator.isEnsembleActive,
+            activeModels: ensembleOrchestrator.activeModels,
+            confidence: ensembleOrchestrator.ensembleConfidence
+        )
     }
 }

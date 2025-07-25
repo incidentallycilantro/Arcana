@@ -163,12 +163,12 @@ class PropietaryPRISMCore: ObservableObject {
         
         return InferenceResult(
             generatedText: result.text,
-            tokensGenerated: result.tokenCount,
-            inferenceTime: inferenceTime,
             confidence: result.confidence,
+            inferenceTime: inferenceTime,
             modelUsed: session.modelName,
-            computationPath: computationPath,
-            memoryEfficiency: result.memoryUsage
+            tokensGenerated: result.tokenCount,
+            memoryEfficiency: result.memoryUsage,
+            computationPath: computationPath
         )
     }
     
@@ -507,6 +507,11 @@ class PropietaryPRISMCore: ObservableObject {
         loadedModels.removeAll()
     }
     
+    func isModelAvailable(_ modelName: String) async -> Bool {
+        return loadedModels.contains(modelName) ||
+               FileManager.default.fileExists(atPath: getModelPath(modelName: modelName))
+    }
+    
     func isModelLoaded(_ modelName: String) -> Bool {
         return loadedModels.contains(modelName)
     }
@@ -654,6 +659,7 @@ enum ComputationPath {
     case coreMLAccelerated
     case cpuOptimized
     case memoryOptimized
+    case ensembleOptimized
 }
 
 enum ModelType: String, Codable {
@@ -774,4 +780,5 @@ extension PropietaryPRISMCore {
         logger.info("🔗 Integrating with PRISMEngine")
         // This will be used when enhancing PRISMEngine.swift
     }
+    
 }

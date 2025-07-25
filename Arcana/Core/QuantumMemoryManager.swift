@@ -758,15 +758,31 @@ enum QueryComplexity {
     case low, medium, high
 }
 
-enum QueryType: String {
-    case code, creative, analytical, general
+enum QueryType: String, Codable, CaseIterable {
+    case general = "general"
+    case coding = "coding"
+    case creative = "creative"
+    case factual = "factual"
+    case analysis = "analysis"
+    case reasoning = "reasoning"
+    case technical = "technical"
+    case debugging = "debugging"
+    case conversational = "conversational"
+    case research = "research"
+    case speed = "speed"
+    case embedding = "embedding"
 }
 
-enum ModelCapability: String, Codable {
-    case textGeneration = "text_generation"
+enum ModelCapability: String, Codable, CaseIterable {
     case codeGeneration = "code_generation"
-    case reasoning = "reasoning"
-    case embedding = "embedding"
+    case syntaxAnalysis = "syntax_analysis"
+    case logicalReasoning = "logical_reasoning"
+    case dataAnalysis = "data_analysis"
+    case creativeWriting = "creative_writing"
+    case storytelling = "storytelling"
+    case factualAccuracy = "factual_accuracy"
+    case knowledgeRetrieval = "knowledge_retrieval"
+    case generalReasoning = "general_reasoning"
 }
 
 enum SegmentIdentifier: String {

@@ -19,6 +19,9 @@
 		1D01F0692E32C215005E1F64 /* FluidSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01F0682E32C215005E1F64 /* FluidSidebar.swift */; };
 		1D1F77A82E33BEFA00D54E2F /* QuantumMemoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77A72E33BEFA00D54E2F /* QuantumMemoryManager.swift */; };
 		1D1F77AA2E33C3EC00D54E2F /* PropietaryPRISMCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77A92E33C3EC00D54E2F /* PropietaryPRISMCore.swift */; };
+		1D1F77AC2E33D18400D54E2F /* EnsembleOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77AB2E33D18400D54E2F /* EnsembleOrchestrator.swift */; };
+		1D1F77AE2E33D18B00D54E2F /* IntelligentModelRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77AD2E33D18B00D54E2F /* IntelligentModelRouter.swift */; };
+		1D1F77B02E33D19200D54E2F /* ResponseFusionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77AF2E33D19200D54E2F /* ResponseFusionEngine.swift */; };
 		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC62E31756700583CBF /* InvisibleChatView.swift */; };
 		1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */; };
@@ -79,6 +82,9 @@
 		1D01F0682E32C215005E1F64 /* FluidSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluidSidebar.swift; sourceTree = "<group>"; };
 		1D1F77A72E33BEFA00D54E2F /* QuantumMemoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuantumMemoryManager.swift; sourceTree = "<group>"; };
 		1D1F77A92E33C3EC00D54E2F /* PropietaryPRISMCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropietaryPRISMCore.swift; sourceTree = "<group>"; };
+		1D1F77AB2E33D18400D54E2F /* EnsembleOrchestrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnsembleOrchestrator.swift; sourceTree = "<group>"; };
+		1D1F77AD2E33D18B00D54E2F /* IntelligentModelRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligentModelRouter.swift; sourceTree = "<group>"; };
+		1D1F77AF2E33D19200D54E2F /* ResponseFusionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseFusionEngine.swift; sourceTree = "<group>"; };
 		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1D549FC62E31756700583CBF /* InvisibleChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvisibleChatView.swift; sourceTree = "<group>"; };
 		1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistenceController.swift; sourceTree = "<group>"; };
@@ -203,6 +209,9 @@
 				1D01F0602E32B8F4005E1F64 /* PredictiveInputController.swift */,
 				1D1F77A72E33BEFA00D54E2F /* QuantumMemoryManager.swift */,
 				1D1F77A92E33C3EC00D54E2F /* PropietaryPRISMCore.swift */,
+				1D1F77AB2E33D18400D54E2F /* EnsembleOrchestrator.swift */,
+				1D1F77AD2E33D18B00D54E2F /* IntelligentModelRouter.swift */,
+				1D1F77AF2E33D19200D54E2F /* ResponseFusionEngine.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -413,6 +422,7 @@
 				1D01F05B2E327227005E1F64 /* IntelligentWorkspaceCreationDialog.swift in Sources */,
 				1DA788592E306CB30095ED87 /* MainView.swift in Sources */,
 				1D01F0612E32B8F4005E1F64 /* PredictiveInputController.swift in Sources */,
+				1D1F77B02E33D19200D54E2F /* ResponseFusionEngine.swift in Sources */,
 				1DA7885F2E306CCD0095ED87 /* TimelineView.swift in Sources */,
 				1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */,
 				1DA788542E306C9B0095ED87 /* AdapterController.swift .swift in Sources */,
@@ -431,8 +441,10 @@
 				1DA7887C2E307FA30095ED87 /* NewProjectSheet.swift in Sources */,
 				1D01F04B2E326A15005E1F64 /* SharedUIComponents.swift in Sources */,
 				1DA788642E306CE60095ED87 /* ChatMessage.swift in Sources */,
+				1D1F77AE2E33D18B00D54E2F /* IntelligentModelRouter.swift in Sources */,
 				1DA788802E3128620095ED87 /* UserSettings.swift in Sources */,
 				1DA788692E306D060095ED87 /* UXAnimations.swift in Sources */,
+				1D1F77AC2E33D18400D54E2F /* EnsembleOrchestrator.swift in Sources */,
 				1D01F05F2E327886005E1F64 /* ThreadManager.swift in Sources */,
 				1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */,
 				1D1F77AA2E33C3EC00D54E2F /* PropietaryPRISMCore.swift in Sources */,
