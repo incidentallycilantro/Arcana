@@ -422,7 +422,7 @@ class EnsembleOrchestrator: ObservableObject {
             prompt: prompt,
             complexity: complexity,
             queryType: hasCodeKeywords ? .coding : (hasResearchKeywords ? .research : .general),
-            workspaceType: WorkspaceManager.WorkspaceManager.WorkspaceType.general,
+            workspaceType: WorkspaceManager.WorkspaceType.general,
             requiredCapabilities: [],
             estimatedTokens: wordCount * 2,
             contextImportance: 1

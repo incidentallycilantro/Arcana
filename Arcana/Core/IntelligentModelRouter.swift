@@ -596,13 +596,6 @@ struct RoutingRecord {
     let timestamp: Date
 }
 
-struct ModelCapabilities {
-    let model: String
-    let specializations: [QueryType: Double]
-    let memoryRequirement: Int
-    let averageInferenceTime: TimeInterval
-}
-
 struct PerformanceMetrics {
     var totalInferences: Int = 0
     var averageConfidence: Double = 0.0

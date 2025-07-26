@@ -136,7 +136,7 @@ enum DayOfWeek: String, Codable, CaseIterable, Hashable {
 // QUALITY & VALIDATION TYPES (AUTHORITATIVE)
 // =====================================================
 
-enum enum ValidationLevel: String, Codable, CaseIterable {
+enum ValidationLevel: String, Codable, CaseIterable {
     case none = "none"
     case basic = "basic"
     case standard = "standard"

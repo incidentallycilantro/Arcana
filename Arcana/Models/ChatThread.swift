@@ -8,8 +8,7 @@
 
 import Foundation
 
-@MainActor
-class ChatThread: ObservableObject, Identifiable, @preconcurrency Codable {
+class ChatThread: ObservableObject, Identifiable, Codable {
     
     // MARK: - Core Properties
     let id = UUID() // FIXED: Removed nonisolated - not needed for let constants
