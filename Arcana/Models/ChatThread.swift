@@ -9,7 +9,7 @@
 import Foundation
 
 @MainActor
-class ChatThread: ObservableObject, Identifiable, Codable {
+class ChatThread: ObservableObject, Identifiable, @preconcurrency Codable {
     
     // MARK: - Core Properties
     let id = UUID() // FIXED: Removed nonisolated - not needed for let constants
@@ -91,7 +91,7 @@ class ChatThread: ObservableObject, Identifiable, Codable {
         case createdAt, preferredTimeContext, optimalEngagementTimes
     }
     
-    required init(from decoder: Decoder) throws {
+    nonisolated required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         // Core properties
@@ -122,7 +122,7 @@ class ChatThread: ObservableObject, Identifiable, Codable {
         self.optimalEngagementTimes = try container.decode([Date].self, forKey: .optimalEngagementTimes)
     }
     
-    func encode(to encoder: Encoder) throws {
+    nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
         // Core properties
@@ -249,7 +249,7 @@ class ChatThread: ObservableObject, Identifiable, Codable {
     
     private func extractKeywords() -> [String] {
         let allText = messages.map { $0.content }.joined(separator: " ")
-        let words = allText.components(separatedBy: .whitespacesAndPunctuationMarkers)
+        let words = allText.components(separatedBy: .whitespacesAndNewlines)
         
         return words.filter { word in
             word.count > 3 && !word.localizedCaseInsensitiveContains("the") &&
@@ -315,12 +315,12 @@ class ChatThread: ObservableObject, Identifiable, Codable {
 
 // MARK: - Hashable Conformance
 
-extension ChatThread: Hashable {
-    func hash(into hasher: inout Hasher) {
+extension ChatThread: @preconcurrency Hashable {
+    nonisolated func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
     
-    static func == (lhs: ChatThread, rhs: ChatThread) -> Bool {
+    nonisolated static func == (lhs: ChatThread, rhs: ChatThread) -> Bool {
         return lhs.id == rhs.id
     }
 }
