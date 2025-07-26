@@ -36,7 +36,6 @@
 		1D1F77D22E356A2A00D54E2F /* ResponseQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77D12E356A2A00D54E2F /* ResponseQuality.swift */; };
 		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC62E31756700583CBF /* InvisibleChatView.swift */; };
-		1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */; };
 		1DA7884A2E306C5A0095ED87 /* ArcanaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA788462E306C5A0095ED87 /* ArcanaApp.swift */; };
 		1DA7884C2E306C5A0095ED87 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1DA788472E306C5A0095ED87 /* Assets.xcassets */; };
 		1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA7884F2E306C8B0095ED87 /* PRISMEngine.swift */; };
@@ -110,7 +109,6 @@
 		1D1F77D12E356A2A00D54E2F /* ResponseQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseQuality.swift; sourceTree = "<group>"; };
 		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1D549FC62E31756700583CBF /* InvisibleChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvisibleChatView.swift; sourceTree = "<group>"; };
-		1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistenceController.swift; sourceTree = "<group>"; };
 		1DA788042E30687B0095ED87 /* Arcana.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Arcana.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DA788122E30687D0095ED87 /* ArcanaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1DA7881C2E30687D0095ED87 /* ArcanaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcanaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -223,7 +221,6 @@
 				1DA7887D2E3120240095ED87 /* WorkspaceManager.swift */,
 				1DA7887F2E3128620095ED87 /* UserSettings.swift */,
 				1D549FC42E316E7000583CBF /* SmartToolController.swift */,
-				1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */,
 				1D01F05C2E327768005E1F64 /* IntelligenceEngine.swift */,
 				1D01F05E2E327886005E1F64 /* ThreadManager.swift */,
 				1D01F0602E32B8F4005E1F64 /* PredictiveInputController.swift */,
@@ -469,7 +466,6 @@
 				1DA7885D2E306CC50095ED87 /* ChatView.swift in Sources */,
 				1DA788562E306CA20095ED87 /* MemoryGraph.swift in Sources */,
 				1DA788622E306CDF0095ED87 /* Project.swift in Sources */,
-				1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */,
 				1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */,
 				1D1F77C02E35420400D54E2F /* ContextualAdaptationEngine.swift in Sources */,
 				1D1F77CC2E35451900D54E2F /* AdapterController.swift in Sources */,
