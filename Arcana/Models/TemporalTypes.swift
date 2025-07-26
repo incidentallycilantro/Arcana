@@ -603,3 +603,38 @@ struct WeeklyOptimization: Codable {
         self.recommendedSchedule = recommendedSchedule
     }
 }
+
+// MARK: - Temporal Predictions (MISSING TYPE DEFINITION)
+
+struct TemporalPrediction: Codable, Identifiable {
+    let id = UUID()
+    let type: PredictionType
+    let content: String
+    let confidence: Double
+    let reasoning: String
+    let temporalContext: String
+    let validityWindow: TimeInterval
+    let timestamp: Date
+    
+    init(type: PredictionType, content: String, confidence: Double, reasoning: String, temporalContext: String, validityWindow: TimeInterval) {
+        self.type = type
+        self.content = content
+        self.confidence = confidence
+        self.reasoning = reasoning
+        self.temporalContext = temporalContext
+        self.validityWindow = validityWindow
+        self.timestamp = Date()
+    }
+    
+    var isValid: Bool {
+        return Date().timeIntervalSinceNow < validityWindow
+    }
+}
+
+enum PredictionType: String, Codable {
+    case taskOriented = "task_oriented"
+    case reflective = "reflective"
+    case seasonal = "seasonal"
+    case energyBased = "energy_based"
+    case patternBased = "pattern_based"
+}

@@ -9,9 +9,6 @@
 import Foundation
 import CryptoKit
 
-// MARK: - Import PrivacyLevel from PrivacyTypes
-typealias PrivacyLevel = PrivacyTypes.PrivacyLevel
-
 @MainActor
 class ZeroKnowledgePrivacy: ObservableObject {
     static let shared = ZeroKnowledgePrivacy()
@@ -155,11 +152,9 @@ class ZeroKnowledgePrivacy: ObservableObject {
         
         // Reconstruct ChatMessage from decrypted data
         return ChatMessage(
-            id: processedMessage.originalId,
             content: decryptedData.content,
-            isUser: decryptedData.metadata["isUser"] == "true",
-            timestamp: processedMessage.timestamp,
-            metadata: decryptedData.metadata
+            isFromUser: decryptedData.metadata["isUser"] == "true",
+            threadId: processedMessage.originalId
         )
     }
     
@@ -181,7 +176,7 @@ class ZeroKnowledgePrivacy: ObservableObject {
         
         // Delete encrypted messages
         for messageId in messageIds {
-            let encryptionDeletion = await localEncryptionManager.deleteMessage(messageId: messageId)
+            let encryptionDeletion = await localEncryptionManager.deleteEncryptedData(messageId: messageId)
             let memoryDeletion = await memoryPoisoningEngine.deleteMessage(messageId: messageId)
             
             deletionResults[messageId] = encryptionDeletion && memoryDeletion
@@ -343,7 +338,11 @@ class ZeroKnowledgePrivacy: ObservableObject {
         return false
     }
     
-    func updatePrivacyLevel(_ level: PrivacyLevel) async {}
+    func updatePrivacyLevel(_ level: PrivacyLevel) async {
+        await localEncryptionManager.updatePrivacyLevel(level)
+        await memoryPoisoningEngine.updatePrivacyLevel(level)
+        privacyLevel = level
+    }
 }
 
 // MARK: - Supporting Stub Classes
@@ -382,66 +381,4 @@ struct DifferentialPrivacyResult {
     let privacyBudget: Double
     let dataUtility: Double
     let privacyGuarantee: String
-}
-
-class LocalEncryptionManager {
-    func initialize() async {}
-    
-    func encryptMessage(content: String, metadata: [String: Any]) async -> EncryptedMessageData {
-        return EncryptedMessageData(
-            encryptedContent: Data(),
-            keyId: UUID(),
-            encryptionAlgorithm: "AES-256-GCM"
-        )
-    }
-    
-    func decryptMessage(encryptedContent: Data, keyId: UUID) async -> DecryptedMessageData? {
-        return DecryptedMessageData(
-            content: "Decrypted content placeholder",
-            metadata: [:]
-        )
-    }
-    
-    func deleteMessage(messageId: UUID) async -> Bool { return true }
-    func validateCompliance() async -> Bool { return true }
-    func performHealthCheck() async -> Bool { return true }
-    func emergencyWipe() async -> Bool { return true }
-}
-
-struct EncryptedMessageData {
-    let encryptedContent: Data
-    let keyId: UUID
-    let encryptionAlgorithm: String
-}
-
-struct DecryptedMessageData {
-    let content: String
-    let metadata: [String: String]
-}
-
-// MARK: - Privacy Metrics
-
-class PrivacyMetrics: ObservableObject {
-    @Published var totalOperations: Int = 0
-    @Published var successfulOperations: Int = 0
-    @Published var averageProcessingTime: Double = 0.0
-    @Published var encryptionHealth: Bool = true
-    @Published var memoryHealth: Bool = true
-    @Published var overallHealth: Bool = true
-    
-    func recordOperation(privacyLevel: PrivacyLevel, processingTime: Double, success: Bool) {
-        totalOperations += 1
-        if success {
-            successfulOperations += 1
-        }
-        
-        // Update rolling average
-        averageProcessingTime = (averageProcessingTime * Double(totalOperations - 1) + processingTime) / Double(totalOperations)
-    }
-    
-    func updateHealth(encryption: Bool, memory: Bool, overall: Bool) {
-        encryptionHealth = encryption
-        memoryHealth = memory
-        overallHealth = overall
-    }
 }

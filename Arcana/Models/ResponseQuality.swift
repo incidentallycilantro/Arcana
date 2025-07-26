@@ -423,7 +423,7 @@ extension Array where Element == ResponseQuality {
     }
     
     /// Get quality distribution
-    var qualityDistribution: [QualityTier: Int] {
+    var tierDistribution: [QualityTier: Int] {
         var distribution: [QualityTier: Int] = [:]
         
         for quality in self {

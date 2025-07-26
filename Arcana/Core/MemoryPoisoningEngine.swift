@@ -8,9 +8,6 @@
 
 import Foundation
 
-// MARK: - Import PrivacyLevel from PrivacyTypes
-typealias PrivacyLevel = PrivacyTypes.PrivacyLevel
-
 @MainActor
 class MemoryPoisoningEngine: ObservableObject {
     
