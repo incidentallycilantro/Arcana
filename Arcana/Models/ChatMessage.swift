@@ -104,13 +104,10 @@ struct ChatMessage: Identifiable, Codable, Hashable {
             return nil
         }
         
+        // Use QualityComparison from UnifiedTypes.swift
         return QualityComparison(
-            message1: self,
-            message2: other,
-            quality1: myQuality,
-            quality2: otherQuality,
-            overallComparison: myQuality.overallScore > otherQuality.overallScore ? .better : .worse,
-            detailedComparison: myQuality.compareWith(otherQuality)
+            first: myQuality.overallScore,
+            second: otherQuality.overallScore
         )
     }
     
@@ -378,31 +375,7 @@ struct MessageMetadata: Codable, Hashable {
 }
 
 // MARK: - Supporting Quality Comparison Structure
-
-struct QualityComparison {
-    let message1: ChatMessage
-    let message2: ChatMessage
-    let quality1: ResponseQuality
-    let quality2: ResponseQuality
-    let overallComparison: ComparisonResult
-    let detailedComparison: [String: ComparisonResult]
-    
-    enum ComparisonResult {
-        case better
-        case worse
-        case equal
-        case unknown
-        
-        var description: String {
-            switch self {
-            case .better: return "Better"
-            case .worse: return "Worse"
-            case .equal: return "Equal"
-            case .unknown: return "Unknown"
-            }
-        }
-    }
-}
+// NOTE: QualityComparison is defined in UnifiedTypes.swift - using that instead
 
 // MARK: - Convenience Static Constructors
 

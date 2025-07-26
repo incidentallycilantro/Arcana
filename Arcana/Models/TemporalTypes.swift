@@ -117,6 +117,7 @@ struct UserPatternMatch {
     }
 }
 
+// FIXED: Added missing 'creativity' case to TemporalRecommendation.RecommendationType
 struct TemporalRecommendation: Identifiable {
     let id = UUID()
     let type: RecommendationType
@@ -130,6 +131,7 @@ struct TemporalRecommendation: Identifiable {
         case seasonal
         case productivity
         case wellness
+        case creativity     // ADDED: Missing case that caused compilation error
     }
     
     enum Priority {
@@ -176,10 +178,12 @@ struct TemporalPrediction {
 
 // MARK: - Activity and Communication Types
 
+// FIXED: Added missing 'analytical' case to ActivityType enum
 enum ActivityType: String, CaseIterable {
     case coding = "coding"
     case creative = "creative"
     case analysis = "analysis"
+    case analytical = "analytical"    // ADDED: Missing case that caused compilation error
     case social = "social"
     case relaxation = "relaxation"
     case routine = "routine"
@@ -204,11 +208,12 @@ enum CommunicationStyle: String, CaseIterable {
 // MARK: - Enhanced CircadianPhase Extension (Non-Conflicting)
 
 extension CircadianPhase {
+    // FIXED: Updated to include new 'analytical' case
     var optimalActivities: [ActivityType] {
         switch self {
         case .dawn: return [.relaxation]
-        case .morning: return [.analysis, .coding]
-        case .midday: return [.analysis, .coding, .creative]
+        case .morning: return [.analysis, .analytical, .coding]  // UPDATED: Added analytical
+        case .midday: return [.analysis, .analytical, .coding, .creative]  // UPDATED: Added analytical
         case .afternoon: return [.creative, .social]
         case .evening: return [.creative, .relaxation]
         case .night, .deepSleep: return [.relaxation]
