@@ -91,16 +91,15 @@ class CircadianOptimizer: ObservableObject {
         // Adjust for user's chronotype
         let adjustedTime = adjustForChronotype(time: timeDecimal)
         
+        // FIXED: Use actual CircadianPhase enum cases that exist in TemporalTypes.swift
         switch adjustedTime {
-        case 5.0..<7.0: return .morningRise
+        case 5.0..<7.0: return .earlyMorningLow      // Was .morningRise
         case 7.0..<9.0: return .morningFocus
         case 9.0..<11.0: return .midMorningPeak
-        case 11.0..<12.0: return .lunchDip
-        case 12.0..<14.0: return .afternoonCreative
-        case 14.0..<16.0: return .afternoonPeak
-        case 16.0..<18.0: return .eveningTransition
-        case 18.0..<20.0: return .eveningReflection
-        case 20.0..<22.0: return .nightWindDown
+        case 11.0..<13.0: return .afternoonCreative  // Was .lunchDip (11-12) + expanded range
+        case 13.0..<16.0: return .afternoonSteady    // Was .afternoonPeak
+        case 16.0..<19.0: return .eveningReflection  // Was .eveningTransition (16-18) + expanded range
+        case 19.0..<22.0: return .eveningReflection  // Was .nightWindDown
         case 22.0..<24.0: return .lateNightLow
         case 0.0..<5.0: return .earlyMorningLow
         default: return .morningFocus
@@ -133,9 +132,9 @@ class CircadianOptimizer: ObservableObject {
         case .lateNightLow, .earlyMorningLow:
             // Use gentle, supportive tone
             optimizedResponse = await applyGentleTone(optimizedResponse)
-        default:
-            // Use balanced tone
-            break
+        case .afternoonSteady:
+            // Use balanced, steady tone
+            optimizedResponse = await applyBalancedTone(optimizedResponse)
         }
         
         return optimizedResponse
@@ -206,6 +205,7 @@ class CircadianOptimizer: ObservableObject {
             case .morningFocus, .midMorningPeak: return 0.1
             case .afternoonCreative: return 0.15
             case .eveningReflection: return 0.05
+            case .afternoonSteady: return 0.08
             default: return 0.0
             }
         }()
@@ -311,6 +311,11 @@ class CircadianOptimizer: ObservableObject {
     
     private func applyGentleTone(_ response: String) async -> String {
         // Apply gentle tone modifications
+        return response
+    }
+    
+    private func applyBalancedTone(_ response: String) async -> String {
+        // Apply balanced tone modifications for afternoon steady periods
         return response
     }
 }
