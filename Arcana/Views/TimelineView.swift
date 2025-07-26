@@ -1,6 +1,8 @@
 // TimelineView.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Privacy-first AI Assistant for macOS
+//
+// DEPENDENCIES: UnifiedTypes.swift, ChatMessage.swift, WorkspaceManager.swift
 
 import SwiftUI
 

@@ -218,7 +218,7 @@ struct NewConversationDialog: View {
                 GridItem(.flexible())
             ], spacing: 16) {
                 ForEach([
-                    WorkspaceManager.WorkspaceType.general,
+                    WorkspaceManager.WorkspaceManager.WorkspaceType.general,
                     .code,
                     .creative,
                     .research

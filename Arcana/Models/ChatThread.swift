@@ -71,7 +71,7 @@ class ChatThread: ObservableObject, @preconcurrency Identifiable, @preconcurrenc
         let decodedMessages = try container.decode([ChatMessage].self, forKey: .messages)
         let decodedLastModified = try container.decode(Date.self, forKey: .lastModified)
         
-        let decodedDetectedType = try container.decode(WorkspaceManager.WorkspaceType.self, forKey: .detectedType)
+        let decodedDetectedType = try container.decode(WorkspaceManager.WorkspaceManager.WorkspaceType.self, forKey: .detectedType)
         let decodedSummary = try container.decode(String.self, forKey: .summary)
         let decodedTags = try container.decode([String].self, forKey: .tags)
         
