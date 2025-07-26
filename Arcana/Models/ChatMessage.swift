@@ -11,7 +11,7 @@ import Foundation
 // MARK: - Chat Message Model
 
 struct ChatMessage: Identifiable, Codable, Hashable {
-    let id = UUID()
+    var id = UUID() // FIXED: Changed from let to var to resolve Codable warning
     var content: String
     var isFromUser: Bool
     var timestamp: Date = Date()
@@ -60,7 +60,7 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     
     /// Get quality tier from metadata
     var qualityTier: QualityTier {
-        guard let score = qualityScore else { return .adequate }
+        guard let score = qualityScore else { return .acceptable } // FIXED: Changed from .adequate to .acceptable
         return QualityTier.fromScore(score)
     }
     
@@ -229,20 +229,49 @@ struct MessageMetadata: Codable, Hashable {
             return nil
         }
         
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        
-        return "Validated by \(validator) at \(formatter.string(from: timestamp))"
-    }
-    
-    /// Get temporal context summary
-    var temporalSummary: String? {
-        return temporalContext?.contextualDescription
+        let timeAgo = DateFormatter.relativeTime.string(from: timestamp)
+        return "Validated by \(validator) \(timeAgo)"
     }
 }
 
-// MARK: - Message Factory Methods
+// MARK: - Performance Summary
+
+struct PerformanceSummary: Codable, Hashable {
+    let responseTime: TimeInterval
+    let confidence: Double
+    let memoryUsage: Int
+    let cacheHitRate: Double
+    
+    var responseTimeText: String {
+        if responseTime < 1.0 {
+            return String(format: "%.0fms", responseTime * 1000)
+        } else {
+            return String(format: "%.1fs", responseTime)
+        }
+    }
+    
+    var confidenceText: String {
+        return String(format: "%.0f%%", confidence * 100)
+    }
+    
+    var memoryUsageText: String {
+        if memoryUsage < 1024 {
+            return "\(memoryUsage)MB"
+        } else {
+            return String(format: "%.1fGB", Double(memoryUsage) / 1024.0)
+        }
+    }
+    
+    var cacheHitRateText: String {
+        return String(format: "%.0f%%", cacheHitRate * 100)
+    }
+    
+    var summaryText: String {
+        return "\(responseTimeText) • \(confidenceText) confidence • \(memoryUsageText)"
+    }
+}
+
+// MARK: - Message Creation Helpers
 
 extension ChatMessage {
     /// Create user message
@@ -383,4 +412,16 @@ extension ChatMessage {
             )
         ]
     }
+}
+
+// MARK: - DateFormatter Extension
+
+extension DateFormatter {
+    static let relativeTime: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        formatter.doesRelativeDateFormatting = true
+        return formatter
+    }()
 }

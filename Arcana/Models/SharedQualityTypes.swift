@@ -99,14 +99,19 @@ struct UncertaintyFactor: Codable, Hashable {
     let description: String
     let severity: Double // 0.0 to 1.0
     let location: String?
-    let confidence: Double
+    let timestamp: Date
     
-    init(type: UncertaintyType, description: String, severity: Double, location: String? = nil, confidence: Double = 0.8) {
+    init(
+        type: UncertaintyType,
+        description: String,
+        severity: Double,
+        location: String? = nil
+    ) {
         self.type = type
         self.description = description
         self.severity = severity
         self.location = location
-        self.confidence = confidence
+        self.timestamp = Date()
     }
     
     var isCritical: Bool {
@@ -121,194 +126,19 @@ struct UncertaintyFactor: Codable, Hashable {
         return severity < 0.5
     }
     
-    var weightedSeverity: Double {
-        return severity * type.severityWeight
-    }
-    
-    var displaySeverity: String {
-        if isCritical {
+    var severityText: String {
+        switch severity {
+        case 0.8...1.0:
             return "Critical"
-        } else if isModerate {
-            return "Moderate"
-        } else {
-            return "Minor"
-        }
-    }
-}
-
-// MARK: - Response Provenance
-
-struct ResponseProvenance: Codable, Hashable {
-    let primaryModel: String
-    let ensembleModels: [String]
-    let validationEngine: String
-    let generationTimestamp: Date
-    let validationDuration: TimeInterval
-    let qualityChecksPassed: Bool
-    let factCheckingPerformed: Bool
-    let confidenceCalibrated: Bool
-    let ensembleStrategy: String?
-    let consensusScore: Double?
-    
-    init(
-        primaryModel: String,
-        ensembleModels: [String] = [],
-        validationEngine: String = "DefaultValidator",
-        generationTimestamp: Date = Date(),
-        validationDuration: TimeInterval = 0.0,
-        qualityChecksPassed: Bool = false,
-        factCheckingPerformed: Bool = false,
-        confidenceCalibrated: Bool = false,
-        ensembleStrategy: String? = nil,
-        consensusScore: Double? = nil
-    ) {
-        self.primaryModel = primaryModel
-        self.ensembleModels = ensembleModels
-        self.validationEngine = validationEngine
-        self.generationTimestamp = generationTimestamp
-        self.validationDuration = validationDuration
-        self.qualityChecksPassed = qualityChecksPassed
-        self.factCheckingPerformed = factCheckingPerformed
-        self.confidenceCalibrated = confidenceCalibrated
-        self.ensembleStrategy = ensembleStrategy
-        self.consensusScore = consensusScore
-    }
-    
-    /// Check if provenance indicates high-quality response
-    var indicatesHighQuality: Bool {
-        return qualityChecksPassed &&
-               factCheckingPerformed &&
-               confidenceCalibrated &&
-               ensembleModels.count > 1
-    }
-    
-    /// Get human-readable generation summary
-    var generationSummary: String {
-        var components: [String] = []
-        
-        if ensembleModels.count > 1 {
-            components.append("\(ensembleModels.count)-model ensemble")
-        } else {
-            components.append("Single model (\(primaryModel))")
-        }
-        
-        if let strategy = ensembleStrategy {
-            components.append(strategy)
-        }
-        
-        if qualityChecksPassed {
-            components.append("quality validated")
-        }
-        
-        if factCheckingPerformed {
-            components.append("fact-checked")
-        }
-        
-        return components.joined(separator: ", ")
-    }
-}
-
-// MARK: - Temporal Context (SINGLE AUTHORITATIVE DEFINITION)
-
-struct TimeContext: Codable, Hashable {
-    let timestamp: Date
-    let timeOfDay: TimeOfDay
-    let dayOfWeek: DayOfWeek
-    let season: Season
-    let userTimezone: TimeZone?
-    let isWeekend: Bool
-    let isBusinessHours: Bool
-    
-    init(
-        timestamp: Date = Date(),
-        userTimezone: TimeZone? = nil
-    ) {
-        self.timestamp = timestamp
-        self.userTimezone = userTimezone ?? TimeZone.current
-        
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: timestamp)
-        let weekday = calendar.component(.weekday, from: timestamp)
-        let month = calendar.component(.month, from: timestamp)
-        
-        // Determine time of day
-        switch hour {
-        case 5..<9:
-            self.timeOfDay = .earlyMorning
-        case 9..<12:
-            self.timeOfDay = .morning
-        case 12..<17:
-            self.timeOfDay = .afternoon
-        case 17..<21:
-            self.timeOfDay = .evening
+        case 0.6..<0.8:
+            return "High"
+        case 0.4..<0.6:
+            return "Medium"
+        case 0.2..<0.4:
+            return "Low"
         default:
-            self.timeOfDay = .night
+            return "Minimal"
         }
-        
-        // Determine day of week
-        switch weekday {
-        case 1: self.dayOfWeek = .sunday
-        case 2: self.dayOfWeek = .monday
-        case 3: self.dayOfWeek = .tuesday
-        case 4: self.dayOfWeek = .wednesday
-        case 5: self.dayOfWeek = .thursday
-        case 6: self.dayOfWeek = .friday
-        case 7: self.dayOfWeek = .saturday
-        default: self.dayOfWeek = .sunday
-        }
-        
-        // Determine season
-        switch month {
-        case 3, 4, 5: self.season = .spring
-        case 6, 7, 8: self.season = .summer
-        case 9, 10, 11: self.season = .fall
-        default: self.season = .winter
-        }
-        
-        self.isWeekend = calendar.isDateInWeekend(timestamp)
-        self.isBusinessHours = hour >= 9 && hour < 17 && !self.isWeekend
-    }
-    
-    // MARK: - Convenience Properties
-    
-    var contextualDescription: String {
-        var components: [String] = []
-        
-        components.append(timeOfDay.rawValue.replacingOccurrences(of: "_", with: " "))
-        components.append("on")
-        components.append(dayOfWeek.rawValue)
-        
-        if isWeekend {
-            components.append("(weekend)")
-        }
-        
-        components.append("in")
-        components.append(season.rawValue)
-        
-        return components.joined(separator: " ").capitalized
-    }
-    
-    var isOptimalForFocus: Bool {
-        return timeOfDay == .morning || (timeOfDay == .afternoon && !isWeekend)
-    }
-    
-    var isOptimalForCreativity: Bool {
-        return timeOfDay == .afternoon || timeOfDay == .evening
-    }
-    
-    var energyLevel: Double {
-        switch timeOfDay {
-        case .earlyMorning: return 0.3
-        case .morning: return 0.9
-        case .afternoon: return 0.8
-        case .evening: return 0.6
-        case .night: return 0.2
-        }
-    }
-    
-    /// Determine if this is an optimal time for complex reasoning
-    var isOptimalForReasoning: Bool {
-        return timeOfDay == .morning || timeOfDay == .afternoon
     }
 }
 
@@ -332,7 +162,7 @@ enum QualityComparison: String, Codable {
         case .slightlyBetter:
             return "Slightly Better"
         case .equivalent:
-            return "Equivalent Quality"
+            return "Equivalent"
         case .slightlyWorse:
             return "Slightly Worse"
         case .moderatelyWorse:
@@ -342,7 +172,26 @@ enum QualityComparison: String, Codable {
         }
     }
     
-    var scoreDelta: Double {
+    var emoji: String {
+        switch self {
+        case .significantlyBetter:
+            return "🚀"
+        case .moderatelyBetter:
+            return "⬆️"
+        case .slightlyBetter:
+            return "↗️"
+        case .equivalent:
+            return "➡️"
+        case .slightlyWorse:
+            return "↘️"
+        case .moderatelyWorse:
+            return "⬇️"
+        case .significantlyWorse:
+            return "⬇️⬇️"
+        }
+    }
+    
+    var scoreDifference: Double {
         switch self {
         case .significantlyBetter:
             return 0.3
@@ -452,33 +301,7 @@ struct ModelPerformanceProfile: Codable, Hashable {
     }
 }
 
-// MARK: - Performance Summary
-
-struct PerformanceSummary: Codable {
-    let responseTime: TimeInterval
-    let confidence: Double
-    let memoryUsage: Int
-    let cacheHitRate: Double
-    
-    var performanceGrade: String {
-        let score = calculatePerformanceScore()
-        switch score {
-        case 0.9...1.0: return "Excellent"
-        case 0.7..<0.9: return "Good"
-        case 0.5..<0.7: return "Average"
-        case 0.3..<0.5: return "Below Average"
-        default: return "Poor"
-        }
-    }
-    
-    private func calculatePerformanceScore() -> Double {
-        let timeScore = responseTime < 2.0 ? 1.0 : max(0.0, 1.0 - (responseTime - 2.0) / 10.0)
-        let confidenceScore = confidence
-        let cacheScore = cacheHitRate
-        
-        return (timeScore + confidenceScore + cacheScore) / 3.0
-    }
-}
+// MARK: - REMOVED DUPLICATE PerformanceSummary - Use definition from ChatMessage.swift
 
 // MARK: - Quality Standards
 
@@ -500,42 +323,214 @@ struct QualityStandards {
                uncertaintyCount <= maxUncertaintyFactors &&
                (confidence ?? 0.0) >= minimumConfidence
     }
+    
+    static func getQualityGrade(score: Double) -> String {
+        switch score {
+        case excellenceStandardScore...1.0:
+            return "Excellent"
+        case professionalStandardScore..<excellenceStandardScore:
+            return "Professional"
+        case minimumAcceptableScore..<professionalStandardScore:
+            return "Acceptable"
+        default:
+            return "Needs Improvement"
+        }
+    }
 }
 
-// MARK: - Quality Metrics
+// MARK: - Response Provenance Types
 
-struct QualityMetrics: Codable {
-    let accuracyScore: Double
-    let completenessScore: Double
-    let clarityScore: Double
-    let relevanceScore: Double
-    let consistencyScore: Double
+struct ResponseProvenance: Codable, Hashable {
+    let primaryModel: String
+    let ensembleModels: [String]
+    let validationEngine: String
+    let generationTimestamp: Date
+    let validationDuration: TimeInterval
+    let qualityChecksPassed: Bool
+    let factCheckingPerformed: Bool
+    let confidenceCalibrated: Bool
+    let ensembleStrategy: String?
+    let consensusScore: Double?
     
-    var overallScore: Double {
-        return (accuracyScore + completenessScore + clarityScore + relevanceScore + consistencyScore) / 5.0
+    init(
+        primaryModel: String,
+        ensembleModels: [String] = [],
+        validationEngine: String = "DefaultValidator",
+        generationTimestamp: Date = Date(),
+        validationDuration: TimeInterval = 0.0,
+        qualityChecksPassed: Bool = false,
+        factCheckingPerformed: Bool = false,
+        confidenceCalibrated: Bool = false,
+        ensembleStrategy: String? = nil,
+        consensusScore: Double? = nil
+    ) {
+        self.primaryModel = primaryModel
+        self.ensembleModels = ensembleModels
+        self.validationEngine = validationEngine
+        self.generationTimestamp = generationTimestamp
+        self.validationDuration = validationDuration
+        self.qualityChecksPassed = qualityChecksPassed
+        self.factCheckingPerformed = factCheckingPerformed
+        self.confidenceCalibrated = confidenceCalibrated
+        self.ensembleStrategy = ensembleStrategy
+        self.consensusScore = consensusScore
     }
     
-    var topStrength: String {
-        let scores = [
-            ("Accuracy", accuracyScore),
-            ("Completeness", completenessScore),
-            ("Clarity", clarityScore),
-            ("Relevance", relevanceScore),
-            ("Consistency", consistencyScore)
-        ]
-        
-        return scores.max(by: { $0.1 < $1.1 })?.0 ?? "Unknown"
+    /// Check if provenance indicates high-quality response
+    var indicatesHighQuality: Bool {
+        return qualityChecksPassed &&
+               factCheckingPerformed &&
+               confidenceCalibrated &&
+               ensembleModels.count > 1
     }
     
-    var improvementAreas: [String] {
-        let scores = [
-            ("Accuracy", accuracyScore),
-            ("Completeness", completenessScore),
-            ("Clarity", clarityScore),
-            ("Relevance", relevanceScore),
-            ("Consistency", consistencyScore)
-        ]
+    /// Get human-readable generation summary
+    var generationSummary: String {
+        var components: [String] = []
         
-        return scores.filter { $0.1 < 0.7 }.map { $0.0 }
+        if ensembleModels.count > 1 {
+            components.append("\(ensembleModels.count)-model ensemble")
+        } else {
+            components.append("Single model (\(primaryModel))")
+        }
+        
+        if let strategy = ensembleStrategy {
+            components.append(strategy)
+        }
+        
+        if qualityChecksPassed {
+            components.append("quality validated")
+        }
+        
+        if factCheckingPerformed {
+            components.append("fact-checked")
+        }
+        
+        return components.joined(separator: ", ")
+    }
+}
+
+// MARK: - Temporal Context (SINGLE AUTHORITATIVE DEFINITION)
+
+struct TimeContext: Codable, Hashable {
+    let timestamp: Date
+    let timeOfDay: TimeOfDay
+    let dayOfWeek: DayOfWeek
+    let season: Season
+    let userTimezone: TimeZone?
+    let isWeekend: Bool
+    let isBusinessHours: Bool
+    
+    init(
+        timestamp: Date = Date(),
+        userTimezone: TimeZone? = nil
+    ) {
+        self.timestamp = timestamp
+        self.userTimezone = userTimezone ?? TimeZone.current
+        
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: timestamp)
+        let weekday = calendar.component(.weekday, from: timestamp)
+        let month = calendar.component(.month, from: timestamp)
+        
+        // Determine time of day
+        self.timeOfDay = {
+            switch hour {
+            case 4..<10: return .earlyMorning
+            case 10..<12: return .morning
+            case 12..<17: return .afternoon
+            case 17..<21: return .evening
+            default: return .night
+            }
+        }()
+        
+        // Determine day of week
+        self.dayOfWeek = {
+            switch weekday {
+            case 1: return .sunday
+            case 2: return .monday
+            case 3: return .tuesday
+            case 4: return .wednesday
+            case 5: return .thursday
+            case 6: return .friday
+            case 7: return .saturday
+            default: return .monday
+            }
+        }()
+        
+        // Determine season (Northern Hemisphere)
+        self.season = {
+            switch month {
+            case 12, 1, 2: return .winter
+            case 3, 4, 5: return .spring
+            case 6, 7, 8: return .summer
+            case 9, 10, 11: return .fall
+            default: return .spring
+            }
+        }()
+        
+        // Determine if weekend
+        self.isWeekend = weekday == 1 || weekday == 7
+        
+        // Determine if business hours (9 AM - 5 PM, weekdays)
+        self.isBusinessHours = !isWeekend && hour >= 9 && hour < 17
+    }
+    
+    var displayText: String {
+        let timeText = timeOfDay.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
+        let dayText = dayOfWeek.rawValue.capitalized
+        return "\(timeText), \(dayText)"
+    }
+    
+    var isOptimalWorkTime: Bool {
+        return isBusinessHours && timeOfDay == .morning
+    }
+}
+
+// MARK: - Context-Aware Quality Assessment
+
+struct ContextualQualityMetrics: Codable {
+    let baseQualityScore: Double
+    let temporalAdjustment: Double
+    let userPreferenceAlignment: Double
+    let contextRelevance: Double
+    let adaptationQuality: Double
+    
+    var adjustedQualityScore: Double {
+        let adjustments = temporalAdjustment + userPreferenceAlignment + contextRelevance + adaptationQuality
+        return min(max(baseQualityScore + adjustments, 0.0), 1.0)
+    }
+    
+    var contextualGrade: String {
+        return QualityStandards.getQualityGrade(score: adjustedQualityScore)
+    }
+}
+
+// MARK: - Extension Helpers
+
+extension TimeOfDay {
+    var isWorkTime: Bool {
+        return self == .morning || self == .afternoon
+    }
+    
+    var energyLevel: Double {
+        switch self {
+        case .earlyMorning: return 0.4
+        case .morning: return 0.9
+        case .afternoon: return 0.7
+        case .evening: return 0.5
+        case .night: return 0.3
+        }
+    }
+}
+
+extension Season {
+    var emoji: String {
+        switch self {
+        case .spring: return "🌸"
+        case .summer: return "☀️"
+        case .fall: return "🍂"
+        case .winter: return "❄️"
+        }
     }
 }
