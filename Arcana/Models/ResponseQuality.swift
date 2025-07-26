@@ -167,6 +167,68 @@ struct ResponseQuality: Codable, Hashable {
         
         return components.joined(separator: ", ")
     }
+    
+    /// ADDED: Generate improvement suggestions based on quality metrics
+    func generateImprovementSuggestions() -> [String] {
+        var suggestions: [String] = []
+        
+        // Overall score improvements
+        if overallScore < 0.6 {
+            suggestions.append("Consider revising the response for better clarity and completeness")
+        }
+        
+        // Content quality improvements
+        if contentQuality < 0.7 {
+            suggestions.append("Enhance content structure and organization")
+        }
+        
+        // Factual accuracy improvements
+        if factualAccuracy < 0.8 {
+            suggestions.append("Verify facts and add reliable sources")
+        }
+        
+        // Relevance improvements
+        if relevance < 0.7 {
+            suggestions.append("Focus more directly on the user's specific question")
+        }
+        
+        // Coherence improvements
+        if coherence < 0.7 {
+            suggestions.append("Improve logical flow and connection between ideas")
+        }
+        
+        // Completeness improvements
+        if completeness < 0.7 {
+            suggestions.append("Provide more comprehensive coverage of the topic")
+        }
+        
+        // Clarity improvements
+        if clarity < 0.7 {
+            suggestions.append("Use simpler language and clearer explanations")
+        }
+        
+        // Confidence-related suggestions
+        if calibratedConfidence < 0.6 {
+            suggestions.append("Add confidence indicators and acknowledge uncertainties")
+        }
+        
+        // Uncertainty-specific suggestions
+        if uncertaintyScore > 0.5 {
+            suggestions.append("Address identified uncertainties with additional context")
+        }
+        
+        // Critical uncertainty handling
+        if hasCriticalUncertainties {
+            suggestions.append("⚠️ Review and resolve critical uncertainties before finalizing")
+        }
+        
+        // Model-specific suggestions
+        if modelContributions.count == 1 {
+            suggestions.append("Consider using ensemble validation for improved accuracy")
+        }
+        
+        return suggestions.isEmpty ? ["Response quality is good - no specific improvements needed"] : suggestions
+    }
 }
 
 // MARK: - Quality Tiers
@@ -227,6 +289,58 @@ enum QualityTier: String, Codable, CaseIterable {
         case .poor:
             return 0.0
         }
+    }
+    
+    /// ADDED: Create QualityTier from numerical score
+    static func fromScore(_ score: Double) -> QualityTier {
+        switch score {
+        case 0.9...1.0:
+            return .excellent
+        case 0.8..<0.9:
+            return .good
+        case 0.6..<0.8:
+            return .acceptable
+        default:
+            return .poor
+        }
+    }
+    
+    /// Get minimum score threshold for this tier
+    var minimumScore: Double {
+        switch self {
+        case .excellent: return 0.9
+        case .good: return 0.8
+        case .acceptable: return 0.6
+        case .poor: return 0.0
+        }
+    }
+    
+    /// Get maximum score threshold for this tier
+    var maximumScore: Double {
+        switch self {
+        case .excellent: return 1.0
+        case .good: return 0.899
+        case .acceptable: return 0.799
+        case .poor: return 0.599
+        }
+    }
+    
+    /// Check if score falls within this tier
+    func contains(score: Double) -> Bool {
+        return score >= minimumScore && score <= maximumScore
+    }
+}
+
+// MARK: - Validation Level
+
+enum ValidationLevel: String, Codable {
+    case basic = "basic"
+    case standard = "standard"
+    case comprehensive = "comprehensive"
+    case research = "research"
+    
+    var displayName: String {
+        return rawValue.capitalized
     }
 }
 

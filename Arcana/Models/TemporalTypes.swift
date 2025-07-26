@@ -116,95 +116,21 @@ enum CircadianPhase: String, Codable, CaseIterable {
     }
 }
 
-enum ActivityType: String, Codable, CaseIterable {
-    case creative = "creative"
-    case analytical = "analytical"
-    case communication = "communication"
-    case planning = "planning"
-    case learning = "learning"
-    case writing = "writing"
-    case problemSolving = "problem_solving"
-    case research = "research"
-    case meetings = "meetings"
-    case collaboration = "collaboration"
-    case routine = "routine"
-    case administrative = "administrative"
-    case organization = "organization"
-    case synthesis = "synthesis"
-    case brainstorming = "brainstorming"
-    case reflection = "reflection"
-    case review = "review"
-    case social = "social"
-    case relaxation = "relaxation"
-    case analysis = "analysis"
-    
-    var displayName: String {
-        switch self {
-        case .creative: return "Creative Work"
-        case .analytical: return "Analytical Tasks"
-        case .communication: return "Communication"
-        case .planning: return "Planning"
-        case .learning: return "Learning"
-        case .writing: return "Writing"
-        case .problemSolving: return "Problem Solving"
-        case .research: return "Research"
-        case .meetings: return "Meetings"
-        case .collaboration: return "Collaboration"
-        case .routine: return "Routine Tasks"
-        case .administrative: return "Administrative Work"
-        case .organization: return "Organization"
-        case .synthesis: return "Synthesis"
-        case .brainstorming: return "Brainstorming"
-        case .reflection: return "Reflection"
-        case .review: return "Review"
-        case .social: return "Social Activities"
-        case .relaxation: return "Relaxation"
-        case .analysis: return "Analysis"
-        }
-    }
-}
+// MARK: - CircadianPhase Extensions
 
-struct CommunicationStyle: Codable {
-    let verbosity: Verbosity
-    let tone: Tone
-    let detailLevel: DetailLevel
-    let urgencyLevel: UrgencyLevel
-    
-    // FIXED: Add missing static properties
-    static var brief: CommunicationStyle {
-        return CommunicationStyle(
-            verbosity: .concise,
-            tone: .professional,
-            detailLevel: .brief,
-            urgencyLevel: .medium
-        )
+extension CircadianPhase {
+    func isOptimalForActivity(_ activity: ActivityType) -> Bool {
+        return optimalActivities.contains(activity)
     }
     
-    static var conversational: CommunicationStyle {
-        return CommunicationStyle(
-            verbosity: .balanced,
-            tone: .friendly,
-            detailLevel: .standard,
-            urgencyLevel: .low
-        )
+    func getActivityRecommendations() -> [ActivityType] {
+        return optimalActivities
     }
     
-    static var detailed: CommunicationStyle {
-        return CommunicationStyle(
-            verbosity: .verbose,
-            tone: .professional,
-            detailLevel: .comprehensive,
-            urgencyLevel: .low
-        )
+    func getEnergyDescription() -> String {
+        let percentage = Int(energyLevel * 100)
+        return "\(percentage)% energy"
     }
-}
-
-enum Verbosity: String, Codable {
-    case concise, balanced, verbose
-}
-
-enum Tone: String, Codable {
-    case professional, friendly, casual, formal
 }
 
 // MARK: - Enhanced Temporal Context
@@ -267,6 +193,14 @@ struct TemporalRecommendation: Codable, Identifiable {
     }
 }
 
+// FIXED: UUID Codable warning - exclude id from decoding
+extension TemporalRecommendation {
+    enum CodingKeys: String, CodingKey {
+        case type, title, message, confidence, action, timestamp
+        // Note: 'id' is excluded - will be generated fresh on decode
+    }
+}
+
 enum RecommendationType: String, Codable {
     case circadian = "circadian"
     case seasonal = "seasonal"
@@ -286,21 +220,99 @@ enum RecommendationAction: String, Codable {
     case suggestReflection = "suggest_reflection"
 }
 
-// MARK: - CircadianPhase Extensions
+// MARK: - Activity Types
 
-extension CircadianPhase {
-    func isOptimalForActivity(_ activity: ActivityType) -> Bool {
-        return optimalActivities.contains(activity)
+enum ActivityType: String, Codable, CaseIterable {
+    case creative = "creative"
+    case analytical = "analytical"
+    case communication = "communication"
+    case planning = "planning"
+    case learning = "learning"
+    case writing = "writing"
+    case problemSolving = "problem_solving"
+    case research = "research"
+    case meetings = "meetings"
+    case collaboration = "collaboration"
+    case routine = "routine"
+    case administrative = "administrative"
+    case organization = "organization"
+    case synthesis = "synthesis"
+    case brainstorming = "brainstorming"
+    case reflection = "reflection"
+    case review = "review"
+    case social = "social"
+    case relaxation = "relaxation"
+    case analysis = "analysis"
+    
+    var displayName: String {
+        switch self {
+        case .creative: return "Creative Work"
+        case .analytical: return "Analytical Tasks"
+        case .communication: return "Communication"
+        case .planning: return "Planning"
+        case .learning: return "Learning"
+        case .writing: return "Writing"
+        case .problemSolving: return "Problem Solving"
+        case .research: return "Research"
+        case .meetings: return "Meetings"
+        case .collaboration: return "Collaboration"
+        case .routine: return "Routine Tasks"
+        case .administrative: return "Administrative Work"
+        case .organization: return "Organization"
+        case .synthesis: return "Synthesis"
+        case .brainstorming: return "Brainstorming"
+        case .reflection: return "Reflection"
+        case .review: return "Review"
+        case .social: return "Social Activities"
+        case .relaxation: return "Relaxation"
+        case .analysis: return "Analysis"
+        }
+    }
+}
+
+// MARK: - Communication Style
+
+struct CommunicationStyle: Codable {
+    let verbosity: Verbosity
+    let tone: Tone
+    let detailLevel: DetailLevel
+    let urgencyLevel: UrgencyLevel
+    
+    // FIXED: Add missing static properties
+    static var brief: CommunicationStyle {
+        return CommunicationStyle(
+            verbosity: .concise,
+            tone: .professional,
+            detailLevel: .brief,
+            urgencyLevel: .medium
+        )
     }
     
-    func getActivityRecommendations() -> [ActivityType] {
-        return optimalActivities
+    static var conversational: CommunicationStyle {
+        return CommunicationStyle(
+            verbosity: .balanced,
+            tone: .friendly,
+            detailLevel: .standard,
+            urgencyLevel: .low
+        )
     }
     
-    func getEnergyDescription() -> String {
-        let percentage = Int(energyLevel * 100)
-        return "\(percentage)% energy"
+    static var detailed: CommunicationStyle {
+        return CommunicationStyle(
+            verbosity: .verbose,
+            tone: .professional,
+            detailLevel: .comprehensive,
+            urgencyLevel: .low
+        )
     }
+}
+
+enum Verbosity: String, Codable {
+    case concise, balanced, verbose
+}
+
+enum Tone: String, Codable {
+    case professional, friendly, casual, formal
 }
 
 // MARK: - Circadian Types for CircadianOptimizer
@@ -337,6 +349,14 @@ struct EnergyForecastPoint: Codable, Identifiable {
     }
 }
 
+// FIXED: UUID Codable warning - exclude id from decoding
+extension EnergyForecastPoint {
+    enum CodingKeys: String, CodingKey {
+        case time, energyLevel, phase, activities
+        // Note: 'id' is excluded - will be generated fresh on decode
+    }
+}
+
 struct ActivityWindow: Codable, Identifiable {
     let id = UUID()
     let activity: ActivityType
@@ -351,6 +371,14 @@ struct ActivityWindow: Codable, Identifiable {
         self.endTime = endTime
         self.energyLevel = energyLevel
         self.confidence = confidence
+    }
+}
+
+// FIXED: UUID Codable warning - exclude id from decoding
+extension ActivityWindow {
+    enum CodingKeys: String, CodingKey {
+        case activity, startTime, endTime, energyLevel, confidence
+        // Note: 'id' is excluded - will be generated fresh on decode
     }
 }
 
@@ -392,6 +420,14 @@ struct TemporalPattern: Codable, Identifiable {
         self.frequency = frequency
         self.confidence = confidence
         self.metadata = metadata
+    }
+}
+
+// FIXED: UUID Codable warning - exclude id from decoding
+extension TemporalPattern {
+    enum CodingKeys: String, CodingKey {
+        case patternType, timeRange, frequency, confidence, metadata
+        // Note: 'id' is excluded - will be generated fresh on decode
     }
 }
 
@@ -457,6 +493,14 @@ struct TemporalPrediction: Codable, Identifiable {
     
     var isValid: Bool {
         return Date().timeIntervalSince(timestamp) < validityWindow
+    }
+}
+
+// FIXED: UUID Codable warning - exclude id from decoding
+extension TemporalPrediction {
+    enum CodingKeys: String, CodingKey {
+        case type, content, confidence, reasoning, temporalContext, validityWindow, timestamp
+        // Note: 'id' is excluded - will be generated fresh on decode
     }
 }
 
