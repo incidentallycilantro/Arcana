@@ -29,7 +29,7 @@ struct ResponseQuality: Codable, Hashable {
     
     // MARK: - Metadata
     let assessmentTimestamp: Date
-    let validationLevel: ValidationLevel
+    let validationLevel: ValidationLevel // FIXED: Uses ValidationLevel from SharedQualityTypes.swift
     let modelContributions: [String]      // Models that contributed to this assessment
     let processingTime: TimeInterval
     
@@ -331,19 +331,6 @@ enum QualityTier: String, Codable, CaseIterable {
     }
 }
 
-// MARK: - Validation Level
-
-enum ValidationLevel: String, Codable {
-    case basic = "basic"
-    case standard = "standard"
-    case comprehensive = "comprehensive"
-    case research = "research"
-    
-    var displayName: String {
-        return rawValue.capitalized
-    }
-}
-
 // MARK: - Display Quality for UI
 
 struct DisplayQuality: Codable, Hashable {
@@ -539,3 +526,6 @@ extension ResponseQuality {
         return report
     }
 }
+
+// REMOVED: ValidationLevel enum (now uses the one from SharedQualityTypes.swift)
+// This resolves the "ValidationLevel is ambiguous" compiler error
