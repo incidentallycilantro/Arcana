@@ -188,10 +188,12 @@ class ResponseValidator: ObservableObject {
         for phrase in uncertaintyPhrases {
             if content.lowercased().contains(phrase) {
                 uncertainties.append(UncertaintyFactor(
-                    type: .linguisticUncertainty,
+                    type: .linguisticMarker,
                     description: "Contains uncertainty phrase: '\(phrase)'",
                     severity: 0.3,
-                    weightedSeverity: 0.3
+                    location: nil,
+                    detectedAt: Date(),
+                    confidence: 0.8
                 ))
             }
         }
@@ -199,10 +201,12 @@ class ResponseValidator: ObservableObject {
         // Detect contradictions
         if await detectContradictions(content: content) {
             uncertainties.append(UncertaintyFactor(
-                type: .contradictoryStatements,
+                type: .contradiction,
                 description: "Contains potentially contradictory statements",
                 severity: 0.7,
-                weightedSeverity: 0.7
+                location: nil,
+                detectedAt: Date(),
+                confidence: 0.7
             ))
         }
         
@@ -219,7 +223,6 @@ class ResponseValidator: ObservableObject {
         var calibratedConfidence = rawConfidence
         
         // Adjust for uncertainty factors
-        // FIXED: Use reduce(into:) instead of reduce()
         let uncertaintyPenalty = uncertaintyFactors.reduce(into: 0.0) { result, factor in
             result += factor.weightedSeverity * 0.1
         }
@@ -277,7 +280,6 @@ class ResponseValidator: ObservableObject {
         }
         
         // Calculate uncertainty impact
-        // FIXED: Use reduce(into:) instead of reduce()
         let uncertaintyScore = min(uncertaintyFactors.reduce(into: 0.0) { result, factor in
             result += factor.weightedSeverity
         }, 1.0)
@@ -430,7 +432,7 @@ class ResponseValidator: ObservableObject {
     }
 }
 
-// MARK: - Supporting Structures
+// MARK: - Supporting Structures (DO NOT duplicate UncertaintyFactor - use SharedQualityTypes)
 
 struct EnsembleInfo {
     let models: [String]
@@ -486,19 +488,7 @@ struct ContentQuality {
     let overallScore: Double
 }
 
-struct UncertaintyFactor {
-    let type: UncertaintyType
-    let description: String
-    let severity: Double
-    let weightedSeverity: Double
-    
-    enum UncertaintyType {
-        case linguisticUncertainty
-        case contradictoryStatements
-        case insufficientEvidence
-        case modelUncertainty
-    }
-}
+// REMOVED: UncertaintyFactor - Use the one from SharedQualityTypes.swift instead
 
 struct ValidationMetrics {
     var totalValidations: Int = 0

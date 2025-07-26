@@ -30,7 +30,7 @@ enum DayOfWeek: String, Codable, CaseIterable, Hashable {
 enum Season: String, Codable, CaseIterable, Hashable {
     case spring = "spring"
     case summer = "summer"
-    case fall = "fall"
+    case autumn = "autumn"
     case winter = "winter"
     
     var displayName: String {
@@ -99,19 +99,28 @@ struct UncertaintyFactor: Codable, Hashable {
     let description: String
     let severity: Double // 0.0 to 1.0
     let location: String?
-    let timestamp: Date
+    let detectedAt: Date
+    let confidence: Double
     
     init(
         type: UncertaintyType,
         description: String,
         severity: Double,
-        location: String? = nil
+        location: String? = nil,
+        detectedAt: Date = Date(),
+        confidence: Double = 0.8
     ) {
         self.type = type
         self.description = description
         self.severity = severity
         self.location = location
-        self.timestamp = Date()
+        self.detectedAt = detectedAt
+        self.confidence = confidence
+    }
+    
+    // ADDED: Missing weightedSeverity property that ResponseValidator expects
+    var weightedSeverity: Double {
+        return severity * type.severityWeight * confidence
     }
     
     var isCritical: Bool {
@@ -301,8 +310,6 @@ struct ModelPerformanceProfile: Codable, Hashable {
     }
 }
 
-// MARK: - REMOVED DUPLICATE PerformanceSummary - Use definition from ChatMessage.swift
-
 // MARK: - Quality Standards
 
 struct QualityStandards {
@@ -429,108 +436,119 @@ struct TimeContext: Codable, Hashable {
         self.userTimezone = userTimezone ?? TimeZone.current
         
         let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: timestamp)
-        let weekday = calendar.component(.weekday, from: timestamp)
-        let month = calendar.component(.month, from: timestamp)
+        let components = calendar.dateComponents([.hour, .weekday, .month], from: timestamp)
         
         // Determine time of day
-        self.timeOfDay = {
-            switch hour {
-            case 4..<10: return .earlyMorning
-            case 10..<12: return .morning
-            case 12..<17: return .afternoon
-            case 17..<21: return .evening
-            default: return .night
-            }
-        }()
+        switch components.hour ?? 12 {
+        case 5..<9:
+            self.timeOfDay = .earlyMorning
+        case 9..<12:
+            self.timeOfDay = .morning
+        case 12..<17:
+            self.timeOfDay = .afternoon
+        case 17..<21:
+            self.timeOfDay = .evening
+        default:
+            self.timeOfDay = .night
+        }
         
         // Determine day of week
-        self.dayOfWeek = {
-            switch weekday {
-            case 1: return .sunday
-            case 2: return .monday
-            case 3: return .tuesday
-            case 4: return .wednesday
-            case 5: return .thursday
-            case 6: return .friday
-            case 7: return .saturday
-            default: return .monday
-            }
-        }()
+        switch components.weekday ?? 1 {
+        case 1: self.dayOfWeek = .sunday
+        case 2: self.dayOfWeek = .monday
+        case 3: self.dayOfWeek = .tuesday
+        case 4: self.dayOfWeek = .wednesday
+        case 5: self.dayOfWeek = .thursday
+        case 6: self.dayOfWeek = .friday
+        case 7: self.dayOfWeek = .saturday
+        default: self.dayOfWeek = .monday
+        }
         
-        // Determine season (Northern Hemisphere)
-        self.season = {
-            switch month {
-            case 12, 1, 2: return .winter
-            case 3, 4, 5: return .spring
-            case 6, 7, 8: return .summer
-            case 9, 10, 11: return .fall
-            default: return .spring
-            }
-        }()
+        // Determine season
+        switch components.month ?? 1 {
+        case 12, 1, 2: self.season = .winter
+        case 3, 4, 5: self.season = .spring
+        case 6, 7, 8: self.season = .summer
+        case 9, 10, 11: self.season = .autumn
+        default: self.season = .spring
+        }
         
-        // Determine if weekend
-        self.isWeekend = weekday == 1 || weekday == 7
-        
-        // Determine if business hours (9 AM - 5 PM, weekdays)
-        self.isBusinessHours = !isWeekend && hour >= 9 && hour < 17
+        // Calculate weekend and business hours
+        self.isWeekend = [.saturday, .sunday].contains(dayOfWeek)
+        self.isBusinessHours = !isWeekend &&
+                              (components.hour ?? 12) >= 9 &&
+                              (components.hour ?? 12) < 17
     }
     
-    var displayText: String {
+    var contextDescription: String {
         let timeText = timeOfDay.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
         let dayText = dayOfWeek.rawValue.capitalized
-        return "\(timeText), \(dayText)"
+        let seasonText = season.displayName
+        
+        return "\(timeText) on \(dayText) during \(seasonText)"
     }
     
-    var isOptimalWorkTime: Bool {
-        return isBusinessHours && timeOfDay == .morning
+    var isOptimalForWork: Bool {
+        return timeOfDay == .morning || timeOfDay == .afternoon
+    }
+    
+    var isOptimalForCreativity: Bool {
+        return timeOfDay == .afternoon || timeOfDay == .evening
     }
 }
 
-// MARK: - Context-Aware Quality Assessment
+// MARK: - Enhancement Tracking
 
-struct ContextualQualityMetrics: Codable {
-    let baseQualityScore: Double
-    let temporalAdjustment: Double
-    let userPreferenceAlignment: Double
-    let contextRelevance: Double
-    let adaptationQuality: Double
+struct ResponseEnhancement: Codable, Hashable {
+    let enhancementType: EnhancementType
+    let originalScore: Double
+    let enhancedScore: Double
+    let improvement: Double
+    let enhancementDescription: String
+    let appliedAt: Date
     
-    var adjustedQualityScore: Double {
-        let adjustments = temporalAdjustment + userPreferenceAlignment + contextRelevance + adaptationQuality
-        return min(max(baseQualityScore + adjustments, 0.0), 1.0)
+    init(
+        enhancementType: EnhancementType,
+        originalScore: Double,
+        enhancedScore: Double,
+        enhancementDescription: String
+    ) {
+        self.enhancementType = enhancementType
+        self.originalScore = originalScore
+        self.enhancedScore = enhancedScore
+        self.improvement = enhancedScore - originalScore
+        self.enhancementDescription = enhancementDescription
+        self.appliedAt = Date()
     }
     
-    var contextualGrade: String {
-        return QualityStandards.getQualityGrade(score: adjustedQualityScore)
+    var improvementPercentage: Double {
+        guard originalScore > 0 else { return 0 }
+        return (improvement / originalScore) * 100
     }
 }
 
-// MARK: - Extension Helpers
-
-extension TimeOfDay {
-    var isWorkTime: Bool {
-        return self == .morning || self == .afternoon
-    }
+enum EnhancementType: String, Codable, CaseIterable {
+    case ensembleProcessing = "ensemble_processing"
+    case factChecking = "fact_checking"
+    case confidenceCalibration = "confidence_calibration"
+    case temporalOptimization = "temporal_optimization"
+    case uncertaintyReduction = "uncertainty_reduction"
+    case styleAdaptation = "style_adaptation"
     
-    var energyLevel: Double {
+    var displayName: String {
         switch self {
-        case .earlyMorning: return 0.4
-        case .morning: return 0.9
-        case .afternoon: return 0.7
-        case .evening: return 0.5
-        case .night: return 0.3
-        }
-    }
-}
-
-extension Season {
-    var emoji: String {
-        switch self {
-        case .spring: return "🌸"
-        case .summer: return "☀️"
-        case .fall: return "🍂"
-        case .winter: return "❄️"
+        case .ensembleProcessing:
+            return "Ensemble Processing"
+        case .factChecking:
+            return "Fact Checking"
+        case .confidenceCalibration:
+            return "Confidence Calibration"
+        case .temporalOptimization:
+            return "Temporal Optimization"
+        case .uncertaintyReduction:
+            return "Uncertainty Reduction"
+        case .styleAdaptation:
+            return "Style Adaptation"
         }
     }
 }
