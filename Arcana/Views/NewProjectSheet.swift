@@ -1,203 +1,221 @@
-// NewProjectSheet.swift
-// Created by Dylan E. | Spectral Labs
-// Arcana - Privacy-first AI Assistant for macOS
 //
-// DEPENDENCIES: UnifiedTypes.swift, ChatMessage.swift, WorkspaceManager.swift
+// NewProjectSheet.swift
+// Arcana - Intelligent Workspace Creation
+// Created by Spectral Labs
+//
+// FOLDER: Arcana/Views/
+// DEPENDENCIES: WorkspaceManager.swift, UnifiedTypes.swift
 
 import SwiftUI
 
 struct NewProjectSheet: View {
-    let onProjectCreated: ((title: String, description: String)) -> Void
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var workspaceManager = WorkspaceManager.shared
+    @ObservedObject private var workspaceManager = WorkspaceManager.shared
     
-    @State private var title = ""
-    @State private var description = ""
-    @State private var showingSuggestions = false
-    @State private var selectedSuggestion: String? = nil
+    // Form State
+    @State private var title: String = ""
+    @State private var description: String = ""
     @State private var detectedType: WorkspaceManager.WorkspaceType = .general
-    @State private var intelligentDescription = ""
+    @State private var intelligentDescription: String = ""
     
+    // UI State
     @FocusState private var titleFieldFocused: Bool
     @FocusState private var descriptionFieldFocused: Bool
+    @State private var showTypeSelection = false
+    @State private var isCreating = false
+    
+    // Callback
+    let onProjectCreated: (title: String, description: String) -> Void
+    
+    var canCreate: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isCreating
+    }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with intelligent type detection
-            VStack(spacing: 16) {
-                HStack {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 32, weight: .light))
-                        .foregroundStyle(.blue.gradient)
-                        .symbolEffect(.pulse)
-                    
-                    if !title.isEmpty {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(detectedType.emoji)
-                                .font(.title2)
-                            Text(detectedType.displayName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .transition(.scale.combined(with: .opacity))
-                    }
-                }
-                
-                VStack(spacing: 4) {
-                    Text("Create New Workspace")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    
-                    if !title.isEmpty {
-                        Text("Arcana detected: \(detectedType.displayName) workspace")
-                            .font(.subheadline)
-                            .foregroundStyle(.blue)
-                            .transition(.opacity)
-                    } else {
-                        Text("Design a dedicated space for focused AI collaboration")
-                            .font(.subheadline)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: detectedType.icon)
+                            .font(.system(size: 32))
+                            .foregroundStyle(detectedType.color)
+                        
+                        Text("Create New Workspace")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Text("AI will help optimize your workspace for \(detectedType.displayName.lowercased())")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-                }
-            }
-            .padding(.top, 32)
-            .padding(.bottom, 24)
-            .frame(maxWidth: .infinity)
-            .background(.ultraThinMaterial)
-            
-            // Main content with intelligent suggestions
-            VStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Workspace Name")
-                        .font(.headline)
-                        .fontWeight(.medium)
+                    .frame(maxWidth: .infinity)
+                    .background(.ultraThinMaterial)
                     
-                    TextField("e.g., Creative Writing, Code Review, Market Research", text: $title)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($titleFieldFocused)
-                        .onChange(of: title) {
-                            handleTitleChange()
-                        }
-                        .onSubmit {
-                            if !title.isEmpty && description.isEmpty && !intelligentDescription.isEmpty {
-                                description = intelligentDescription
-                                descriptionFieldFocused = true
-                            } else if canCreate {
-                                createProject()
+                    // Main content with intelligent suggestions
+                    VStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Workspace Name")
+                                .font(.headline)
+                                .fontWeight(.medium)
+                            
+                            TextField("e.g., Creative Writing, Code Review, Market Research", text: $title)
+                                .textFieldStyle(.roundedBorder)
+                                .focused($titleFieldFocused)
+                                .onChange(of: title) {
+                                    handleTitleChange()
+                                }
+                                .onSubmit {
+                                    if !title.isEmpty && description.isEmpty && !intelligentDescription.isEmpty {
+                                        description = intelligentDescription
+                                        descriptionFieldFocused = true
+                                    } else if canCreate {
+                                        createProject()
+                                    }
+                                }
+                            
+                            // Smart suggestions appear as you type
+                            if !workspaceManager.smartSuggestions.isEmpty && !title.isEmpty {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(workspaceManager.smartSuggestions, id: \.self) { suggestion in
+                                            Button(suggestion) {
+                                                title = suggestion
+                                                handleTitleChange()
+                                                if description.isEmpty && !intelligentDescription.isEmpty {
+                                                    description = intelligentDescription
+                                                }
+                                            }
+                                            .font(.caption)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(.quaternary)
+                                            .foregroundStyle(.primary)
+                                            .clipShape(Capsule())
+                                        }
+                                    }
+                                    .padding(.horizontal, 4)
+                                }
+                                .frame(height: 32)
                             }
                         }
-                    
-                    // Smart suggestions appear as you type
-                    if !workspaceManager.smartSuggestions.isEmpty && !title.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
+                        
+                        // Workspace Type Detection
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Detected Type")
+                                    .font(.headline)
+                                    .fontWeight(.medium)
+                                
+                                Spacer()
+                                
+                                Button("Change") {
+                                    showTypeSelection.toggle()
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                            }
+                            
                             HStack(spacing: 8) {
-                                ForEach(workspaceManager.smartSuggestions, id: \.self) { suggestion in
-                                    Button(suggestion) {
-                                        title = suggestion
-                                        handleTitleChange()
-                                        if description.isEmpty && !intelligentDescription.isEmpty {
+                                Image(systemName: detectedType.icon)
+                                    .foregroundStyle(detectedType.color)
+                                
+                                Text(detectedType.displayName)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                
+                                Spacer()
+                                
+                                if !title.isEmpty {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .font(.caption)
+                                }
+                            }
+                            .padding(12)
+                            .background(.quaternary)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        
+                        // Description
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Description")
+                                    .font(.headline)
+                                    .fontWeight(.medium)
+                                
+                                Spacer()
+                                
+                                if !intelligentDescription.isEmpty && description.isEmpty {
+                                    Button("Use AI suggestion") {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
                                             description = intelligentDescription
                                         }
                                     }
                                     .font(.caption)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue.opacity(0.1))
-                                    .foregroundColor(.blue)
-                                    .clipShape(Capsule())
-                                    .buttonStyle(.plain)
+                                    .foregroundStyle(.blue)
                                 }
                             }
-                            .padding(.horizontal, 4)
-                        }
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Description")
-                            .font(.headline)
-                            .fontWeight(.medium)
-                        
-                        Spacer()
-                        
-                        if !intelligentDescription.isEmpty && description.isEmpty {
-                            Button("Use AI suggestion") {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    description = intelligentDescription
+                            
+                            TextField("Describe your workspace purpose and goals...", text: $description, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .focused($descriptionFieldFocused)
+                                .lineLimit(3...6)
+                            
+                            // AI Suggestion Preview
+                            if !intelligentDescription.isEmpty && description.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("AI Suggestion:")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Text(intelligentDescription)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .padding(8)
+                                        .background(.quaternary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
                                 }
                             }
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                            .buttonStyle(.plain)
                         }
                     }
-                    
-                    if !intelligentDescription.isEmpty && description.isEmpty {
-                        Text("💡 \(intelligentDescription)")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
-                            .padding(.vertical, 4)
-                            .transition(.opacity)
-                    }
-                    
-                    TextField("Describe what you'll use this workspace for...", text: $description, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(3...5)
-                        .focused($descriptionFieldFocused)
+                    .padding(20)
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .padding(20)
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 24)
-            
-            Spacer()
-            
-            // Action buttons with intelligent suggestions
-            VStack(spacing: 12) {
-                if !title.isEmpty && detectedType != .general {
-                    Text("Arcana will optimize this workspace for \(detectedType.displayName.lowercased()) work")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .transition(.opacity)
-                }
-                
-                HStack(spacing: 12) {
+            .background(.ultraThinMaterial)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .keyboardShortcut(.cancelAction)
-                    
-                    Button("Create Workspace") {
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") {
                         createProject()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
                     .disabled(!canCreate)
-                    .keyboardShortcut(.defaultAction)
+                    .fontWeight(.semibold)
                 }
             }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 32)
         }
-        .frame(width: 520, height: 480)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
         .onAppear {
             titleFieldFocused = true
         }
+        .sheet(isPresented: $showTypeSelection) {
+            WorkspaceTypeSelectionSheet(selectedType: $detectedType)
+        }
     }
     
-    private var canCreate: Bool {
-        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
+    // MARK: - Helper Methods
     
     private func handleTitleChange() {
-        // Generate smart suggestions as user types
+        // Generate smart suggestions for workspace types
         workspaceManager.generateSmartSuggestions(for: title)
         
         // Detect workspace type
@@ -278,9 +296,78 @@ struct NewProjectSheet: View {
     }
     
     private func createProject() {
+        guard canCreate else { return }
+        
+        isCreating = true
+        
         let finalDescription = description.isEmpty ? intelligentDescription : description
-        onProjectCreated((title: title, description: finalDescription))
+        onProjectCreated(title.trimmingCharacters(in: .whitespacesAndNewlines), finalDescription)
+        
         dismiss()
+    }
+}
+
+// MARK: - Supporting Views
+
+struct WorkspaceTypeSelectionSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedType: WorkspaceManager.WorkspaceType
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(WorkspaceManager.WorkspaceType.allCases) { type in
+                    HStack {
+                        Image(systemName: type.icon)
+                            .foregroundStyle(type.color)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(type.displayName)
+                                .font(.headline)
+                            
+                            Text(typeDescription(for: type))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        if selectedType == type {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedType = type
+                        dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Select Type")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func typeDescription(for type: WorkspaceManager.WorkspaceType) -> String {
+        switch type {
+        case .general:
+            return "For general conversations and planning"
+        case .code:
+            return "Optimized for programming and technical work"
+        case .creative:
+            return "Perfect for writing and creative projects"
+        case .research:
+            return "Designed for analysis and investigation"
+        }
     }
 }
 

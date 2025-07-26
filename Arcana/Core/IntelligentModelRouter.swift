@@ -1,144 +1,202 @@
 //
 // IntelligentModelRouter.swift
-// Created by Dylan E. | Spectral Labs
-// Arcana - Revolutionary Optimal Model Selection Engine
+// Arcana - Revolutionary AI Model Routing Engine
+// Created by Spectral Labs
 //
-// DEPENDENCIES: UnifiedTypes.swift
+// FOLDER: Arcana/Core/
+// DEPENDENCIES: PropietaryPRISMCore.swift, UnifiedTypes.swift, WorkspaceManager.swift
 
 import Foundation
-import Combine
-import os.log
+import OSLog
 
 @MainActor
 class IntelligentModelRouter: ObservableObject {
+    
+    // MARK: - Singleton
     static let shared = IntelligentModelRouter()
     
-    // MARK: - Published State
-    @Published var currentOptimalModel: String?
-    @Published var routingDecisions: [RoutingDecision] = []
+    // MARK: - Published Properties
+    @Published var currentModel: String = "Mistral-7B"
+    @Published var isRouting: Bool = false
+    @Published var routingConfidence: Double = 0.0
     @Published var modelPerformanceScores: [String: Double] = [:]
-    @Published var isAdaptiveLearning = true
+    @Published var isAdaptiveLearning: Bool = true
     
     // MARK: - Core Components
-    private let logger = Logger(subsystem: "com.spectrallabs.arcana", category: "IntelligentModelRouter")
-    private let quantumMemory = QuantumMemoryManager.shared
     private let proprietaryCore = PropietaryPRISMCore.shared
+    private let logger = Logger(subsystem: "com.spectrallabs.arcana", category: "ModelRouter")
+    private let adaptiveLearningEngine = AdaptiveLearningEngine()
     
     // MARK: - Routing Intelligence
-    private var routingHistory: [RoutingRecord] = []
+    private var modelSpecializations: [String: [QueryType: Double]] = [:]
     private var modelCapabilities: [String: ModelCapabilities] = [:]
+    private var complexityAdjustments: [String: [ContextComplexity: Double]] = [:]
     private var dynamicPerformanceMetrics: [String: PerformanceMetrics] = [:]
-    private var adaptiveLearningEngine: AdaptiveLearningEngine
+    private var routingHistory: [RoutingRecord] = []
     
-    // MARK: - Model Specialization Matrix
-    private let modelSpecializations: [String: [QueryType: Double]] = [
-        "Mistral-7B": [
-            .general: 0.95,
-            .reasoning: 0.90,
-            .analysis: 0.85,
-            .creative: 0.80,
-            .factual: 0.85
-        ],
-        "CodeLlama-7B": [
-            .coding: 0.95,
-            .technical: 0.90,
-            .debugging: 0.95,
-            .general: 0.70
-        ],
-        "Llama-2-7B": [
-            .creative: 0.95,
-            .conversational: 0.90,
-            .reasoning: 0.85,
-            .general: 0.85
-        ],
-        "Phi-2": [
-            .speed: 0.95,
-            .general: 0.80,
-            .reasoning: 0.75,
-            .coding: 0.70
-        ],
-        "BGE-Large": [
-            .factual: 0.95,
-            .analysis: 0.90,
-            .research: 0.95,
-            .embedding: 0.95
-        ]
-    ]
+    // MARK: - Initialization
     
     private init() {
-        self.adaptiveLearningEngine = AdaptiveLearningEngine()
-        logger.info("🎯 IntelligentModelRouter initializing with adaptive learning")
+        setupModelSpecializations()
         setupModelCapabilities()
+        setupComplexityAdjustments()
         startAdaptiveLearning()
+        
+        logger.info("🧠 IntelligentModelRouter initialized with revolutionary routing capabilities")
     }
     
-    // MARK: - 🎯 REVOLUTIONARY: Intelligent Route Selection
+    // MARK: - Core Routing Engine
     
-    func routeInference(
-        model: String,
+    func routeRequest(
         prompt: String,
-        context: ConversationContext,
-        forceModel: String? = nil
+        requestedModel: String? = nil,
+        context: ConversationContext? = nil,
+        workspaceType: WorkspaceManager.WorkspaceType = .general
     ) async -> RouterInferenceResult {
         
         let routingStartTime = Date()
+        isRouting = true
         
-        // 1. Override routing if model is forced
-        if let forcedModel = forceModel {
-            logger.info("🎯 Forced routing to model: \(forcedModel)")
-            return await executeDirectInference(model: forcedModel, prompt: prompt, context: context)
+        do {
+            // 1. Analyze prompt characteristics
+            let analysis = await analyzePrompt(prompt, workspaceType: workspaceType)
+            
+            // 2. Determine optimal model
+            let optimalModel = requestedModel ?? await selectOptimalModel(
+                for: analysis,
+                requestedModel: requestedModel ?? "auto"
+            )
+            
+            // 3. Create routing decision
+            let routingDecision = RoutingDecision(
+                requestedModel: requestedModel ?? "auto",
+                selectedModel: optimalModel,
+                reasoning: generateRoutingReasoning(analysis, selected: optimalModel),
+                confidence: calculateRoutingConfidence(analysis, selected: optimalModel),
+                timestamp: Date()
+            )
+            
+            // 4. Execute intelligent inference
+            let result = await executeIntelligentInference(
+                model: optimalModel,
+                prompt: prompt,
+                context: context ?? ConversationContext(),
+                routingDecision: routingDecision
+            )
+            
+            // 5. Update performance tracking
+            await recordRoutingPerformance(
+                decision: routingDecision,
+                result: result,
+                routingTime: Date().timeIntervalSince(routingStartTime)
+            )
+            
+            // 6. Update UI state
+            currentModel = optimalModel
+            routingConfidence = routingDecision.confidence
+            isRouting = false
+            
+            logger.info("✅ Request routed to \(optimalModel) with confidence \(routingDecision.confidence)")
+            
+            return result
+            
+        } catch {
+            logger.error("❌ Routing failed: \(error.localizedDescription)")
+            isRouting = false
+            
+            // Fallback to default model
+            let fallbackResult = await executeFallbackInference(prompt: prompt, error: error)
+            return fallbackResult
         }
-        
-        // 2. Analyze prompt for optimal model selection
-        let promptAnalysis = await analyzePromptForRouting(prompt, context: context)
-        let optimalModel = await selectOptimalModel(for: promptAnalysis, requestedModel: model)
-        
-        // 3. Check model availability and resource constraints
-        let finalModel = await validateModelAvailability(optimalModel, fallback: model)
-        
-        // 4. Record routing decision
-        let routingDecision = RoutingDecision(
-            requestedModel: model,
-            selectedModel: finalModel,
-            reasoning: generateRoutingReasoning(promptAnalysis, selected: finalModel),
-            confidence: calculateRoutingConfidence(promptAnalysis, selected: finalModel),
-            timestamp: Date()
-        )
-        
-        routingDecisions.append(routingDecision)
-        currentOptimalModel = finalModel
-        
-        // 5. Execute inference with selected model
-        let inferenceResult = await executeIntelligentInference(
-            model: finalModel,
-            prompt: prompt,
-            context: context,
-            routingDecision: routingDecision
-        )
-        
-        // 6. Record performance for adaptive learning
-        await recordRoutingPerformance(
-            decision: routingDecision,
-            result: inferenceResult,
-            routingTime: Date().timeIntervalSince(routingStartTime)
-        )
-        
-        logger.info("🎯 Intelligent routing completed: \(model) -> \(finalModel) (confidence: \(routingDecision.confidence))")
-        
-        return inferenceResult
     }
     
-    // MARK: - 🧠 Advanced Model Selection
+    // MARK: - Prompt Analysis Engine
     
-    func selectOptimalModel(for analysis: PromptAnalysis, requestedModel: String) async -> String {
+    private func analyzePrompt(_ prompt: String, workspaceType: WorkspaceManager.WorkspaceType) async -> PromptAnalysis {
+        let promptLength = prompt.count
+        let complexity = determineComplexity(prompt)
+        let queryType = await classifyQueryType(prompt)
+        let requiredCapabilities = determineRequiredCapabilities(queryType)
         
-        logger.info("🧠 Analyzing optimal model for query type: \(String(describing: analysis.queryType))")
+        return PromptAnalysis(
+            queryType: queryType,
+            complexity: complexity,
+            workspaceType: workspaceType,
+            requiredCapabilities: requiredCapabilities,
+            promptLength: promptLength,
+            isTimeConstrained: false,
+            prioritizeAccuracy: complexity != .low
+        )
+    }
+    
+    private func classifyQueryType(_ prompt: String) async -> QueryType {
+        let promptLower = prompt.lowercased()
         
-        // 1. Get base scores from specialization matrix
+        // Code detection
+        if promptLower.contains("code") || promptLower.contains("function") ||
+           promptLower.contains("class") || promptLower.contains("variable") ||
+           prompt.contains("{") || prompt.contains("def ") || prompt.contains("import ") {
+            return .coding
+        }
+        
+        // Creative writing detection
+        if promptLower.contains("story") || promptLower.contains("creative") ||
+           promptLower.contains("write") || promptLower.contains("poem") ||
+           promptLower.contains("character") || promptLower.contains("narrative") {
+            return .creative
+        }
+        
+        // Analysis detection
+        if promptLower.contains("analyze") || promptLower.contains("research") ||
+           promptLower.contains("study") || promptLower.contains("examine") ||
+           promptLower.contains("investigate") || promptLower.contains("compare") {
+            return .analysis
+        }
+        
+        // Factual questions
+        if promptLower.contains("what is") || promptLower.contains("who is") ||
+           promptLower.contains("when did") || promptLower.contains("where is") ||
+           promptLower.contains("how many") || promptLower.contains("define") {
+            return .factual
+        }
+        
+        // Technical questions
+        if promptLower.contains("how to") || promptLower.contains("explain") ||
+           promptLower.contains("technical") || promptLower.contains("engineering") {
+            return .technical
+        }
+        
+        // Default to general reasoning
+        return .reasoning
+    }
+    
+    private func determineComplexity(_ prompt: String) -> ContextComplexity {
+        let promptLength = prompt.count
+        let sentenceCount = prompt.components(separatedBy: ".").count
+        let complexWords = prompt.components(separatedBy: .whitespaces)
+            .filter { $0.count > 8 }.count
+        
+        if promptLength > 500 || sentenceCount > 5 || complexWords > 10 {
+            return .high
+        } else if promptLength > 200 || sentenceCount > 2 || complexWords > 3 {
+            return .medium
+        } else {
+            return .low
+        }
+    }
+    
+    // MARK: - Model Selection Engine
+    
+    private func selectOptimalModel(
+        for analysis: PromptAnalysis,
+        requestedModel: String
+    ) async -> String {
+        
         var modelScores: [String: Double] = [:]
         
-        for (model, specializations) in modelSpecializations {
-            let baseScore = specializations[analysis.queryType] ?? 0.5
+        // 1. Calculate base compatibility scores
+        for model in modelSpecializations.keys {
+            let baseScore = modelSpecializations[model]?[analysis.queryType] ?? 0.5
             let complexityAdjustment = calculateComplexityAdjustment(analysis.complexity, for: model)
             let performanceBoost = dynamicPerformanceMetrics[model]?.recentSuccessRate ?? 1.0
             
@@ -168,7 +226,7 @@ class IntelligentModelRouter: ObservableObject {
         return optimalModel
     }
     
-    // MARK: - 🚀 Intelligent Inference Execution
+    // MARK: - Intelligent Inference Execution
     
     private func executeIntelligentInference(
         model: String,
@@ -198,9 +256,9 @@ class IntelligentModelRouter: ObservableObject {
                 )
             )
             
-            // 4. Post-process response based on model characteristics
+            // 4. Post-process response
             let processedResponse = await postProcessResponse(
-                response.generatedText,
+                response.content,
                 model: model,
                 originalPrompt: prompt
             )
@@ -213,231 +271,56 @@ class IntelligentModelRouter: ObservableObject {
                 inferenceTime: inferenceTime,
                 model: model,
                 metadata: [
-                    "routing_decision": routingDecision.id.uuidString,
-                    "prompt_optimization": "applied",
-                    "post_processing": "applied"
+                    "routing_decision": routingDecision,
+                    "optimized_prompt": optimizedPrompt != prompt,
+                    "model_parameters": modelParams
                 ]
             )
             
         } catch {
-            logger.error("❌ Inference failed for model \(model): \(error.localizedDescription)")
+            logger.error("💥 Inference execution failed: \(error.localizedDescription)")
             
-            // Fallback to basic inference
-            return await executeDirectInference(model: model, prompt: prompt, context: context)
+            // Return fallback result
+            return RouterInferenceResult(
+                content: "I apologize, but I'm having difficulty processing your request right now. Please try again.",
+                confidence: 0.1,
+                inferenceTime: Date().timeIntervalSince(inferenceStartTime),
+                model: model,
+                metadata: ["error": error.localizedDescription]
+            )
         }
     }
     
-    private func executeDirectInference(
+    // MARK: - Optimization & Processing
+    
+    private func postProcessResponse(
+        _ response: String,
         model: String,
-        prompt: String,
-        context: ConversationContext
-    ) async -> RouterInferenceResult {
+        originalPrompt: String
+    ) async -> ProcessedResponse {
         
-        let startTime = Date()
-        
-        // Basic direct inference without optimizations
-        let response = "Direct inference response for: \(prompt.prefix(50))..." // Placeholder
-        let inferenceTime = Date().timeIntervalSince(startTime)
-        
-        return RouterInferenceResult(
-            content: response,
-            confidence: 0.8,
-            inferenceTime: inferenceTime,
-            model: model,
-            metadata: ["routing_type": "direct"]
-        )
-    }
-    
-    // MARK: - 🧠 Analysis and Optimization
-    
-    private func analyzePromptForRouting(_ prompt: String, context: ConversationContext) async -> PromptAnalysis {
-        
-        // 1. Basic text analysis
-        let wordCount = prompt.components(separatedBy: .whitespacesAndNewlines).count
-        let containsCode = prompt.contains("{") || prompt.contains("function") || prompt.contains("class")
-        let containsMath = prompt.contains("=") || prompt.contains("calculate") || prompt.contains("solve")
-        
-        // 2. Intent classification
-        let queryType: QueryType
-        if containsCode || prompt.lowercased().contains("code") {
-            queryType = .coding
-        } else if containsMath || prompt.lowercased().contains("analyze") {
-            queryType = .analysis
-        } else if prompt.lowercased().contains("creative") || prompt.lowercased().contains("story") {
-            queryType = .creative
-        } else if prompt.lowercased().contains("fact") || prompt.lowercased().contains("research") {
-            queryType = .factual
-        } else {
-            queryType = .general
-        }
-        
-        // 3. Complexity assessment
-        let complexity: QueryComplexity
-        if wordCount > 100 || containsCode || containsMath {
-            complexity = .high
-        } else if wordCount > 20 {
-            complexity = .medium
-        } else {
-            complexity = .low
-        }
-        
-        // 4. Context importance
-        let contextImportance = min(context.messages.count, 10)
-        
-        return PromptAnalysis(
-            prompt: prompt,
-            complexity: complexity,
-            queryType: queryType,
-            workspaceType: .general, // Will be overridden by caller
-            requiredCapabilities: determineRequiredCapabilities(queryType),
-            estimatedTokens: wordCount * 2,
-            contextImportance: contextImportance
-        )
-    }
-    
-    private func calculateComplexityAdjustment(_ complexity: QueryComplexity, for model: String) -> Double {
-        // Adjust scores based on model's ability to handle complexity
-        let modelComplexityRatings: [String: [QueryComplexity: Double]] = [
-            "Mistral-7B": [.low: 1.0, .medium: 1.0, .high: 0.9],
-            "CodeLlama-7B": [.low: 0.8, .medium: 0.9, .high: 1.0],
-            "Llama-2-7B": [.low: 1.0, .medium: 0.95, .high: 0.85],
-            "Phi-2": [.low: 1.0, .medium: 0.8, .high: 0.6],
-            "BGE-Large": [.low: 0.9, .medium: 1.0, .high: 1.0]
-        ]
-        
-        return modelComplexityRatings[model]?[complexity] ?? 0.8
-    }
-    
-    private func applyWorkspaceOptimizations(_ scores: inout [String: Double], workspaceType: WorkspaceManager.WorkspaceType) {
-        switch workspaceType {
-        case .code:
-            scores["CodeLlama-7B"] = (scores["CodeLlama-7B"] ?? 0.0) * 1.3
-            scores["Phi-2"] = (scores["Phi-2"] ?? 0.0) * 1.2
-            
-        case .research:
-            scores["BGE-Large"] = (scores["BGE-Large"] ?? 0.0) * 1.3
-            scores["Mistral-7B"] = (scores["Mistral-7B"] ?? 0.0) * 1.2
-            
-        case .creative:
-            scores["Llama-2-7B"] = (scores["Llama-2-7B"] ?? 0.0) * 1.3
-            scores["Mistral-7B"] = (scores["Mistral-7B"] ?? 0.0) * 1.1
-            
-        case .general:
-            // No specific optimizations for general workspace
-            break
-        }
-    }
-    
-    private func applyResourceConstraints(_ scores: inout [String: Double]) async {
-        let systemMemory = ProcessInfo.processInfo.physicalMemory / 1024 / 1024 / 1024 // GB
-        
-        if systemMemory < 8 {
-            // Heavily favor lightweight models on low memory systems
-            scores["Phi-2"] = (scores["Phi-2"] ?? 0.0) * 1.5
-            scores["BGE-Large"] = (scores["BGE-Large"] ?? 0.0) * 0.5
-        } else if systemMemory < 16 {
-            // Moderate optimization for medium memory systems
-            scores["Phi-2"] = (scores["Phi-2"] ?? 0.0) * 1.2
-            scores["BGE-Large"] = (scores["BGE-Large"] ?? 0.0) * 0.8
-        }
-        
-        // Apply current load considerations
-        let currentLoad = await getCurrentSystemLoad()
-        if currentLoad > 0.8 {
-            // Favor faster models when system is under load
-            scores["Phi-2"] = (scores["Phi-2"] ?? 0.0) * 1.3
-        }
-    }
-    
-    // MARK: - 🔧 Model Optimization
-    
-    private func optimizePromptForModel(_ prompt: String, model: String) async -> String {
-        // Apply model-specific prompt optimizations
-        switch model {
-        case "CodeLlama-7B":
-            // Enhance code-related prompts
-            if !prompt.lowercased().contains("code") && (prompt.contains("{") || prompt.contains("function")) {
-                return "Code assistance request: \(prompt)"
-            }
-            
-        case "BGE-Large":
-            // Enhance factual/research prompts
-            if prompt.lowercased().contains("research") || prompt.lowercased().contains("analyze") {
-                return "Research analysis: \(prompt)"
-            }
-            
-        case "Phi-2":
-            // Optimize for conciseness
-            if prompt.count > 200 {
-                return "Concise response needed: \(prompt.prefix(150))..."
-            }
-            
-        default:
-            break
-        }
-        
-        return prompt
-    }
-    
-    private func generateModelSpecificParameters(model: String, context: ConversationContext) -> [String: Any] {
-        var params: [String: Any] = [:]
-        
-        switch model {
-        case "Mistral-7B":
-            params["temperature"] = 0.7
-            params["top_p"] = 0.9
-            params["max_tokens"] = 1024
-            
-        case "CodeLlama-7B":
-            params["temperature"] = 0.3
-            params["top_p"] = 0.95
-            params["max_tokens"] = 2048
-            
-        case "Llama-2-7B":
-            params["temperature"] = 0.8
-            params["top_p"] = 0.9
-            params["max_tokens"] = 1024
-            
-        case "Phi-2":
-            params["temperature"] = 0.6
-            params["top_p"] = 0.9
-            params["max_tokens"] = 512
-            
-        case "BGE-Large":
-            params["temperature"] = 0.2
-            params["top_p"] = 0.95
-            params["max_tokens"] = 1024
-            
-        default:
-            params["temperature"] = 0.7
-            params["top_p"] = 0.9
-            params["max_tokens"] = 1024
-        }
-        
-        return params
-    }
-    
-    private func postProcessResponse(_ response: String, model: String, originalPrompt: String) async -> ProcessedResponse {
-        // Apply model-specific post-processing
-        
-        let processedContent = response
+        var processedContent = response
         var confidence = 0.8
         
+        // Model-specific post-processing
         switch model {
         case "CodeLlama-7B":
-            // Validate code syntax if response contains code
-            if response.contains("```") {
-                confidence = 0.9 // Higher confidence for code responses
+            // Enhance code formatting
+            if originalPrompt.lowercased().contains("code") {
+                processedContent = enhanceCodeFormatting(processedContent)
+                confidence = 0.9
             }
             
         case "BGE-Large":
-            // Validate factual content
-            confidence = 0.95 // Higher confidence for factual responses
+            // Enhance factual accuracy confidence
+            if originalPrompt.lowercased().contains("fact") || originalPrompt.lowercased().contains("research") {
+                confidence = 0.95
+            }
             
         case "Phi-2":
-            // Ensure response isn't truncated
-            if response.count < 50 {
-                confidence = 0.6 // Lower confidence for very short responses
+            // Enhance conciseness
+            if processedContent.count > 300 {
+                confidence = 0.7 // Lower confidence for long responses from concise model
             }
             
         default:
@@ -447,7 +330,7 @@ class IntelligentModelRouter: ObservableObject {
         return ProcessedResponse(content: processedContent, confidence: confidence)
     }
     
-    // MARK: - 📊 Performance Tracking
+    // MARK: - Performance Tracking
     
     private func recordRoutingPerformance(
         decision: RoutingDecision,
@@ -485,7 +368,7 @@ class IntelligentModelRouter: ObservableObject {
         }
     }
     
-    // MARK: - 🎓 Adaptive Learning
+    // MARK: - Adaptive Learning
     
     private func startAdaptiveLearning() {
         Task.detached(priority: .background) {
@@ -497,9 +380,9 @@ class IntelligentModelRouter: ObservableObject {
         }
     }
     
-    // MARK: - 🛠️ Helper Methods
+    // MARK: - Helper Methods
     
-    // ✅ FIXED: Complete ModelCapabilities constructor with all required parameters
+    // FIXED: Removed memoryRequirement parameter that was causing compilation error
     private func setupModelCapabilities() {
         // Initialize model capabilities database
         for model in modelSpecializations.keys {
@@ -507,7 +390,6 @@ class IntelligentModelRouter: ObservableObject {
                 modelName: model,
                 specialties: Array(modelSpecializations[model]?.keys.map { "\($0)" } ?? []),
                 averageConfidence: 0.8,
-                memoryRequirement: getModelMemoryRequirement(model),
                 averageInferenceTime: getModelAverageInferenceTime(model)
             )
         }
@@ -579,9 +461,194 @@ class IntelligentModelRouter: ObservableObject {
             return 1.0
         }
     }
+    
+    private func calculateComplexityAdjustment(_ complexity: ContextComplexity, for model: String) -> Double {
+        return complexityAdjustments[model]?[complexity] ?? 0.8
+    }
+    
+    private func applyWorkspaceOptimizations(_ scores: inout [String: Double], workspaceType: WorkspaceManager.WorkspaceType) {
+        switch workspaceType {
+        case .code:
+            scores["CodeLlama-7B"] = (scores["CodeLlama-7B"] ?? 0.0) * 1.3
+            scores["Phi-2"] = (scores["Phi-2"] ?? 0.0) * 1.2
+            
+        case .research:
+            scores["BGE-Large"] = (scores["BGE-Large"] ?? 0.0) * 1.3
+            scores["Mistral-7B"] = (scores["Mistral-7B"] ?? 0.0) * 1.2
+            
+        case .creative:
+            scores["Llama-2-7B"] = (scores["Llama-2-7B"] ?? 0.0) * 1.3
+            scores["Mistral-7B"] = (scores["Mistral-7B"] ?? 0.0) * 1.1
+            
+        case .general:
+            // No specific optimizations for general workspace
+            break
+        }
+    }
+    
+    private func applyResourceConstraints(_ scores: inout [String: Double]) async {
+        let systemMemory = ProcessInfo.processInfo.physicalMemory / 1024 / 1024 / 1024 // GB
+        
+        if systemMemory < 8 {
+            // Heavily favor lightweight models on low memory systems
+            scores["Phi-2"] = (scores["Phi-2"] ?? 0.0) * 1.5
+            scores["BGE-Large"] = (scores["BGE-Large"] ?? 0.0) * 0.5
+        } else if systemMemory < 16 {
+            // Moderate optimization for medium memory systems
+            scores["Phi-2"] = (scores["Phi-2"] ?? 0.0) * 1.2
+            scores["BGE-Large"] = (scores["BGE-Large"] ?? 0.0) * 0.8
+        }
+        
+        // Apply current load considerations
+        let currentLoad = await getCurrentSystemLoad()
+        if currentLoad > 0.8 {
+            // Favor faster models when system is under load
+            scores["Phi-2"] = (scores["Phi-2"] ?? 0.0) * 1.3
+        }
+    }
+    
+    private func optimizePromptForModel(_ prompt: String, model: String) async -> String {
+        // Apply model-specific prompt optimizations
+        switch model {
+        case "CodeLlama-7B":
+            // Enhance code-related prompts
+            if !prompt.lowercased().contains("code") && (prompt.contains("{") || prompt.contains("function")) {
+                return "Code assistance request: \(prompt)"
+            }
+            
+        case "BGE-Large":
+            // Enhance factual/research prompts
+            if prompt.lowercased().contains("research") || prompt.lowercased().contains("analyze") {
+                return "Research analysis: \(prompt)"
+            }
+            
+        case "Phi-2":
+            // Optimize for conciseness
+            if prompt.count > 200 {
+                return "Concise response needed: \(prompt.prefix(150))..."
+            }
+            
+        default:
+            break
+        }
+        
+        return prompt
+    }
+    
+    private func generateModelSpecificParameters(model: String, context: ConversationContext) -> [String: Any] {
+        var params: [String: Any] = [:]
+        
+        switch model {
+        case "Mistral-7B":
+            params["temperature"] = 0.7
+            params["top_p"] = 0.9
+            params["max_tokens"] = 1024
+            
+        case "CodeLlama-7B":
+            params["temperature"] = 0.3
+            params["top_p"] = 0.95
+            params["max_tokens"] = 2048
+            
+        case "Phi-2":
+            params["temperature"] = 0.8
+            params["top_p"] = 0.85
+            params["max_tokens"] = 512
+            
+        case "BGE-Large":
+            params["temperature"] = 0.4
+            params["top_p"] = 0.9
+            params["max_tokens"] = 1536
+            
+        default:
+            params["temperature"] = 0.7
+            params["top_p"] = 0.9
+            params["max_tokens"] = 1024
+        }
+        
+        return params
+    }
+    
+    private func enhanceCodeFormatting(_ content: String) -> String {
+        // Basic code formatting enhancement
+        var enhanced = content
+        
+        // Add syntax highlighting hints if missing
+        if enhanced.contains("```") && !enhanced.contains("```swift") && !enhanced.contains("```python") {
+            enhanced = enhanced.replacingOccurrences(of: "```", with: "```swift")
+        }
+        
+        return enhanced
+    }
+    
+    private func executeFallbackInference(prompt: String, error: Error) async -> RouterInferenceResult {
+        // Fallback to simplest available model
+        let fallbackModel = "Phi-2"
+        
+        do {
+            let fallbackResponse = try await proprietaryCore.generateResponse(
+                prompt: prompt,
+                modelName: fallbackModel,
+                context: ConversationContext(),
+                parameters: InferenceParameters(maxTokens: 512, temperature: 0.7, topP: 0.9)
+            )
+            
+            return RouterInferenceResult(
+                content: fallbackResponse.content,
+                confidence: 0.6,
+                inferenceTime: 1.0,
+                model: fallbackModel,
+                metadata: ["fallback": true, "original_error": error.localizedDescription]
+            )
+        } catch {
+            return RouterInferenceResult(
+                content: "I'm experiencing technical difficulties. Please try again in a moment.",
+                confidence: 0.1,
+                inferenceTime: 0.1,
+                model: "fallback",
+                metadata: ["error": error.localizedDescription]
+            )
+        }
+    }
+    
+    // MARK: - Setup Methods
+    
+    private func setupModelSpecializations() {
+        modelSpecializations = [
+            "Mistral-7B": [
+                .general: 0.9, .reasoning: 0.85, .conversational: 0.9,
+                .analysis: 0.8, .creative: 0.75, .factual: 0.8
+            ],
+            "CodeLlama-7B": [
+                .coding: 0.95, .technical: 0.9, .debugging: 0.9,
+                .analysis: 0.7, .general: 0.6
+            ],
+            "Phi-2": [
+                .speed: 0.95, .general: 0.8, .conversational: 0.85,
+                .factual: 0.7, .reasoning: 0.75
+            ],
+            "BGE-Large": [
+                .factual: 0.95, .research: 0.9, .analysis: 0.85,
+                .embedding: 0.95, .general: 0.7
+            ],
+            "Llama-2-7B": [
+                .creative: 0.9, .conversational: 0.85, .general: 0.8,
+                .reasoning: 0.8, .analysis: 0.75
+            ]
+        ]
+    }
+    
+    private func setupComplexityAdjustments() {
+        complexityAdjustments = [
+            "Mistral-7B": [.low: 1.0, .medium: 0.9, .high: 0.85],
+            "CodeLlama-7B": [.low: 0.8, .medium: 1.0, .high: 1.1],
+            "Phi-2": [.low: 1.2, .medium: 0.9, .high: 0.6],
+            "BGE-Large": [.low: 0.9, .medium: 1.0, .high: 1.1],
+            "Llama-2-7B": [.low: 1.0, .medium: 0.95, .high: 0.9]
+        ]
+    }
 }
 
-// MARK: - 📊 Data Models
+// MARK: - Data Models
 
 struct RoutingDecision {
     let id = UUID()
@@ -628,7 +695,64 @@ struct ProcessedResponse {
     let confidence: Double
 }
 
-// MARK: - 🎓 Adaptive Learning Engine
+// FIXED: Removed memoryRequirement property that was causing compilation error
+struct ModelCapabilities {
+    let modelName: String
+    let specialties: [String]
+    let averageConfidence: Double
+    let averageInferenceTime: TimeInterval
+    
+    init(
+        modelName: String,
+        specialties: [String],
+        averageConfidence: Double,
+        averageInferenceTime: TimeInterval
+    ) {
+        self.modelName = modelName
+        self.specialties = specialties
+        self.averageConfidence = averageConfidence
+        self.averageInferenceTime = averageInferenceTime
+    }
+}
+
+// MARK: - Supporting Types
+
+struct PromptAnalysis {
+    let queryType: QueryType
+    let complexity: ContextComplexity
+    let workspaceType: WorkspaceManager.WorkspaceType
+    let requiredCapabilities: [ModelCapability]
+    let promptLength: Int
+    let isTimeConstrained: Bool
+    let prioritizeAccuracy: Bool
+}
+
+struct ConversationContext {
+    let messages: [String] = []
+    let workspaceType: WorkspaceManager.WorkspaceType = .general
+    let userPreferences: [String: Any] = [:]
+}
+
+struct InferenceParameters {
+    let maxTokens: Int
+    let temperature: Double
+    let topP: Double
+}
+
+enum QueryType {
+    case general, coding, analysis, creative, factual, reasoning, technical, debugging, conversational, research, speed, embedding
+}
+
+enum ContextComplexity {
+    case low, medium, high
+}
+
+enum ModelCapability {
+    case codeGeneration, syntaxAnalysis, logicalReasoning, dataAnalysis
+    case creativeWriting, storytelling, factualAccuracy, knowledgeRetrieval, generalReasoning
+}
+
+// MARK: - Adaptive Learning Engine
 
 class AdaptiveLearningEngine {
     private var learningHistory: [LearningRecord] = []
@@ -666,7 +790,7 @@ class AdaptiveLearningEngine {
         // Analyze which models perform best for each query type
         let recentRecords = learningHistory.suffix(200)
         
-        for queryType in QueryType.allCases {
+        for queryType in [QueryType.coding, .creative, .analysis, .factual, .general] {
             let recordsForType = recentRecords.filter { $0.queryType == queryType }
             
             // Build performance dictionary
@@ -693,12 +817,4 @@ struct LearningRecord {
     let selectedModel: String
     let performance: Double
     let timestamp: Date
-}
-
-// MARK: - 🏷️ Extended Enumerations
-
-extension QueryType {
-    static var allCases: [QueryType] {
-        return [.general, .coding, .analysis, .creative, .factual, .reasoning, .technical, .debugging, .conversational, .research, .speed, .embedding]
-    }
 }
