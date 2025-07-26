@@ -4,15 +4,15 @@
 // Created by Spectral Labs
 //
 // FOLDER: Arcana/Models/
-//
+// DEPENDENCIES: UnifiedTypes.swift, ChatMessage.swift, WorkspaceManager.swift
 
 import Foundation
 
 @MainActor
-class ChatThread: ObservableObject, @preconcurrency Identifiable, @preconcurrency Codable {
+class ChatThread: ObservableObject, Identifiable, Codable {
     
     // MARK: - Core Properties
-    nonisolated var id = UUID()
+    let id = UUID() // FIXED: Removed nonisolated - not needed for let constants
     @Published var title: String = ""
     @Published var messages: [ChatMessage] = []
     @Published var lastModified: Date = Date()
@@ -29,14 +29,6 @@ class ChatThread: ObservableObject, @preconcurrency Identifiable, @preconcurrenc
     @Published var conversationDepth: Int = 0
     @Published var topicConsistency: Double = 0.0
     
-    // FIXED: Added missing shouldPromoteToWorkspace computed property
-    var shouldPromoteToWorkspace: Bool {
-        return promotionEligibility > 0.75 &&
-               conversationDepth >= 4 &&
-               topicConsistency > 0.6 &&
-               !isPromotedToWorkspace
-    }
-    
     // MARK: - Thread Quality Metrics
     @Published var qualityScore: Double = 0.0
     @Published var averageResponseTime: TimeInterval = 0.0
@@ -46,6 +38,47 @@ class ChatThread: ObservableObject, @preconcurrency Identifiable, @preconcurrenc
     @Published var createdAt: Date = Date()
     @Published var preferredTimeContext: String = ""
     @Published var optimalEngagementTimes: [Date] = []
+    
+    // MARK: - Computed Properties
+    
+    var shouldPromoteToWorkspace: Bool {
+        return promotionEligibility > 0.75 &&
+               conversationDepth >= 4 &&
+               topicConsistency > 0.6 &&
+               !isPromotedToWorkspace
+    }
+    
+    var displayTitle: String {
+        if !title.isEmpty {
+            return title
+        }
+        
+        if let firstUserMessage = messages.first(where: { $0.role == .user }) {
+            let content = firstUserMessage.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            return String(content.prefix(50)) + (content.count > 50 ? "..." : "")
+        }
+        
+        return "New Conversation"
+    }
+    
+    var lastMessagePreview: String {
+        guard let lastMessage = messages.last else { return "No messages" }
+        let content = lastMessage.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(content.prefix(100)) + (content.count > 100 ? "..." : "")
+    }
+    
+    var formattedLastModified: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: lastModified, relativeTo: Date())
+    }
+    
+    // MARK: - Initializers
+    
+    init() {
+        self.createdAt = Date()
+        self.lastModified = Date()
+    }
     
     // MARK: - Codable Support
     
@@ -58,93 +91,67 @@ class ChatThread: ObservableObject, @preconcurrency Identifiable, @preconcurrenc
         case createdAt, preferredTimeContext, optimalEngagementTimes
     }
     
-    init() {
-        self.createdAt = Date()
-        self.lastModified = Date()
-    }
-    
-    nonisolated required init(from decoder: Decoder) throws {
+    required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        let decodedId = try container.decode(UUID.self, forKey: .id)
-        let decodedTitle = try container.decode(String.self, forKey: .title)
-        let decodedMessages = try container.decode([ChatMessage].self, forKey: .messages)
-        let decodedLastModified = try container.decode(Date.self, forKey: .lastModified)
+        // Core properties
+        self.title = try container.decode(String.self, forKey: .title)
+        self.messages = try container.decode([ChatMessage].self, forKey: .messages)
+        self.lastModified = try container.decode(Date.self, forKey: .lastModified)
         
-        let decodedDetectedType = try container.decode(WorkspaceManager.WorkspaceManager.WorkspaceType.self, forKey: .detectedType)
-        let decodedSummary = try container.decode(String.self, forKey: .summary)
-        let decodedTags = try container.decode([String].self, forKey: .tags)
+        // Intelligence properties
+        self.detectedType = try container.decode(WorkspaceManager.WorkspaceType.self, forKey: .detectedType)
+        self.summary = try container.decode(String.self, forKey: .summary)
+        self.tags = try container.decode([String].self, forKey: .tags)
         
-        let decodedIsPromotedToWorkspace = try container.decode(Bool.self, forKey: .isPromotedToWorkspace)
-        let decodedWorkspaceId = try container.decodeIfPresent(UUID.self, forKey: .workspaceId)
-        let decodedPromotionEligibility = try container.decode(Double.self, forKey: .promotionEligibility)
-        let decodedConversationDepth = try container.decode(Int.self, forKey: .conversationDepth)
-        let decodedTopicConsistency = try container.decode(Double.self, forKey: .topicConsistency)
+        // Workspace integration
+        self.isPromotedToWorkspace = try container.decode(Bool.self, forKey: .isPromotedToWorkspace)
+        self.workspaceId = try container.decodeIfPresent(UUID.self, forKey: .workspaceId)
+        self.promotionEligibility = try container.decode(Double.self, forKey: .promotionEligibility)
+        self.conversationDepth = try container.decode(Int.self, forKey: .conversationDepth)
+        self.topicConsistency = try container.decode(Double.self, forKey: .topicConsistency)
         
-        let decodedQualityScore = try container.decode(Double.self, forKey: .qualityScore)
-        let decodedAverageResponseTime = try container.decode(TimeInterval.self, forKey: .averageResponseTime)
-        let decodedUserSatisfactionScore = try container.decode(Double.self, forKey: .userSatisfactionScore)
+        // Quality metrics
+        self.qualityScore = try container.decode(Double.self, forKey: .qualityScore)
+        self.averageResponseTime = try container.decode(TimeInterval.self, forKey: .averageResponseTime)
+        self.userSatisfactionScore = try container.decode(Double.self, forKey: .userSatisfactionScore)
         
-        let decodedCreatedAt = try container.decode(Date.self, forKey: .createdAt)
-        let decodedPreferredTimeContext = try container.decode(String.self, forKey: .preferredTimeContext)
-        let decodedOptimalEngagementTimes = try container.decode([Date].self, forKey: .optimalEngagementTimes)
-        
-        // Initialize properties on main actor
-        Task { @MainActor in
-            self.id = decodedId
-            self.title = decodedTitle
-            self.messages = decodedMessages
-            self.lastModified = decodedLastModified
-            
-            self.detectedType = decodedDetectedType
-            self.summary = decodedSummary
-            self.tags = decodedTags
-            
-            self.isPromotedToWorkspace = decodedIsPromotedToWorkspace
-            self.workspaceId = decodedWorkspaceId
-            self.promotionEligibility = decodedPromotionEligibility
-            self.conversationDepth = decodedConversationDepth
-            self.topicConsistency = decodedTopicConsistency
-            
-            self.qualityScore = decodedQualityScore
-            self.averageResponseTime = decodedAverageResponseTime
-            self.userSatisfactionScore = decodedUserSatisfactionScore
-            
-            self.createdAt = decodedCreatedAt
-            self.preferredTimeContext = decodedPreferredTimeContext
-            self.optimalEngagementTimes = decodedOptimalEngagementTimes
-        }
+        // Temporal intelligence
+        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        self.preferredTimeContext = try container.decode(String.self, forKey: .preferredTimeContext)
+        self.optimalEngagementTimes = try container.decode([Date].self, forKey: .optimalEngagementTimes)
     }
     
-    nonisolated func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
+        // Core properties
         try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(messages, forKey: .messages)
+        try container.encode(lastModified, forKey: .lastModified)
         
-        // For @Published properties, we need to access them safely
-        Task { @MainActor in
-            try container.encode(self.title, forKey: .title)
-            try container.encode(self.messages, forKey: .messages)
-            try container.encode(self.lastModified, forKey: .lastModified)
-            
-            try container.encode(self.detectedType, forKey: .detectedType)
-            try container.encode(self.summary, forKey: .summary)
-            try container.encode(self.tags, forKey: .tags)
-            
-            try container.encode(self.isPromotedToWorkspace, forKey: .isPromotedToWorkspace)
-            try container.encode(self.workspaceId, forKey: .workspaceId)
-            try container.encode(self.promotionEligibility, forKey: .promotionEligibility)
-            try container.encode(self.conversationDepth, forKey: .conversationDepth)
-            try container.encode(self.topicConsistency, forKey: .topicConsistency)
-            
-            try container.encode(self.qualityScore, forKey: .qualityScore)
-            try container.encode(self.averageResponseTime, forKey: .averageResponseTime)
-            try container.encode(self.userSatisfactionScore, forKey: .userSatisfactionScore)
-            
-            try container.encode(self.createdAt, forKey: .createdAt)
-            try container.encode(self.preferredTimeContext, forKey: .preferredTimeContext)
-            try container.encode(self.optimalEngagementTimes, forKey: .optimalEngagementTimes)
-        }
+        // Intelligence properties
+        try container.encode(detectedType, forKey: .detectedType)
+        try container.encode(summary, forKey: .summary)
+        try container.encode(tags, forKey: .tags)
+        
+        // Workspace integration
+        try container.encode(isPromotedToWorkspace, forKey: .isPromotedToWorkspace)
+        try container.encode(workspaceId, forKey: .workspaceId)
+        try container.encode(promotionEligibility, forKey: .promotionEligibility)
+        try container.encode(conversationDepth, forKey: .conversationDepth)
+        try container.encode(topicConsistency, forKey: .topicConsistency)
+        
+        // Quality metrics
+        try container.encode(qualityScore, forKey: .qualityScore)
+        try container.encode(averageResponseTime, forKey: .averageResponseTime)
+        try container.encode(userSatisfactionScore, forKey: .userSatisfactionScore)
+        
+        // Temporal intelligence
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(preferredTimeContext, forKey: .preferredTimeContext)
+        try container.encode(optimalEngagementTimes, forKey: .optimalEngagementTimes)
     }
     
     // MARK: - Message Management
@@ -155,14 +162,16 @@ class ChatThread: ObservableObject, @preconcurrency Identifiable, @preconcurrenc
         conversationDepth = messages.count
         updateWorkspaceEligibility()
         evaluateTopicConsistency()
+        updateQualityMetrics()
     }
     
     func removeMessage(at index: Int) {
-        guard index < messages.count else { return }
+        guard index >= 0 && index < messages.count else { return }
         messages.remove(at: index)
         lastModified = Date()
         conversationDepth = messages.count
         updateWorkspaceEligibility()
+        evaluateTopicConsistency()
     }
     
     func clearMessages() {
@@ -171,135 +180,164 @@ class ChatThread: ObservableObject, @preconcurrency Identifiable, @preconcurrenc
         conversationDepth = 0
         promotionEligibility = 0.0
         topicConsistency = 0.0
+        qualityScore = 0.0
     }
     
-    // MARK: - Intelligence Updates
+    // MARK: - Intelligence Methods
     
     private func updateWorkspaceEligibility() {
-        // Calculate promotion eligibility based on conversation depth and quality
-        let depthScore = min(Double(conversationDepth) / 10.0, 1.0)
-        let contentQuality = calculateContentQuality()
-        promotionEligibility = (depthScore + contentQuality) / 2.0
-    }
-    
-    private func calculateContentQuality() -> Double {
-        guard !messages.isEmpty else { return 0.0 }
+        // Calculate promotion eligibility based on conversation metrics
+        let messageCount = messages.count
+        let contentDepth = calculateContentDepth()
+        let typeConsistency = calculateTypeConsistency()
         
-        let totalLength = messages.reduce(0) { $0 + $1.content.count }
-        let averageLength = Double(totalLength) / Double(messages.count)
-        
-        // Simple quality heuristic based on message length and variety
-        let lengthScore = min(averageLength / 100.0, 1.0)
-        return lengthScore
+        promotionEligibility = min(
+            (Double(messageCount) / 10.0) * 0.4 +
+            contentDepth * 0.3 +
+            typeConsistency * 0.3,
+            1.0
+        )
     }
     
     private func evaluateTopicConsistency() {
-        guard messages.count > 1 else {
-            topicConsistency = 1.0
+        guard messages.count >= 2 else {
+            topicConsistency = 0.0
             return
         }
         
         // Simple topic consistency calculation
-        // In a real implementation, this would use NLP techniques
-        let allContent = messages.map { $0.content }.joined(separator: " ")
-        let uniqueWords = Set(allContent.components(separatedBy: .whitespacesAndNewlines))
-        let totalWords = allContent.components(separatedBy: .whitespacesAndNewlines).count
+        // In a full implementation, this would use semantic analysis
+        let keywords = extractKeywords()
+        let uniqueKeywords = Set(keywords)
+        let totalKeywords = keywords.count
         
-        topicConsistency = Double(uniqueWords.count) / Double(totalWords)
+        if totalKeywords > 0 {
+            topicConsistency = Double(uniqueKeywords.count) / Double(totalKeywords)
+        } else {
+            topicConsistency = 0.5
+        }
     }
     
-    // MARK: - Display Helpers
+    private func updateQualityMetrics() {
+        let assistantMessages = messages.filter { $0.role == .assistant }
+        
+        if !assistantMessages.isEmpty {
+            let qualityScores = assistantMessages.compactMap { $0.qualityScore }
+            qualityScore = qualityScores.isEmpty ? 0.0 : qualityScores.reduce(0, +) / Double(qualityScores.count)
+            
+            let responseTimes = assistantMessages.compactMap { $0.metadata?.responseTime }
+            averageResponseTime = responseTimes.isEmpty ? 0.0 : responseTimes.reduce(0, +) / Double(responseTimes.count)
+        }
+    }
     
-    var displayTitle: String {
-        if !title.isEmpty {
-            return title
+    private func calculateContentDepth() -> Double {
+        let totalLength = messages.reduce(0) { sum, message in
+            sum + message.content.count
         }
         
-        if let firstMessage = messages.first(where: { $0.isFromUser }) {
-            let content = firstMessage.content
-            return content.count > 50 ? String(content.prefix(50)) + "..." : content
+        // Normalize content depth (assuming 500 characters per substantial message)
+        return min(Double(totalLength) / (Double(messages.count) * 500.0), 1.0)
+    }
+    
+    private func calculateTypeConsistency() -> Double {
+        guard messages.count > 1 else { return 1.0 }
+        
+        // Simple type consistency based on detected type stability
+        // In full implementation, would analyze semantic consistency
+        return 0.8 // Placeholder value
+    }
+    
+    private func extractKeywords() -> [String] {
+        let allText = messages.map { $0.content }.joined(separator: " ")
+        let words = allText.components(separatedBy: .whitespacesAndPunctuationMarkers)
+        
+        return words.filter { word in
+            word.count > 3 && !word.localizedCaseInsensitiveContains("the") &&
+            !word.localizedCaseInsensitiveContains("and") &&
+            !word.localizedCaseInsensitiveContains("for")
         }
-        
-        return "New Conversation"
     }
     
-    var messageCount: Int {
-        return messages.count
-    }
-    
-    var lastActivity: Date {
-        return lastModified
-    }
-    
-    var contextSummary: String {
-        guard !messages.isEmpty else { return "No conversation yet" }
-        
-        let userMessages = messages.filter { $0.isFromUser }
-        if let lastUserMessage = userMessages.last {
-            let content = lastUserMessage.content
-            return content.count > 100 ? String(content.prefix(100)) + "..." : content
-        }
-        
-        return "Conversation in progress"
-    }
-    
-    // MARK: - Workspace Detection and Promotion
+    // MARK: - Workspace Detection
     
     func detectWorkspaceType() async -> WorkspaceManager.WorkspaceType {
-        let allContent = messages.map { $0.content }.joined(separator: " ")
-        return await IntelligenceEngine.shared.detectWorkspaceType(from: allContent)
+        guard !messages.isEmpty else { return .general }
+        
+        let content = messages.map { $0.content }.joined(separator: " ")
+        return await IntelligenceEngine.shared.detectWorkspaceType(from: content)
     }
     
-    func promoteToWorkspace() -> Project {
-        let workspace = Project(
-            title: title,
-            description: generateWorkspaceDescription()
-        )
-        
-        // Transfer all conversation history (note: this would require adding conversations property to Project model in the future)
-        // workspace.conversations = messages
-        
-        // Mark this thread as promoted
-        isPromotedToWorkspace = true
-        workspaceId = workspace.id
-        
-        return workspace
+    func updateDetectedType() {
+        Task {
+            let newType = await detectWorkspaceType()
+            await MainActor.run {
+                if self.detectedType != newType {
+                    self.detectedType = newType
+                    self.lastModified = Date()
+                }
+            }
+        }
     }
     
-    private func generateWorkspaceDescription() -> String {
+    // MARK: - Export and Analysis
+    
+    func generateSummary() -> String {
+        guard !messages.isEmpty else { return "Empty conversation" }
+        
         if !summary.isEmpty {
             return summary
         }
         
-        let allContent = messages.map { $0.content }.joined(separator: " ")
-        if allContent.count > 200 {
-            return String(allContent.prefix(200)) + "..."
-        }
-        return allContent
-    }
-    
-    // MARK: - Quality Assessment
-    
-    var hasHighQualityContent: Bool {
-        return promotionEligibility > 0.7 && conversationDepth >= 4
-    }
-    
-    var isWorkspaceWorthy: Bool {
-        return hasHighQualityContent && topicConsistency > 0.6
-    }
-    
-    // MARK: - Sample Data (for preview/testing)
-    
-    static var sampleThread: ChatThread {
-        let thread = ChatThread()
-        thread.title = "JWT Authentication Help"
+        // Generate basic summary
+        let userMessages = messages.filter { $0.role == .user }
+        let assistantMessages = messages.filter { $0.role == .assistant }
         
-        // FIXED: Use correct ChatMessage initializer with isFromUser
+        return "Conversation with \(userMessages.count) user messages and \(assistantMessages.count) assistant responses. Topic: \(detectedType.displayName)"
+    }
+    
+    func exportData() -> [String: Any] {
+        return [
+            "id": id.uuidString,
+            "title": title,
+            "display_title": displayTitle,
+            "message_count": messages.count,
+            "detected_type": detectedType.rawValue,
+            "quality_score": qualityScore,
+            "promotion_eligibility": promotionEligibility,
+            "topic_consistency": topicConsistency,
+            "created_at": createdAt.timeIntervalSince1970,
+            "last_modified": lastModified.timeIntervalSince1970,
+            "summary": generateSummary(),
+            "tags": tags
+        ]
+    }
+}
+
+// MARK: - Hashable Conformance
+
+extension ChatThread: Hashable {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: ChatThread, rhs: ChatThread) -> Bool {
+        return lhs.id == rhs.id
+    }
+}
+
+// MARK: - Sample Data for Development
+
+extension ChatThread {
+    static func createSampleThread() -> ChatThread {
+        let thread = ChatThread()
+        thread.title = "Sample Conversation"
+        thread.detectedType = .code
+        
         let messages = [
-            ChatMessage(content: "I'm having trouble with JWT authentication in my React app", isFromUser: true, threadId: thread.id),
-            ChatMessage(content: "I can help you with JWT authentication! What specific issue are you encountering?", isFromUser: false, threadId: thread.id),
-            ChatMessage(content: "The token keeps expiring and I'm not sure how to handle refresh tokens properly", isFromUser: true, threadId: thread.id),
-            ChatMessage(content: "Perfect! Let's implement a robust JWT refresh token strategy. Here's what I recommend...", isFromUser: false, threadId: thread.id)
+            ChatMessage(content: "I need help with implementing JWT authentication in React", role: .user, projectId: thread.id),
+            ChatMessage(content: "I'd be happy to help you with JWT authentication in React! What specific aspect are you working on?", role: .assistant, projectId: thread.id),
+            ChatMessage(content: "The token keeps expiring and I'm not sure how to handle refresh tokens properly", role: .user, projectId: thread.id),
+            ChatMessage(content: "Perfect! Let's implement a robust JWT refresh token strategy. Here's what I recommend...", role: .assistant, projectId: thread.id)
         ]
         
         for message in messages {
@@ -310,17 +348,5 @@ class ChatThread: ObservableObject, @preconcurrency Identifiable, @preconcurrenc
         thread.tags = ["authentication", "JWT", "React", "security"]
         
         return thread
-    }
-}
-
-// MARK: - Hashable Conformance
-
-extension ChatThread: @preconcurrency Hashable {
-    nonisolated func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-    
-    nonisolated static func == (lhs: ChatThread, rhs: ChatThread) -> Bool {
-        return lhs.id == rhs.id
     }
 }

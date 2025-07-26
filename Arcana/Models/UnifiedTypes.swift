@@ -16,7 +16,7 @@ import SwiftUI
 // =====================================================
 
 extension WorkspaceManager {
-    WorkspaceManager.WorkspaceType: String, Codable, CaseIterable, Hashable {
+    enum WorkspaceType: String, Codable, CaseIterable, Hashable {
         case general = "general"
         case code = "code"
         case creative = "creative"
@@ -55,7 +55,7 @@ extension WorkspaceManager {
 // CHAT & MESSAGE TYPES (AUTHORITATIVE)
 // =====================================================
 
-MessageRole: String, Codable, CaseIterable {
+enum MessageRole: String, Codable, CaseIterable {
     case user = "user"
     case assistant = "assistant"
     case system = "system"
@@ -69,7 +69,7 @@ MessageRole: String, Codable, CaseIterable {
 // TEMPORAL TYPES (AUTHORITATIVE - NO DUPLICATES)
 // =====================================================
 
-Season: String, Codable, CaseIterable, Hashable {
+enum Season: String, Codable, CaseIterable, Hashable {
     case spring = "spring"
     case summer = "summer"
     case autumn = "autumn"
@@ -136,7 +136,7 @@ enum DayOfWeek: String, Codable, CaseIterable, Hashable {
 // QUALITY & VALIDATION TYPES (AUTHORITATIVE)
 // =====================================================
 
-ValidationLevel: String, Codable, CaseIterable {
+enum enum ValidationLevel: String, Codable, CaseIterable {
     case none = "none"
     case basic = "basic"
     case standard = "standard"
@@ -164,7 +164,7 @@ ValidationLevel: String, Codable, CaseIterable {
     }
 }
 
-QualityTier: String, Codable, CaseIterable {
+enum QualityTier: String, Codable, CaseIterable {
     case poor = "poor"
     case acceptable = "acceptable"
     case good = "good"
@@ -565,7 +565,7 @@ struct SystemValidation {
             "quality_tiers": QualityTier.allCases.count,
             "uncertainty_types": UncertaintyType.allCases.count,
             "validation_levels": ValidationLevel.allCases.count,
-            "workspace_types": WorkspaceManager.WorkspaceManager.WorkspaceType.allCases.count
+            "workspace_types": WorkspaceManager.WorkspaceType.allCases.count
         ]
     }
 }
