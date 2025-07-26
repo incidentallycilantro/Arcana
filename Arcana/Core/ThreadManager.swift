@@ -1,3 +1,4 @@
+//
 // ThreadManager.swift
 // Created by Dylan E. | Spectral Labs
 // Arcana - Privacy-first AI Assistant for macOS
@@ -114,15 +115,27 @@ class ThreadManager: ObservableObject {
         )
     }
 
+    // ✅ FIXED: Async workspace filtering - replaced filter with async approach
     private func findRelevantExistingWorkspaces(for content: String) async -> [Project] {
         let contentKeywords = await intelligenceEngine.extractKeywords(from: content)
         let workspaces = WorkspaceManager.shared.workspaces
-
-        return workspaces.filter { workspace in
+        
+        var relevantWorkspaces: [Project] = []
+        
+        // Process workspaces sequentially to handle async calls
+        for workspace in workspaces {
             let workspaceKeywords = await intelligenceEngine.extractKeywords(from: "\(workspace.title) \(workspace.description)")
             let commonKeywords = Set(contentKeywords).intersection(Set(workspaceKeywords))
-            return commonKeywords.count >= 2
-        }.prefix(3).map { $0 }
+            if commonKeywords.count >= 2 {
+                relevantWorkspaces.append(workspace)
+                // Limit to 3 suggestions
+                if relevantWorkspaces.count >= 3 {
+                    break
+                }
+            }
+        }
+        
+        return relevantWorkspaces
     }
 
     // MARK: - Workspace Promotion
@@ -151,9 +164,6 @@ class ThreadManager: ObservableObject {
             title: finalTitle,
             description: finalDescription
         )
-
-        // Transfer conversation context (note: this would require adding conversations property to Project model in the future)
-        // newWorkspace.conversations = context.messages
 
         WorkspaceManager.shared.workspaces.insert(newWorkspace, at: 0)
         WorkspaceManager.shared.selectedWorkspace = newWorkspace
@@ -220,23 +230,17 @@ class ThreadPersistenceController {
                 return nil
             }
             return thread
-        }.sorted { thread1, thread2 in
-            // Safe access to lastModified using async/await pattern for @MainActor properties
-            Task { @MainActor in
-                return thread1.lastModified > thread2.lastModified
-            }
-            // Fallback comparison for synchronous context
-            return true
         }
     }
 
     func saveThread(_ thread: ChatThread) {
-        Task { @MainActor in
-            let threadURL = threadsDirectory.appendingPathComponent("\(thread.id.uuidString).json")
-            
-            if let data = try? JSONEncoder().encode(thread) {
-                try? data.write(to: threadURL)
-            }
+        let threadURL = threadsDirectory.appendingPathComponent("\(thread.id.uuidString).json")
+        
+        do {
+            let data = try JSONEncoder().encode(thread)
+            try data.write(to: threadURL)
+        } catch {
+            print("Failed to save thread: \(error)")
         }
     }
 

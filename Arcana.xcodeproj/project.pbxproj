@@ -34,6 +34,7 @@
 		1D1F77CC2E35451900D54E2F /* AdapterController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77CB2E35451900D54E2F /* AdapterController.swift */; };
 		1D1F77D02E35697D00D54E2F /* UnifiedTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77CF2E35697D00D54E2F /* UnifiedTypes.swift */; };
 		1D1F77D22E356A2A00D54E2F /* ResponseQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77D12E356A2A00D54E2F /* ResponseQuality.swift */; };
+		1D1F77D62E35757300D54E2F /* TemporalTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77D52E35757300D54E2F /* TemporalTypes.swift */; };
 		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC62E31756700583CBF /* InvisibleChatView.swift */; };
 		1DA7884A2E306C5A0095ED87 /* ArcanaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA788462E306C5A0095ED87 /* ArcanaApp.swift */; };
@@ -107,6 +108,7 @@
 		1D1F77CB2E35451900D54E2F /* AdapterController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdapterController.swift; sourceTree = "<group>"; };
 		1D1F77CF2E35697D00D54E2F /* UnifiedTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedTypes.swift; sourceTree = "<group>"; };
 		1D1F77D12E356A2A00D54E2F /* ResponseQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseQuality.swift; sourceTree = "<group>"; };
+		1D1F77D52E35757300D54E2F /* TemporalTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporalTypes.swift; sourceTree = "<group>"; };
 		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1D549FC62E31756700583CBF /* InvisibleChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvisibleChatView.swift; sourceTree = "<group>"; };
 		1DA788042E30687B0095ED87 /* Arcana.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Arcana.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -270,6 +272,7 @@
 				1D1F77C92E35423600D54E2F /* PrivacyTypes.swift */,
 				1D1F77CF2E35697D00D54E2F /* UnifiedTypes.swift */,
 				1D1F77D12E356A2A00D54E2F /* ResponseQuality.swift */,
+				1D1F77D52E35757300D54E2F /* TemporalTypes.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -457,6 +460,7 @@
 				1D1F77C42E35421600D54E2F /* LocalEncryptionManager.swift in Sources */,
 				1DA7885F2E306CCD0095ED87 /* TimelineView.swift in Sources */,
 				1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */,
+				1D1F77D62E35757300D54E2F /* TemporalTypes.swift in Sources */,
 				1D1F77C22E35420D00D54E2F /* ZeroKnowledgePrivacy.swift in Sources */,
 				1D1F77C62E35422300D54E2F /* MemoryPoisoningEngine.swift in Sources */,
 				1D1F77B22E34006800D54E2F /* ResponseValidator.swift in Sources */,

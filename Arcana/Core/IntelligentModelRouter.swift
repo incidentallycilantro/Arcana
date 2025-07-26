@@ -3,6 +3,7 @@
 // Created by Dylan E. | Spectral Labs
 // Arcana - Revolutionary Optimal Model Selection Engine
 //
+// DEPENDENCIES: UnifiedTypes.swift
 
 import Foundation
 import Combine
@@ -498,14 +499,14 @@ class IntelligentModelRouter: ObservableObject {
     
     // MARK: - 🛠️ Helper Methods
     
+    // ✅ FIXED: Complete ModelCapabilities constructor with all required parameters
     private func setupModelCapabilities() {
         // Initialize model capabilities database
         for model in modelSpecializations.keys {
             modelCapabilities[model] = ModelCapabilities(
                 modelName: model,
-                specialties: [], // Convert specializations to array if needed
-                averageConfidence: 0.8
-            )
+                specialties: Array(modelSpecializations[model]?.keys.map { "\($0)" } ?? []),
+                averageConfidence: 0.8,
                 memoryRequirement: getModelMemoryRequirement(model),
                 averageInferenceTime: getModelAverageInferenceTime(model)
             )
