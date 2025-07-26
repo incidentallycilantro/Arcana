@@ -92,17 +92,17 @@ class CircadianOptimizer: ObservableObject {
         let adjustedTime = adjustForChronotype(time: timeDecimal)
         
         switch adjustedTime {
-        case 5.0..<7.0: return .earlyMorningLow
-        case 7.0..<9.0: return .morningRise
-        case 9.0..<11.0: return .morningFocus
-        case 11.0..<12.0: return .midMorningPeak
-        case 12.0..<14.0: return .lunchDip
-        case 14.0..<16.0: return .afternoonCreative
-        case 16.0..<18.0: return .afternoonPeak
-        case 18.0..<20.0: return .eveningTransition
-        case 20.0..<22.0: return .eveningReflection
-        case 22.0..<24.0: return .nightWindDown
-        case 0.0..<5.0: return .lateNightLow
+        case 5.0..<7.0: return .morningRise
+        case 7.0..<9.0: return .morningFocus
+        case 9.0..<11.0: return .midMorningPeak
+        case 11.0..<12.0: return .lunchDip
+        case 12.0..<14.0: return .afternoonCreative
+        case 14.0..<16.0: return .afternoonPeak
+        case 16.0..<18.0: return .eveningTransition
+        case 18.0..<20.0: return .eveningReflection
+        case 20.0..<22.0: return .nightWindDown
+        case 22.0..<24.0: return .lateNightLow
+        case 0.0..<5.0: return .earlyMorningLow
         default: return .morningFocus
         }
     }
@@ -156,11 +156,11 @@ class CircadianOptimizer: ObservableObject {
         for hour in 0..<24 {
             let futureTime = Calendar.current.date(byAdding: .hour, value: hour, to: startTime)!
             let phase = await getCurrentPhase(at: futureTime)
-            let energy = calculateEnergyLevel(at: futureTime, phase: phase)
+            let energyLevel = phase.energyLevel
             
             forecast.append(EnergyForecastPoint(
                 time: futureTime,
-                energyLevel: energy,
+                energyLevel: energyLevel,
                 phase: phase,
                 activities: phase.optimalActivities
             ))
@@ -171,49 +171,58 @@ class CircadianOptimizer: ObservableObject {
     
     private func updateOptimalActivityWindows() async {
         let now = Date()
-        var windows: [ActivityWindow] = []
-        
-        // Find optimal windows for different activities
-        let activities: [ActivityType] = [.creative, .analytical, .communication, .planning]
-        
-        for activity in activities {
-            let optimalTimes = await findOptimalTimeWindows(for: activity, from: now)
-            windows.append(contentsOf: optimalTimes)
-        }
-        
-        optimalActivityWindows = windows.sorted { $0.startTime < $1.startTime }
+        let windows = await findOptimalTimeWindows(for: .analytical, from: now)
+        optimalActivityWindows = windows
     }
     
-    // MARK: - Private Helper Methods
+    // MARK: - Private Methods
     
     private func loadUserCircadianProfile() async {
-        // Load from persistence or use defaults
         userCircadianProfile = await CircadianPersistenceManager.shared.loadUserProfile()
         circadianCalibration = await CircadianPersistenceManager.shared.loadCalibration()
     }
     
-    private func adjustForChronotype(time: Double) -> Double {
-        // Adjust time based on user's chronotype (morning person, night owl, etc.)
-        switch userCircadianProfile.chronotype {
-        case .earlyBird:
-            return time - 1.0 // Shift 1 hour earlier
-        case .nightOwl:
-            return time + 1.0 // Shift 1 hour later
-        case .neutral:
-            return time
-        }
-    }
-    
     private func calculateEnergyLevel(at time: Date, phase: CircadianPhase) -> Double {
-        // Use the energy level from the CircadianPhase enum
-        return phase.energyLevel
+        // Base energy from circadian phase
+        var energyLevel = phase.energyLevel
+        
+        // Apply user chronotype adjustment
+        let chronotypeBoost = userCircadianProfile.cognitiveBoost(for: phase)
+        energyLevel += chronotypeBoost
+        
+        // Apply personalized calibration
+        energyLevel += circadianCalibration.personalizedShift
+        
+        return min(max(energyLevel, 0.0), 1.0)
     }
     
     private func calculateCognitiveOptimality(at time: Date, phase: CircadianPhase) -> Double {
-        // Calculate cognitive optimality based on phase and user profile
-        let baseOptimality = phase.energyLevel
-        let userAdjustment = userCircadianProfile.cognitiveBoost(for: phase)
-        return min(1.0, baseOptimality + userAdjustment)
+        // Cognitive optimality correlates with energy but includes additional factors
+        let baseOptimality = calculateEnergyLevel(at: time, phase: phase)
+        
+        // Add cognitive-specific adjustments
+        let cognitiveModifier: Double = {
+            switch phase {
+            case .morningFocus, .midMorningPeak: return 0.1
+            case .afternoonCreative: return 0.15
+            case .eveningReflection: return 0.05
+            default: return 0.0
+            }
+        }()
+        
+        return min(baseOptimality + cognitiveModifier, 1.0)
+    }
+    
+    private func adjustForChronotype(time: Double) -> Double {
+        // Adjust time based on user's chronotype
+        switch userCircadianProfile.chronotype {
+        case .earlyBird:
+            return time - 1.0 // Shift earlier
+        case .nightOwl:
+            return time + 1.0 // Shift later
+        case .neutral:
+            return time
+        }
     }
     
     private func generateCircadianRecommendations(
@@ -224,32 +233,35 @@ class CircadianOptimizer: ObservableObject {
         
         var recommendations: [TemporalRecommendation] = []
         
+        // High-energy periods: suggest analytical tasks
         if energy > 0.8 {
             recommendations.append(TemporalRecommendation(
                 type: .energyOptimization,
                 title: "High Energy Period",
-                message: "This is an excellent time for demanding or complex tasks.",
+                message: "This is an optimal time for analytical and problem-solving tasks.",
                 confidence: 0.9,
                 action: .suggestAnalyticalTasks
             ))
         }
         
-        if cognitive > 0.8 {
+        // Medium-energy periods: suggest balanced tasks
+        if energy > 0.6 && energy <= 0.8 {
             recommendations.append(TemporalRecommendation(
                 type: .energyOptimization,
-                title: "Peak Cognitive Performance",
-                message: "Your cognitive abilities are at their peak right now.",
-                confidence: 0.8,
+                title: "Balanced Energy",
+                message: "Good time for collaborative work and communication.",
+                confidence: 0.7,
                 action: .suggestAnalyticalTasks
             ))
         }
         
-        if energy < 0.4 {
+        // Low-energy periods: suggest break or lighter tasks
+        if energy <= 0.4 {
             recommendations.append(TemporalRecommendation(
                 type: .energyOptimization,
                 title: "Low Energy Period",
-                message: "Consider taking a break or doing lighter tasks.",
-                confidence: 0.7,
+                message: "Consider taking a break or focusing on lighter tasks.",
+                confidence: 0.8,
                 action: .suggestBreak
             ))
         }
@@ -257,15 +269,11 @@ class CircadianOptimizer: ObservableObject {
         return recommendations
     }
     
-    private func findOptimalTimeWindows(
-        for activity: ActivityType,
-        from startTime: Date
-    ) async -> [ActivityWindow] {
-        
+    private func findOptimalTimeWindows(for activity: ActivityType, from startTime: Date) async -> [ActivityWindow] {
         var windows: [ActivityWindow] = []
         let calendar = Calendar.current
         
-        // Find windows in the next 24 hours
+        // Check next 24 hours in hourly increments
         for hour in 0..<24 {
             let timeSlot = calendar.date(byAdding: .hour, value: hour, to: startTime)!
             let phase = await getCurrentPhase(at: timeSlot)
