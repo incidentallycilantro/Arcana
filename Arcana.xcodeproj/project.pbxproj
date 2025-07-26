@@ -27,6 +27,14 @@
 		1D1F77B62E34007A00D54E2F /* FactCheckingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77B52E34007A00D54E2F /* FactCheckingEngine.swift */; };
 		1D1F77B82E34008600D54E2F /* ResponseQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77B72E34008600D54E2F /* ResponseQuality.swift */; };
 		1D1F77BA2E3402C700D54E2F /* SharedQualityTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77B92E3402C700D54E2F /* SharedQualityTypes.swift */; };
+		1D1F77BC2E3541E900D54E2F /* TemporalIntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77BB2E3541E500D54E2F /* TemporalIntelligenceEngine.swift */; };
+		1D1F77BE2E3541F700D54E2F /* CircadianOptimizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77BD2E3541F700D54E2F /* CircadianOptimizer.swift */; };
+		1D1F77C02E35420400D54E2F /* ContextualAdaptationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77BF2E35420400D54E2F /* ContextualAdaptationEngine.swift */; };
+		1D1F77C22E35420D00D54E2F /* ZeroKnowledgePrivacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77C12E35420D00D54E2F /* ZeroKnowledgePrivacy.swift */; };
+		1D1F77C42E35421600D54E2F /* LocalEncryptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77C32E35421600D54E2F /* LocalEncryptionManager.swift */; };
+		1D1F77C62E35422300D54E2F /* MemoryPoisoningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77C52E35422300D54E2F /* MemoryPoisoningEngine.swift */; };
+		1D1F77C82E35422A00D54E2F /* TemporalTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77C72E35422A00D54E2F /* TemporalTypes.swift */; };
+		1D1F77CA2E35423600D54E2F /* PrivacyTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1F77C92E35423600D54E2F /* PrivacyTypes.swift */; };
 		1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC42E316E7000583CBF /* SmartToolController.swift */; };
 		1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FC62E31756700583CBF /* InvisibleChatView.swift */; };
 		1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */; };
@@ -95,6 +103,14 @@
 		1D1F77B52E34007A00D54E2F /* FactCheckingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactCheckingEngine.swift; sourceTree = "<group>"; };
 		1D1F77B72E34008600D54E2F /* ResponseQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseQuality.swift; sourceTree = "<group>"; };
 		1D1F77B92E3402C700D54E2F /* SharedQualityTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedQualityTypes.swift; sourceTree = "<group>"; };
+		1D1F77BB2E3541E500D54E2F /* TemporalIntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporalIntelligenceEngine.swift; sourceTree = "<group>"; };
+		1D1F77BD2E3541F700D54E2F /* CircadianOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircadianOptimizer.swift; sourceTree = "<group>"; };
+		1D1F77BF2E35420400D54E2F /* ContextualAdaptationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextualAdaptationEngine.swift; sourceTree = "<group>"; };
+		1D1F77C12E35420D00D54E2F /* ZeroKnowledgePrivacy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZeroKnowledgePrivacy.swift; sourceTree = "<group>"; };
+		1D1F77C32E35421600D54E2F /* LocalEncryptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalEncryptionManager.swift; sourceTree = "<group>"; };
+		1D1F77C52E35422300D54E2F /* MemoryPoisoningEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryPoisoningEngine.swift; sourceTree = "<group>"; };
+		1D1F77C72E35422A00D54E2F /* TemporalTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporalTypes.swift; sourceTree = "<group>"; };
+		1D1F77C92E35423600D54E2F /* PrivacyTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyTypes.swift; sourceTree = "<group>"; };
 		1D549FC42E316E7000583CBF /* SmartToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartToolController.swift; sourceTree = "<group>"; };
 		1D549FC62E31756700583CBF /* InvisibleChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvisibleChatView.swift; sourceTree = "<group>"; };
 		1D549FCA2E317AA100583CBF /* WorkspacePersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistenceController.swift; sourceTree = "<group>"; };
@@ -225,6 +241,12 @@
 				1D1F77B12E34006800D54E2F /* ResponseValidator.swift */,
 				1D1F77B32E34007300D54E2F /* ConfidenceCalibration.swift */,
 				1D1F77B52E34007A00D54E2F /* FactCheckingEngine.swift */,
+				1D1F77BB2E3541E500D54E2F /* TemporalIntelligenceEngine.swift */,
+				1D1F77BD2E3541F700D54E2F /* CircadianOptimizer.swift */,
+				1D1F77BF2E35420400D54E2F /* ContextualAdaptationEngine.swift */,
+				1D1F77C12E35420D00D54E2F /* ZeroKnowledgePrivacy.swift */,
+				1D1F77C32E35421600D54E2F /* LocalEncryptionManager.swift */,
+				1D1F77C52E35422300D54E2F /* MemoryPoisoningEngine.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -255,6 +277,8 @@
 				1D01F0622E32B8FC005E1F64 /* ChatThread.swift */,
 				1D1F77B72E34008600D54E2F /* ResponseQuality.swift */,
 				1D1F77B92E3402C700D54E2F /* SharedQualityTypes.swift */,
+				1D1F77C72E35422A00D54E2F /* TemporalTypes.swift */,
+				1D1F77C92E35423600D54E2F /* PrivacyTypes.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -438,20 +462,27 @@
 				1D01F05B2E327227005E1F64 /* IntelligentWorkspaceCreationDialog.swift in Sources */,
 				1DA788592E306CB30095ED87 /* MainView.swift in Sources */,
 				1D01F0612E32B8F4005E1F64 /* PredictiveInputController.swift in Sources */,
+				1D1F77C82E35422A00D54E2F /* TemporalTypes.swift in Sources */,
 				1D1F77B02E33D19200D54E2F /* ResponseFusionEngine.swift in Sources */,
+				1D1F77C42E35421600D54E2F /* LocalEncryptionManager.swift in Sources */,
 				1D1F77BA2E3402C700D54E2F /* SharedQualityTypes.swift in Sources */,
 				1D1F77B82E34008600D54E2F /* ResponseQuality.swift in Sources */,
 				1DA7885F2E306CCD0095ED87 /* TimelineView.swift in Sources */,
 				1D549FC52E316E7000583CBF /* SmartToolController.swift in Sources */,
 				1DA788542E306C9B0095ED87 /* AdapterController.swift .swift in Sources */,
+				1D1F77C22E35420D00D54E2F /* ZeroKnowledgePrivacy.swift in Sources */,
+				1D1F77C62E35422300D54E2F /* MemoryPoisoningEngine.swift in Sources */,
 				1D1F77B22E34006800D54E2F /* ResponseValidator.swift in Sources */,
 				1D01F0552E326EF5005E1F64 /* ProjectPromotionSheet.swift in Sources */,
 				1DA7887E2E3120240095ED87 /* WorkspaceManager.swift in Sources */,
+				1D1F77BC2E3541E900D54E2F /* TemporalIntelligenceEngine.swift in Sources */,
 				1DA7885D2E306CC50095ED87 /* ChatView.swift in Sources */,
 				1DA788562E306CA20095ED87 /* MemoryGraph.swift    .swift in Sources */,
 				1DA788622E306CDF0095ED87 /* Project.swift in Sources */,
 				1D549FCB2E317AA100583CBF /* WorkspacePersistenceController.swift in Sources */,
 				1D549FC72E31756700583CBF /* InvisibleChatView.swift in Sources */,
+				1D1F77C02E35420400D54E2F /* ContextualAdaptationEngine.swift in Sources */,
+				1D1F77CA2E35423600D54E2F /* PrivacyTypes.swift in Sources */,
 				1DA7886B2E306D0D0095ED87 /* FileLoader.swift in Sources */,
 				1D01F05D2E327768005E1F64 /* IntelligenceEngine.swift in Sources */,
 				1D01F0652E32B98B005E1F64 /* EnhancedInstantChatView.swift in Sources */,
@@ -465,6 +496,7 @@
 				1DA788692E306D060095ED87 /* UXAnimations.swift in Sources */,
 				1D1F77AC2E33D18400D54E2F /* EnsembleOrchestrator.swift in Sources */,
 				1D01F05F2E327886005E1F64 /* ThreadManager.swift in Sources */,
+				1D1F77BE2E3541F700D54E2F /* CircadianOptimizer.swift in Sources */,
 				1DA788502E306C8B0095ED87 /* PRISMEngine.swift in Sources */,
 				1D1F77AA2E33C3EC00D54E2F /* PropietaryPRISMCore.swift in Sources */,
 				1D01F0632E32B8FC005E1F64 /* ChatThread.swift in Sources */,
