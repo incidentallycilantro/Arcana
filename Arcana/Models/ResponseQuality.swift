@@ -85,71 +85,23 @@ struct ResponseQuality: Codable, Hashable {
         return uncertaintyFactors.contains { $0.isCritical }
     }
     
-    /// Get quality tier for UI display - USES EXTERNAL QualityTier
+    /// Get quality tier for UI display
     var qualityTier: QualityTier {
         switch overallScore {
         case 0.9...1.0:
             return .excellent
         case 0.8..<0.9:
             return .good
-        case 0.7..<0.8:
-            return .fair
-        case 0.6..<0.7:
+        case 0.6..<0.8:
             return .acceptable
         default:
             return .poor
         }
     }
     
-    /// Get display-ready quality information
-    var displayQuality: DisplayQuality {
-        return DisplayQuality(
-            tier: qualityTier,
-            score: overallScore,
-            confidence: calibratedConfidence,
-            uncertaintyCount: uncertaintyFactors.count,
-            criticalIssues: uncertaintyFactors.filter { $0.isCritical }.count
-        )
-    }
-    
-    /// Generate improvement suggestions based on quality metrics
-    func generateImprovementSuggestions() -> [String] {
-        var suggestions: [String] = []
-        
-        if contentQuality < 0.7 {
-            suggestions.append("Improve content structure and readability")
-        }
-        
-        if factualAccuracy < 0.8 {
-            suggestions.append("Verify factual claims and add sources")
-        }
-        
-        if relevance < 0.7 {
-            suggestions.append("Better address the original question")
-        }
-        
-        if coherence < 0.7 {
-            suggestions.append("Improve logical flow between ideas")
-        }
-        
-        if completeness < 0.7 {
-            suggestions.append("Provide more comprehensive coverage")
-        }
-        
-        if clarity < 0.7 {
-            suggestions.append("Use clearer language and explanations")
-        }
-        
-        if hasCriticalUncertainties {
-            suggestions.append("Address critical uncertainty factors")
-        }
-        
-        return suggestions
-    }
-    
-    /// Compare quality with another ResponseQuality
-    func compare(with other: ResponseQuality) -> QualityComparison {
-        let scoreDifference = self.overallScore - other.overallScore
+    /// Compare with another ResponseQuality
+    func compare(to other: ResponseQuality) -> QualityComparison {
+        let scoreDifference = overallScore - other.overallScore
         
         switch scoreDifference {
         case 0.3...:
@@ -205,23 +157,37 @@ struct ResponseQuality: Codable, Hashable {
         let uncertaintyText = uncertaintyFactors.isEmpty ? "No uncertainties" : "\(uncertaintyFactors.count) uncertainties"
         let consensusText = consensusScore.map { "Consensus: \(String(format: "%.1f", $0 * 100))%" } ?? ""
         
-        return "Quality: \(String(format: "%.1f", overallScore * 100))% | " +
-               "Confidence: \(String(format: "%.1f", calibratedConfidence * 100))% | " +
-               "\(uncertaintyText) | \(consensusText)"
+        let components = [
+            "Overall: \(String(format: "%.1f", overallScore * 100))%",
+            "Factual: \(String(format: "%.1f", factualAccuracy * 100))%",
+            "Confidence: \(String(format: "%.1f", calibratedConfidence * 100))%",
+            uncertaintyText,
+            consensusText
+        ].filter { !$0.isEmpty }
+        
+        return components.joined(separator: ", ")
     }
 }
 
-// MARK: - Quality Tier Enumeration (MOVED TO HERE FROM SHARED TYPES)
+// MARK: - Quality Tiers
 
 enum QualityTier: String, Codable, CaseIterable {
     case excellent = "excellent"
     case good = "good"
-    case fair = "fair"
     case acceptable = "acceptable"
     case poor = "poor"
     
     var displayName: String {
-        return rawValue.capitalized
+        switch self {
+        case .excellent:
+            return "Excellent"
+        case .good:
+            return "Good"
+        case .acceptable:
+            return "Acceptable"
+        case .poor:
+            return "Poor"
+        }
     }
     
     var emoji: String {
@@ -230,12 +196,10 @@ enum QualityTier: String, Codable, CaseIterable {
             return "🌟"
         case .good:
             return "✅"
-        case .fair:
-            return "⚠️"
         case .acceptable:
-            return "🔶"
+            return "👍"
         case .poor:
-            return "❌"
+            return "⚠️"
         }
     }
     
@@ -245,43 +209,23 @@ enum QualityTier: String, Codable, CaseIterable {
             return "green"
         case .good:
             return "blue"
-        case .fair:
-            return "orange"
         case .acceptable:
-            return "yellow"
+            return "orange"
         case .poor:
             return "red"
         }
     }
     
-    var minimumScore: Double {
+    var scoreThreshold: Double {
         switch self {
         case .excellent:
             return 0.9
         case .good:
             return 0.8
-        case .fair:
-            return 0.7
         case .acceptable:
             return 0.6
         case .poor:
             return 0.0
-        }
-    }
-    
-    /// Create QualityTier from a score
-    static func fromScore(_ score: Double) -> QualityTier {
-        switch score {
-        case 0.9...1.0:
-            return .excellent
-        case 0.8..<0.9:
-            return .good
-        case 0.7..<0.8:
-            return .fair
-        case 0.6..<0.7:
-            return .acceptable
-        default:
-            return .poor
         }
     }
 }
@@ -379,6 +323,34 @@ extension ResponseQuality {
             modelContributions: models
         )
     }
+    
+    /// ADDED: Create a failed quality assessment for error handling
+    static func failed(error: String) -> ResponseQuality {
+        let errorUncertainty = UncertaintyFactor(
+            type: .modelLimitation,
+            description: "Validation failed: \(error)",
+            severity: 1.0,
+            location: nil,
+            detectedAt: Date(),
+            confidence: 1.0
+        )
+        
+        return ResponseQuality(
+            overallScore: 0.0,
+            contentQuality: 0.0,
+            factualAccuracy: 0.0,
+            relevance: 0.0,
+            coherence: 0.0,
+            completeness: 0.0,
+            clarity: 0.0,
+            rawConfidence: 0.0,
+            calibratedConfidence: 0.0,
+            uncertaintyFactors: [errorUncertainty],
+            uncertaintyScore: 1.0,
+            validationLevel: .basic,
+            modelContributions: ["ValidationFailure"]
+        )
+    }
 }
 
 // MARK: - Quality Analytics
@@ -396,57 +368,60 @@ extension ResponseQuality {
             "clarity": clarity,
             "calibrated_confidence": calibratedConfidence,
             "uncertainty_score": uncertaintyScore,
-            "uncertainty_count": uncertaintyFactors.count,
-            "critical_uncertainties": uncertaintyFactors.filter { $0.isCritical }.count,
-            "quality_tier": qualityTier.rawValue,
-            "meets_professional_standards": meetsProfessionalStandards,
             "validation_level": validationLevel.rawValue,
+            "model_contributions": modelContributions,
             "processing_time": processingTime,
-            "model_count": modelContributions.count
+            "meets_professional_standards": meetsProfessionalStandards,
+            "has_critical_uncertainties": hasCriticalUncertainties
         ]
         
-        if let consensusScore = consensusScore {
-            data["consensus_score"] = consensusScore
+        if let consensus = consensusScore {
+            data["consensus_score"] = consensus
+        }
+        
+        if !uncertaintyFactors.isEmpty {
+            data["uncertainty_factors"] = uncertaintyFactors.map { factor in
+                [
+                    "type": factor.type.rawValue,
+                    "description": factor.description,
+                    "severity": factor.severity,
+                    "weighted_severity": factor.weightedSeverity
+                ]
+            }
         }
         
         return data
     }
-}
-
-// MARK: - Array Extensions for Quality Analysis
-
-extension Array where Element == ResponseQuality {
-    /// Get average quality score
-    var averageQualityScore: Double {
-        guard !isEmpty else { return 0.0 }
-        return reduce(0) { $0 + $1.overallScore } / Double(count)
-    }
     
-    /// Get quality distribution
-    var tierDistribution: [QualityTier: Int] {
-        var distribution: [QualityTier: Int] = [:]
+    /// Create quality report for external systems
+    var qualityReport: String {
+        let report = """
+        Quality Assessment Report
+        ========================
+        Overall Score: \(String(format: "%.1f%%", overallScore * 100))
+        Quality Tier: \(qualityTier.displayName)
         
-        for quality in self {
-            distribution[quality.qualityTier, default: 0] += 1
-        }
+        Detailed Metrics:
+        - Content Quality: \(String(format: "%.1f%%", contentQuality * 100))
+        - Factual Accuracy: \(String(format: "%.1f%%", factualAccuracy * 100))
+        - Relevance: \(String(format: "%.1f%%", relevance * 100))
+        - Coherence: \(String(format: "%.1f%%", coherence * 100))
+        - Completeness: \(String(format: "%.1f%%", completeness * 100))
+        - Clarity: \(String(format: "%.1f%%", clarity * 100))
         
-        return distribution
-    }
-    
-    /// Filter by quality tier
-    func filterByTier(_ tier: QualityTier) -> [ResponseQuality] {
-        return filter { $0.qualityTier == tier }
-    }
-    
-    /// Get high-quality responses
-    var highQuality: [ResponseQuality] {
-        return filter { $0.qualityTier == .excellent || $0.qualityTier == .good }
-    }
-    
-    /// Get responses needing attention
-    var needingAttention: [ResponseQuality] {
-        return filter { quality in
-            quality.hasCriticalUncertainties || quality.qualityTier == .poor
-        }
+        Confidence Analysis:
+        - Raw Confidence: \(String(format: "%.1f%%", rawConfidence * 100))
+        - Calibrated Confidence: \(String(format: "%.1f%%", calibratedConfidence * 100))
+        - Uncertainty Score: \(String(format: "%.1f%%", uncertaintyScore * 100))
+        
+        Validation:
+        - Level: \(validationLevel.displayName)
+        - Processing Time: \(String(format: "%.3f", processingTime))s
+        - Models: \(modelContributions.joined(separator: ", "))
+        
+        Professional Standards: \(meetsProfessionalStandards ? "✅ Met" : "❌ Not Met")
+        """
+        
+        return report
     }
 }

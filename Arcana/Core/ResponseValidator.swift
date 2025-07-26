@@ -49,91 +49,75 @@ class ResponseValidator: ObservableObject {
         let startTime = Date()
         logger.info("🔍 Starting validation for \(model) response")
         
-        do {
-            // 1. Basic validation checks
-            let basicChecks = performBasicValidation(content: content)
-            
-            // 2. Content quality assessment
-            let contentQuality = await assessContentQuality(
-                content: content,
-                prompt: prompt
-            )
-            
-            // 3. Uncertainty detection
-            let uncertaintyFactors = await detectUncertainties(
-                content: content,
-                prompt: prompt,
-                model: model
-            )
-            
-            // 4. Confidence calibration
-            let calibratedConfidence = await calibrateConfidence(
-                rawConfidence: rawConfidence,
-                content: content,
-                model: model,
-                uncertaintyFactors: uncertaintyFactors
-            )
-            
-            // 5. Fact checking (if available and enabled)
-            let factualAccuracy = await performFactChecking(
-                content: content,
-                model: model
-            )
-            
-            // 6. Ensemble consensus (if applicable)
-            let consensusScore = ensembleInfo?.consensusScore
-            
-            // 7. Generate comprehensive quality assessment
-            let responseQuality = await generateQualityAssessment(
-                content: content,
-                basicChecks: basicChecks,
-                contentQuality: contentQuality,
-                factualAccuracy: factualAccuracy,
-                calibratedConfidence: calibratedConfidence,
-                uncertaintyFactors: uncertaintyFactors,
-                consensusScore: consensusScore,
-                model: model,
-                validationLevel: validationLevel
-            )
-            
-            // 8. Determine if validation passed
-            let passedValidation = responseQuality.overallScore >= confidenceThreshold &&
-                                 uncertaintyFactors.count <= 3 &&
-                                 factualAccuracy >= 0.7
-            
-            let processingTime = Date().timeIntervalSince(startTime)
-            
-            // 9. Update metrics
-            await updateValidationMetrics(
-                result: responseQuality,
-                success: passedValidation,
-                processingTime: processingTime
-            )
-            
-            logger.info("✅ Validation completed: \(String(format: "%.2f", responseQuality.overallScore * 100))% quality")
-            
-            return ValidationResult(
-                quality: responseQuality,
-                passedValidation: passedValidation,
-                processingTime: processingTime,
-                validationLevel: validationLevel
-            )
-            
-        } catch {
-            let processingTime = Date().timeIntervalSince(startTime)
-            logger.error("❌ Validation failed: \(error.localizedDescription)")
-            
-            // Return failed validation result
-            let failedQuality = ResponseQuality.failed(error: error.localizedDescription)
-            
-            return ValidationResult(
-                quality: failedQuality,
-                passedValidation: false,
-                processingTime: processingTime,
-                validationLevel: validationLevel,
-                error: error
-            )
-        }
+        // FIXED: Remove the do-catch block since no methods throw errors
+        // 1. Basic validation checks
+        let basicChecks = performBasicValidation(content: content)
+        
+        // 2. Content quality assessment
+        let contentQuality = await assessContentQuality(
+            content: content,
+            prompt: prompt
+        )
+        
+        // 3. Uncertainty detection
+        let uncertaintyFactors = await detectUncertainties(
+            content: content,
+            prompt: prompt,
+            model: model
+        )
+        
+        // 4. Confidence calibration
+        let calibratedConfidence = await calibrateConfidence(
+            rawConfidence: rawConfidence,
+            content: content,
+            model: model,
+            uncertaintyFactors: uncertaintyFactors
+        )
+        
+        // 5. Fact checking (if available and enabled)
+        let factualAccuracy = await performFactChecking(
+            content: content,
+            model: model
+        )
+        
+        // 6. Ensemble consensus (if applicable)
+        let consensusScore = ensembleInfo?.consensusScore
+        
+        // 7. Generate comprehensive quality assessment
+        let responseQuality = await generateQualityAssessment(
+            content: content,
+            basicChecks: basicChecks,
+            contentQuality: contentQuality,
+            factualAccuracy: factualAccuracy,
+            calibratedConfidence: calibratedConfidence,
+            uncertaintyFactors: uncertaintyFactors,
+            consensusScore: consensusScore,
+            model: model,
+            validationLevel: validationLevel
+        )
+        
+        // 8. Determine if validation passed
+        let passedValidation = responseQuality.overallScore >= confidenceThreshold &&
+                             uncertaintyFactors.count <= 3 &&
+                             factualAccuracy >= 0.7
+        
+        let processingTime = Date().timeIntervalSince(startTime)
+        
+        // 9. Update metrics
+        await updateValidationMetrics(
+            result: responseQuality,
+            success: passedValidation,
+            processingTime: processingTime
+        )
+        
+        logger.info("✅ Validation completed: \(String(format: "%.2f", responseQuality.overallScore * 100))% quality")
+        
+        return ValidationResult(
+            quality: responseQuality,
+            passedValidation: passedValidation,
+            processingTime: processingTime,
+            validationLevel: validationLevel
+        )
     }
     
     // MARK: - Validation Components
