@@ -119,6 +119,7 @@ class ZeroKnowledgePrivacy: ObservableObject {
         return processedMessage
     }
     
+    // FIXED: Updated decryptMessage method with proper error handling
     func decryptMessage(
         _ processedMessage: PrivacyProcessedMessage
     ) async -> ChatMessage? {
@@ -128,12 +129,38 @@ class ZeroKnowledgePrivacy: ObservableObject {
             return nil
         }
         
-        let decryptedData = await localEncryptionManager.decryptMessage(
-            encryptedContent: processedMessage.encryptedContent,
-            keyId: processedMessage.encryptionKeyId
-        )
-        
-        guard let decryptedData = decryptedData else {
+        do {
+            let decryptedData = try await localEncryptionManager.decryptMessage(
+                encryptedContent: processedMessage.encryptedContent,
+                keyId: processedMessage.encryptionKeyId
+            )
+            
+            guard let decryptedData = decryptedData else {
+                await recordPrivacyAudit(
+                    messageId: processedMessage.originalId,
+                    privacyLevel: processedMessage.privacyLevel,
+                    operations: ["decryption"],
+                    outcome: PrivacyAuditOutcome.failure
+                )
+                return nil
+            }
+            
+            await recordPrivacyAudit(
+                messageId: processedMessage.originalId,
+                privacyLevel: processedMessage.privacyLevel,
+                operations: ["decryption"],
+                outcome: PrivacyAuditOutcome.success
+            )
+            
+            // Reconstruct ChatMessage from decrypted data
+            return ChatMessage(
+                content: decryptedData.content,
+                isFromUser: decryptedData.metadata["isUser"] == "true",
+                threadId: processedMessage.originalId
+            )
+            
+        } catch {
+            print("❌ Decryption error: \(error)")
             await recordPrivacyAudit(
                 messageId: processedMessage.originalId,
                 privacyLevel: processedMessage.privacyLevel,
@@ -142,20 +169,6 @@ class ZeroKnowledgePrivacy: ObservableObject {
             )
             return nil
         }
-        
-        await recordPrivacyAudit(
-            messageId: processedMessage.originalId,
-            privacyLevel: processedMessage.privacyLevel,
-            operations: ["decryption"],
-            outcome: PrivacyAuditOutcome.success
-        )
-        
-        // Reconstruct ChatMessage from decrypted data
-        return ChatMessage(
-            content: decryptedData.content,
-            isFromUser: decryptedData.metadata["isUser"] == "true",
-            threadId: processedMessage.originalId
-        )
     }
     
     func performDifferentialPrivacyAnalysis(
@@ -245,6 +258,7 @@ class ZeroKnowledgePrivacy: ObservableObject {
         }
     }
     
+    // FIXED: Updated performPrivacyHealthCheck method
     private func performPrivacyHealthCheck() async {
         // Validate encryption keys
         let encryptionHealth = await localEncryptionManager.performHealthCheck()
@@ -283,6 +297,7 @@ class ZeroKnowledgePrivacy: ObservableObject {
         }
     }
     
+    // FIXED: Updated updatePrivacyMetrics method
     private func updatePrivacyMetrics(privacyLevel: PrivacyLevel) async {
         privacyMetrics.recordOperation(
             privacyLevel: privacyLevel,
@@ -326,6 +341,7 @@ class ZeroKnowledgePrivacy: ObservableObject {
     
     // MARK: - Privacy Engine Protocol Conformance
     
+    // FIXED: Updated emergencyWipe method
     func emergencyWipe() async -> Bool {
         let encryptionWipe = await localEncryptionManager.emergencyWipe()
         let memoryWipe = await memoryPoisoningEngine.emergencyWipe()

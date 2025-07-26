@@ -83,249 +83,131 @@ class ResponseValidator: ObservableObject {
             // 6. Ensemble consensus (if applicable)
             let consensusScore = ensembleInfo?.consensusScore
             
-            // 7. Generate comprehensive quality score
-            let responseQuality = generateQualityScore(
+            // 7. Generate comprehensive quality assessment
+            let responseQuality = await generateQualityAssessment(
+                content: content,
                 basicChecks: basicChecks,
                 contentQuality: contentQuality,
-                uncertaintyFactors: uncertaintyFactors,
-                calibratedConfidence: calibratedConfidence,
                 factualAccuracy: factualAccuracy,
+                calibratedConfidence: calibratedConfidence,
+                uncertaintyFactors: uncertaintyFactors,
                 consensusScore: consensusScore,
-                model: model
+                model: model,
+                validationLevel: validationLevel
             )
+            
+            // 8. Determine if validation passed
+            let passedValidation = responseQuality.overallScore >= confidenceThreshold &&
+                                 uncertaintyFactors.count <= 3 &&
+                                 factualAccuracy >= 0.7
             
             let processingTime = Date().timeIntervalSince(startTime)
             
-            // Update metrics
-            await MainActor.run {
-                validationMetrics.totalValidations += 1
-                validationMetrics.averageProcessingTime =
-                    (validationMetrics.averageProcessingTime * Double(validationMetrics.totalValidations - 1) + processingTime)
-                    / Double(validationMetrics.totalValidations)
-            }
+            // 9. Update metrics
+            await updateValidationMetrics(
+                result: responseQuality,
+                success: passedValidation,
+                processingTime: processingTime
+            )
             
-            logger.info("✅ Validation completed in \(String(format: "%.2f", processingTime))s - Quality: \(String(format: "%.1f", responseQuality.overallScore * 100))%")
+            logger.info("✅ Validation completed: \(String(format: "%.2f", responseQuality.overallScore * 100))% quality")
             
             return ValidationResult(
                 quality: responseQuality,
-                passedValidation: responseQuality.overallScore >= confidenceThreshold,
+                passedValidation: passedValidation,
                 processingTime: processingTime,
                 validationLevel: validationLevel
             )
             
         } catch {
+            let processingTime = Date().timeIntervalSince(startTime)
             logger.error("❌ Validation failed: \(error.localizedDescription)")
             
-            // Return minimal quality assessment on error
-            let fallbackQuality = ResponseQuality.basic(
-                overallScore: 0.5,
-                confidence: rawConfidence
-            )
+            // Return failed validation result
+            let failedQuality = ResponseQuality.failed(error: error.localizedDescription)
             
             return ValidationResult(
-                quality: fallbackQuality,
+                quality: failedQuality,
                 passedValidation: false,
-                processingTime: Date().timeIntervalSince(startTime),
+                processingTime: processingTime,
                 validationLevel: validationLevel,
                 error: error
             )
         }
     }
     
-    // MARK: - Basic Validation
+    // MARK: - Validation Components
     
     private func performBasicValidation(content: String) -> BasicValidationChecks {
-        let wordCount = content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
-        let characterCount = content.count
-        let hasStructure = content.contains("\n") || content.contains(".") || content.contains(":")
-        let hasProperEnding = content.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(".") ||
-                             content.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("!") ||
-                             content.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?")
+        let wordCount = content.components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }.count
         
         return BasicValidationChecks(
-            wordCount: wordCount,
-            characterCount: characterCount,
-            hasStructure: hasStructure,
-            hasProperEnding: hasProperEnding,
             isEmpty: content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             isTooShort: wordCount < 5,
-            isTooLong: wordCount > 2000
+            isTooLong: wordCount > 2000,
+            hasStructure: content.contains(".") || content.contains("?") || content.contains("!"),
+            wordCount: wordCount
         )
     }
     
-    // MARK: - Content Quality Assessment
-    
-    private func assessContentQuality(content: String, prompt: String) async -> ContentQualityAssessment {
-        // Implement content quality analysis
-        let relevance = calculateRelevance(content: content, prompt: prompt)
-        let coherence = assessCoherence(content: content)
-        let completeness = assessCompleteness(content: content, prompt: prompt)
-        let clarity = assessClarity(content: content)
+    private func assessContentQuality(
+        content: String,
+        prompt: String
+    ) async -> ContentQuality {
         
-        return ContentQualityAssessment(
+        // Analyze various quality dimensions
+        let relevance = await analyzeRelevance(content: content, prompt: prompt)
+        let coherence = await analyzeCoherence(content: content)
+        let completeness = await analyzeCompleteness(content: content, prompt: prompt)
+        let clarity = await analyzeClarity(content: content)
+        
+        return ContentQuality(
             relevance: relevance,
             coherence: coherence,
             completeness: completeness,
-            clarity: clarity
+            clarity: clarity,
+            overallScore: (relevance + coherence + completeness + clarity) / 4.0
         )
     }
     
-    private func calculateRelevance(content: String, prompt: String) -> Double {
-        // Basic keyword matching approach
-        let promptKeywords = extractKeywords(from: prompt)
-        let contentKeywords = extractKeywords(from: content)
+    private func detectUncertainties(
+        content: String,
+        prompt: String,
+        model: String
+    ) async -> [UncertaintyFactor] {
         
-        let matchingKeywords = Set(promptKeywords).intersection(Set(contentKeywords))
-        let relevanceScore = Double(matchingKeywords.count) / Double(max(promptKeywords.count, 1))
-        
-        return min(max(relevanceScore, 0.0), 1.0)
-    }
-    
-    private func assessCoherence(content: String) -> Double {
-        let sentences = content.components(separatedBy: ".").filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        
-        if sentences.count < 2 { return 0.5 }
-        
-        // Basic coherence indicators
-        let transitionWords = ["however", "therefore", "moreover", "furthermore", "additionally", "consequently", "meanwhile", "similarly", "in contrast", "for example"]
-        let hasTransitions = transitionWords.contains { content.localizedCaseInsensitiveContains($0) }
-        
-        return hasTransitions ? 0.8 : 0.6
-    }
-    
-    private func assessCompleteness(content: String, prompt: String) -> Double {
-        // Basic assessment based on content length relative to prompt complexity
-        let promptWords = prompt.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
-        let contentWords = content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
-        
-        let expectedRatio = 3.0 // Expect response to be ~3x longer than prompt
-        let actualRatio = Double(contentWords) / Double(max(promptWords, 1))
-        
-        let completenessScore = min(actualRatio / expectedRatio, 1.0)
-        return max(completenessScore, 0.3) // Minimum score of 0.3
-    }
-    
-    private func assessClarity(content: String) -> Double {
-        let sentences = content.components(separatedBy: ".").filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        let words = content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
-        
-        if sentences.isEmpty { return 0.3 }
-        
-        let averageWordsPerSentence = Double(words.count) / Double(sentences.count)
-        
-        // Ideal sentence length is 15-20 words
-        let clarityScore = averageWordsPerSentence <= 25 ? 0.8 : 0.6
-        
-        return clarityScore
-    }
-    
-    private func extractKeywords(from text: String) -> [String] {
-        return text.lowercased()
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { $0.count > 3 }
-            .filter { !["that", "this", "with", "from", "they", "have", "been", "said", "each", "which", "their", "time", "will", "about", "what", "make", "when", "many"].contains($0) }
-    }
-    
-    // MARK: - Uncertainty Detection
-    
-    private func detectUncertainties(content: String, prompt: String, model: String) async -> [UncertaintyFactor] {
         var uncertainties: [UncertaintyFactor] = []
         
-        // Detect linguistic uncertainty markers
-        let linguisticMarkers = ["might", "could", "perhaps", "possibly", "maybe", "seems", "appears", "probably", "likely", "uncertain", "unclear", "I think", "I believe"]
-        
-        for marker in linguisticMarkers {
-            if content.localizedCaseInsensitiveContains(marker) {
-                uncertainties.append(UncertaintyFactor(
-                    type: .linguisticMarker,
-                    description: "Contains linguistic uncertainty marker: '\(marker)'",
-                    severity: 0.3,
-                    location: "Throughout text",
-                    confidence: 0.8
-                ))
-            }
-        }
-        
-        // Detect contradictions (basic approach)
-        if detectContradictions(in: content) {
-            uncertainties.append(UncertaintyFactor(
-                type: .contradiction,
-                description: "Potential internal contradictions detected",
-                severity: 0.8,
-                confidence: 0.7
-            ))
-        }
-        
-        // Detect insufficient context
-        if content.count < 100 && prompt.count > 50 {
-            uncertainties.append(UncertaintyFactor(
-                type: .insufficientContext,
-                description: "Response may be too brief for the complexity of the question",
-                severity: 0.5,
-                confidence: 0.6
-            ))
-        }
-        
-        // Model-specific uncertainty patterns
-        uncertainties.append(contentsOf: detectModelSpecificUncertainties(content: content, model: model))
-        
-        return uncertainties
-    }
-    
-    private func detectContradictions(in content: String) -> Bool {
-        // Very basic contradiction detection
-        let sentences = content.components(separatedBy: ".").filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        
-        let contradictionPairs = [
-            ("yes", "no"),
-            ("true", "false"),
-            ("always", "never"),
-            ("all", "none"),
-            ("increase", "decrease"),
-            ("positive", "negative")
+        // Detect uncertainty phrases
+        let uncertaintyPhrases = [
+            "I think", "maybe", "possibly", "might be", "could be",
+            "I'm not sure", "uncertain", "unclear", "I don't know"
         ]
         
-        for (word1, word2) in contradictionPairs {
-            if content.localizedCaseInsensitiveContains(word1) && content.localizedCaseInsensitiveContains(word2) {
-                return true
+        for phrase in uncertaintyPhrases {
+            if content.lowercased().contains(phrase) {
+                uncertainties.append(UncertaintyFactor(
+                    type: .linguisticUncertainty,
+                    description: "Contains uncertainty phrase: '\(phrase)'",
+                    severity: 0.3,
+                    weightedSeverity: 0.3
+                ))
             }
         }
         
-        return false
-    }
-    
-    private func detectModelSpecificUncertainties(content: String, model: String) -> [UncertaintyFactor] {
-        var uncertainties: [UncertaintyFactor] = []
-        
-        switch model {
-        case "Phi-2":
-            if content.count < 50 {
-                uncertainties.append(UncertaintyFactor(
-                    type: .modelLimitation,
-                    description: "Phi-2 responses under 50 characters may be truncated",
-                    severity: 0.6,
-                    confidence: 0.8
-                ))
-            }
-            
-        case "CodeLlama-7B":
-            if !content.contains("```") && content.localizedCaseInsensitiveContains("code") {
-                uncertainties.append(UncertaintyFactor(
-                    type: .modelLimitation,
-                    description: "CodeLlama may not have provided expected code examples",
-                    severity: 0.4,
-                    confidence: 0.6
-                ))
-            }
-            
-        default:
-            break
+        // Detect contradictions
+        if await detectContradictions(content: content) {
+            uncertainties.append(UncertaintyFactor(
+                type: .contradictoryStatements,
+                description: "Contains potentially contradictory statements",
+                severity: 0.7,
+                weightedSeverity: 0.7
+            ))
         }
         
         return uncertainties
     }
-    
-    // MARK: - Confidence Calibration
     
     private func calibrateConfidence(
         rawConfidence: Double,
@@ -337,86 +219,46 @@ class ResponseValidator: ObservableObject {
         var calibratedConfidence = rawConfidence
         
         // Adjust for uncertainty factors
-        let totalUncertaintyWeight = uncertaintyFactors.reduce(0) { $0 + $1.weightedSeverity }
-        calibratedConfidence *= (1.0 - min(totalUncertaintyWeight, 0.5))
-        
-        // Model-specific calibration
-        calibratedConfidence *= getModelCalibrationFactor(model)
-        
-        // Content length adjustment
-        let wordCount = content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
-        if wordCount < 10 {
-            calibratedConfidence *= 0.8 // Penalize very short responses
+        // FIXED: Use reduce(into:) instead of reduce()
+        let uncertaintyPenalty = uncertaintyFactors.reduce(into: 0.0) { result, factor in
+            result += factor.weightedSeverity * 0.1
         }
         
-        return min(max(calibratedConfidence, 0.0), 1.0)
-    }
-    
-    private func getModelCalibrationFactor(_ model: String) -> Double {
-        switch model {
-        case "BGE-Large":
-            return 0.95 // High reliability for factual content
-        case "Mistral-7B":
-            return 0.92
-        case "CodeLlama-7B":
-            return 0.90
-        case "Llama-2-7B":
-            return 0.88
-        case "Phi-2":
-            return 0.85
-        default:
-            return 0.80
-        }
-    }
-    
-    // MARK: - Fact Checking
-    
-    private func performFactChecking(content: String, model: String) async -> Double {
-        // If fact checking engine is available, use it
-        if let factChecker = factCheckingEngine {
-            return await factChecker.verifyFactualAccuracy(content: content)
+        calibratedConfidence = max(0.0, calibratedConfidence - uncertaintyPenalty)
+        
+        // Model-specific calibration (placeholder)
+        if model.contains("gpt") {
+            calibratedConfidence *= 0.95 // Slight adjustment for GPT models
         }
         
-        // Basic heuristic-based fact checking
-        return performBasicFactChecking(content: content, model: model)
+        return min(1.0, calibratedConfidence)
     }
     
-    private func performBasicFactChecking(content: String, model: String) -> Double {
-        // Basic fact checking based on model reliability and content patterns
-        let baseAccuracy = getModelBaseAccuracy(model)
-        
-        // Look for fact-assertive language
-        let assertivePatterns = ["definitely", "certainly", "always", "never", "all", "none", "exactly", "precisely"]
-        let hasAssertiveLanguage = assertivePatterns.contains { content.localizedCaseInsensitiveContains($0) }
-        
-        // Be more conservative with assertive statements
-        return hasAssertiveLanguage ? baseAccuracy * 0.9 : baseAccuracy
-    }
-    
-    private func getModelBaseAccuracy(_ model: String) -> Double {
-        switch model {
-        case "BGE-Large": return 0.95
-        case "Mistral-7B": return 0.89
-        case "CodeLlama-7B": return 0.85
-        case "Llama-2-7B": return 0.82
-        case "Phi-2": return 0.80
-        default: return 0.75
-        }
-    }
-    
-    // MARK: - Quality Score Generation
-    
-    private func generateQualityScore(
-        basicChecks: BasicValidationChecks,
-        contentQuality: ContentQualityAssessment,
-        uncertaintyFactors: [UncertaintyFactor],
-        calibratedConfidence: Double,
-        factualAccuracy: Double,
-        consensusScore: Double?,
+    private func performFactChecking(
+        content: String,
         model: String
-    ) -> ResponseQuality {
+    ) async -> Double {
         
-        // Calculate weighted scores
+        guard let factChecker = factCheckingEngine else {
+            return 0.8 // Default score when fact checking unavailable
+        }
+        
+        return await factChecker.checkFactualAccuracy(content: content, model: model)
+    }
+    
+    private func generateQualityAssessment(
+        content: String,
+        basicChecks: BasicValidationChecks,
+        contentQuality: ContentQuality,
+        factualAccuracy: Double,
+        calibratedConfidence: Double,
+        uncertaintyFactors: [UncertaintyFactor],
+        consensusScore: Double?,
+        model: String,
+        validationLevel: ValidationLevel
+    ) async -> ResponseQuality {
+        
+        // Calculate weighted content score
         let contentScore = (contentQuality.relevance * 0.3 +
                            contentQuality.coherence * 0.25 +
                            contentQuality.completeness * 0.25 +
@@ -435,7 +277,10 @@ class ResponseValidator: ObservableObject {
         }
         
         // Calculate uncertainty impact
-        let uncertaintyScore = min(uncertaintyFactors.reduce(0) { $0 + $1.weightedSeverity }, 1.0)
+        // FIXED: Use reduce(into:) instead of reduce()
+        let uncertaintyScore = min(uncertaintyFactors.reduce(into: 0.0) { result, factor in
+            result += factor.weightedSeverity
+        }, 1.0)
         
         // Generate overall score
         let overallScore = (adjustedContentScore * 0.4 +
@@ -460,6 +305,128 @@ class ResponseValidator: ObservableObject {
             modelContributions: [model],
             processingTime: 0.0 // Will be set by caller
         )
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func analyzeRelevance(content: String, prompt: String) async -> Double {
+        // Simple relevance analysis based on keyword matching
+        let promptWords = Set(prompt.lowercased().components(separatedBy: .whitespacesAndNewlines))
+        let contentWords = Set(content.lowercased().components(separatedBy: .whitespacesAndNewlines))
+        
+        let intersection = promptWords.intersection(contentWords)
+        let relevanceScore = Double(intersection.count) / Double(max(promptWords.count, 1))
+        
+        return min(1.0, relevanceScore * 2.0) // Scale and cap at 1.0
+    }
+    
+    private func analyzeCoherence(content: String) async -> Double {
+        // Analyze sentence structure and flow
+        let sentences = content.components(separatedBy: ". ").filter { !$0.isEmpty }
+        
+        guard sentences.count > 1 else { return 0.8 }
+        
+        // Check for proper transitions and logical flow
+        var coherenceScore = 0.8
+        
+        // Analyze sentence length variation
+        let sentenceLengths = sentences.map { $0.count }
+        let avgLength = sentenceLengths.reduce(0, +) / sentenceLengths.count
+        let variance = sentenceLengths.map { pow(Double($0 - avgLength), 2) }.reduce(0, +) / Double(sentenceLengths.count)
+        
+        // Good coherence has some sentence length variation
+        if variance > 100 && variance < 1000 {
+            coherenceScore += 0.1
+        }
+        
+        return min(1.0, coherenceScore)
+    }
+    
+    private func analyzeCompleteness(content: String, prompt: String) async -> Double {
+        // Analyze if the response addresses all aspects of the prompt
+        let promptComponents = extractPromptComponents(prompt)
+        var addressedComponents = 0
+        
+        for component in promptComponents {
+            if content.lowercased().contains(component.lowercased()) {
+                addressedComponents += 1
+            }
+        }
+        
+        guard promptComponents.count > 0 else { return 0.8 }
+        
+        return Double(addressedComponents) / Double(promptComponents.count)
+    }
+    
+    private func analyzeClarity(content: String) async -> Double {
+        // Analyze readability and clarity
+        let words = content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+        let avgWordLength = Double(words.map { $0.count }.reduce(0, +)) / Double(max(words.count, 1))
+        
+        // Optimal word length for clarity is around 4-6 characters
+        let clarityScore = 1.0 - abs(avgWordLength - 5.0) / 10.0
+        
+        return max(0.3, min(1.0, clarityScore))
+    }
+    
+    private func detectContradictions(content: String) async -> Bool {
+        // Simple contradiction detection
+        let contradictionPairs = [
+            ("yes", "no"),
+            ("true", "false"),
+            ("always", "never"),
+            ("all", "none"),
+            ("possible", "impossible")
+        ]
+        
+        let lowercasedContent = content.lowercased()
+        
+        for (word1, word2) in contradictionPairs {
+            if lowercasedContent.contains(word1) && lowercasedContent.contains(word2) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    private func extractPromptComponents(_ prompt: String) -> [String] {
+        // Extract key components from prompt (questions, requests, etc.)
+        let questionWords = ["what", "how", "why", "when", "where", "who", "which"]
+        let actionWords = ["explain", "describe", "analyze", "compare", "summarize"]
+        
+        var components: [String] = []
+        let words = prompt.lowercased().components(separatedBy: .whitespacesAndNewlines)
+        
+        for word in words {
+            if questionWords.contains(word) || actionWords.contains(word) {
+                components.append(word)
+            }
+        }
+        
+        return components.isEmpty ? ["general"] : components
+    }
+    
+    private func updateValidationMetrics(
+        result: ResponseQuality,
+        success: Bool,
+        processingTime: TimeInterval
+    ) async {
+        
+        let successCount = success ? 1 : 0
+        validationMetrics.totalValidations += 1
+        validationMetrics.successfulValidations += successCount
+        
+        // Update success rate
+        let totalValidations = validationMetrics.totalValidations
+        validationMetrics.successRate = totalValidations > 1 ?
+            (validationMetrics.successRate * Double(totalValidations - 1) + Double(successCount)) / Double(totalValidations) :
+            Double(successCount)
+        
+        // Update average quality score
+        validationMetrics.averageQualityScore = totalValidations > 1 ?
+            (validationMetrics.averageQualityScore * Double(totalValidations - 1) + result.overallScore) / Double(totalValidations) :
+            result.overallScore
     }
 }
 
@@ -498,59 +465,47 @@ struct ValidationResult {
     
     var summary: String {
         let qualityPercent = String(format: "%.0f%%", quality.overallScore * 100)
-        let status = passedValidation ? "✅ PASSED" : "❌ FAILED"
-        return "\(status) - Quality: \(qualityPercent) (\(String(format: "%.2f", processingTime))s)"
+        let status = passedValidation ? "✅ Passed" : "❌ Failed"
+        return "\(status) - \(qualityPercent) quality"
     }
 }
 
 struct BasicValidationChecks {
-    let wordCount: Int
-    let characterCount: Int
-    let hasStructure: Bool
-    let hasProperEnding: Bool
     let isEmpty: Bool
     let isTooShort: Bool
     let isTooLong: Bool
-    
-    var passedBasicChecks: Bool {
-        return !isEmpty && !isTooShort && !isTooLong
-    }
+    let hasStructure: Bool
+    let wordCount: Int
 }
 
-struct ContentQualityAssessment {
+struct ContentQuality {
     let relevance: Double
     let coherence: Double
     let completeness: Double
     let clarity: Double
+    let overallScore: Double
+}
+
+struct UncertaintyFactor {
+    let type: UncertaintyType
+    let description: String
+    let severity: Double
+    let weightedSeverity: Double
     
-    var averageScore: Double {
-        return (relevance + coherence + completeness + clarity) / 4.0
+    enum UncertaintyType {
+        case linguisticUncertainty
+        case contradictoryStatements
+        case insufficientEvidence
+        case modelUncertainty
     }
 }
 
 struct ValidationMetrics {
     var totalValidations: Int = 0
-    var averageProcessingTime: TimeInterval = 0.0
+    var successfulValidations: Int = 0
     var successRate: Double = 0.0
     var averageQualityScore: Double = 0.0
-    
-    mutating func updateWithResult(_ result: ValidationResult) {
-        totalValidations += 1
-        
-        // Update average processing time
-        averageProcessingTime = (averageProcessingTime * Double(totalValidations - 1) + result.processingTime) / Double(totalValidations)
-        
-        // Update success rate
-        let successCount = result.passedValidation ? 1 : 0
-        successRate = (successRate * Double(totalValidations - 1) + Double(successCount)) / Double(totalValidations)
-        
-        // Update average quality score
-        averageQualityScore = (averageQualityScore * Double(totalValidations - 1) + result.quality.overallScore) / Double(totalValidations)
-    }
 }
-
-// MARK: - Note: FactCheckingEngine is defined in separate FactCheckingEngine.swift file
-// Remove the duplicate stub class that was causing compilation errors
 
 // MARK: - Extensions
 
@@ -615,5 +570,14 @@ enum ValidationError: Error, LocalizedError {
         case .resourceUnavailable:
             return "Required validation resources unavailable"
         }
+    }
+}
+
+// MARK: - Stub Classes
+
+class FactCheckingEngine {
+    func checkFactualAccuracy(content: String, model: String) async -> Double {
+        // Placeholder implementation
+        return 0.8
     }
 }

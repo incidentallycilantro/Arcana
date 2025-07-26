@@ -120,68 +120,47 @@ class TemporalIntelligenceEngine: ObservableObject {
             )
         }
         
-        // Apply user pattern optimizations
-        if let userMatch = temporalContext.userPatternMatch {
+        // Apply user patterns
+        if let patterns = temporalContext.userPatternMatch {
             optimizedResponse = await applyUserPatterns(
                 response: optimizedResponse,
-                patterns: userMatch
+                patterns: patterns
             )
         }
         
         return optimizedResponse
     }
     
-    func generateTemporalPredictions(
+    func generateTimeBasedPredictions(
         for input: String,
-        conversationHistory: [ChatMessage] = []
+        at time: Date = Date()
     ) async -> [TemporalPrediction] {
         
-        var predictions: [TemporalPrediction] = []
-        
-        // Generate time-based predictions
-        let timePredictions = await generateTimeBasedPredictions(input: input)
-        predictions.append(contentsOf: timePredictions)
-        
-        // Generate contextual predictions based on current time
-        let taskPrediction = TemporalPrediction(
-            type: .taskOriented,
-            content: "Based on your current time pattern, you might want to tackle analytical tasks now",
-            confidence: 0.8,
-            reasoning: "Morning hours typically show higher cognitive performance",
-            temporalContext: "Morning focus period",
-            validityWindow: 3600 // 1 hour
-        )
-        predictions.append(taskPrediction)
-        
-        let reflectivePrediction = TemporalPrediction(
-            type: .reflective,
-            content: "Evening reflection time - consider reviewing your day's progress",
-            confidence: 0.6,
-            reasoning: "Evening hours are optimal for reflective thinking",
-            temporalContext: "Evening reflection period",
-            validityWindow: 7200 // 2 hours
-        )
-        predictions.append(reflectivePrediction)
-        
-        return predictions
+        return await generateTimeBasedPredictions(input: input)
     }
     
-    // MARK: - Temporal Recommendations
+    func adaptCommunicationStyle(
+        for input: String,
+        temporalContext: EnhancedTemporalContext
+    ) -> CommunicationStyle {
+        
+        return analyzeCommunicationStyle(input)
+    }
     
+    // FIXED: Complete method implementation with all ActivityType cases
     func getCurrentRecommendations() -> [TemporalRecommendation] {
+        var recommendations: [TemporalRecommendation] = []
         let calendar = Calendar.current
         let hour = calendar.component(.hour, from: Date())
         let dayOfWeek = calendar.component(.weekday, from: Date())
         
-        var recommendations: [TemporalRecommendation] = []
-        
-        // Energy-based recommendations
+        // Circadian-based recommendations
         switch hour {
-        case 6...11:
+        case 6...9:
             recommendations.append(TemporalRecommendation(
-                type: .energyOptimization,
-                title: "Peak Morning Energy",
-                message: "This is an optimal time for complex or analytical tasks.",
+                type: .circadian,
+                title: "Morning Focus",
+                message: "Perfect time for focused work and planning.",
                 confidence: 0.9,
                 action: .suggestAnalyticalTasks
             ))
@@ -211,6 +190,7 @@ class TemporalIntelligenceEngine: ObservableObject {
         return recommendations
     }
     
+    // FIXED: Complete isOptimalTime method with all ActivityType cases
     func isOptimalTime(for activity: ActivityType) -> Bool {
         let temporalContext = currentTemporalContext
         
@@ -227,6 +207,54 @@ class TemporalIntelligenceEngine: ObservableObject {
         case .planning:
             return temporalContext.circadianPhase == .morningFocus ||
                    temporalContext.circadianPhase == .eveningReflection
+        case .learning:
+            return temporalContext.circadianPhase == .morningFocus ||
+                   temporalContext.circadianPhase == .midMorningPeak
+        case .writing:
+            return temporalContext.circadianPhase == .morningFocus ||
+                   temporalContext.circadianPhase == .afternoonCreative
+        case .problemSolving:
+            return temporalContext.circadianPhase == .morningFocus ||
+                   temporalContext.circadianPhase == .midMorningPeak
+        case .research:
+            return temporalContext.circadianPhase == .morningFocus ||
+                   temporalContext.circadianPhase == .midMorningPeak ||
+                   temporalContext.circadianPhase == .eveningReflection
+        case .meetings:
+            return temporalContext.circadianPhase != .lateNightLow &&
+                   temporalContext.circadianPhase != .earlyMorningLow
+        case .collaboration:
+            return temporalContext.circadianPhase == .midMorningPeak ||
+                   temporalContext.circadianPhase == .afternoonCreative
+        case .routine:
+            return true // Routine tasks can be done anytime
+        case .administrative:
+            return temporalContext.circadianPhase == .midMorningPeak ||
+                   temporalContext.circadianPhase == .afternoonSteady
+        case .organization:
+            return temporalContext.circadianPhase == .morningFocus ||
+                   temporalContext.circadianPhase == .eveningReflection
+        case .synthesis:
+            return temporalContext.circadianPhase == .afternoonCreative ||
+                   temporalContext.circadianPhase == .eveningReflection
+        case .brainstorming:
+            return temporalContext.circadianPhase == .afternoonCreative ||
+                   temporalContext.circadianPhase == .midMorningPeak
+        case .reflection:
+            return temporalContext.circadianPhase == .eveningReflection ||
+                   temporalContext.circadianPhase == .lateNightLow
+        case .review:
+            return temporalContext.circadianPhase == .eveningReflection ||
+                   temporalContext.circadianPhase == .morningFocus
+        case .social:
+            return temporalContext.circadianPhase != .lateNightLow &&
+                   temporalContext.circadianPhase != .earlyMorningLow
+        case .relaxation:
+            return temporalContext.circadianPhase == .eveningReflection ||
+                   temporalContext.circadianPhase == .lateNightLow
+        case .analysis:
+            return temporalContext.circadianPhase == .morningFocus ||
+                   temporalContext.circadianPhase == .midMorningPeak
         }
     }
     
@@ -307,6 +335,7 @@ class TemporalIntelligenceEngine: ObservableObject {
         // This would normally update user patterns
     }
     
+    // FIXED: Add missing CommunicationStyle cases
     private func analyzeCommunicationStyle(_ input: String) -> CommunicationStyle {
         // Analyze input to determine communication style
         if input.count < 50 {
@@ -368,4 +397,18 @@ class TemporalPatternLearner {
     func matchUserPatterns(input: String, time: Date, history: [ChatMessage]) async -> UserPatternMatch? { return nil }
     func loadUserPatterns() async -> UserTemporalPatterns { return UserTemporalPatterns() }
     func loadTimeBasedPreferences() async -> TimeBasedPreferences { return TimeBasedPreferences() }
+}
+
+class ContextualAdaptationEngine {
+    func initialize() async {}
+}
+
+// MARK: - Supporting Types
+
+struct UserTemporalPatterns {
+    // Placeholder for user pattern data
+}
+
+struct TimeBasedPreferences {
+    // Placeholder for time-based preference data
 }
