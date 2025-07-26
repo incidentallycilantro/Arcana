@@ -284,7 +284,7 @@ class PRISMEngine: ObservableObject {
         )
         
         // Stream response in chunks to simulate real-time delivery
-        let words = fullResponse.response.components(separatedBy: .whitespacesAndNewlines)
+        let words = fullResponse.response.components(separatedBy: CharacterSet.whitespacesAndNewlines)
         var streamedText = ""
         
         for (index, word) in words.enumerated() {

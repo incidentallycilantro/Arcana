@@ -56,18 +56,25 @@ class CircadianOptimizer: ObservableObject {
         let energyLevel = calculateEnergyLevel(at: time, phase: phase)
         let cognitiveOptimality = calculateCognitiveOptimality(at: time, phase: phase)
         
+        // Create current state
+        let currentState = CircadianState()
+        
+        // Generate recommendations
+        let recommendations = generateCircadianRecommendations(
+            phase: phase,
+            energy: energyLevel,
+            cognitive: cognitiveOptimality
+        )
+        
+        // Get optimal windows and energy forecast
+        let optimalWindows = await findOptimalTimeWindows(for: .analytical, from: time)
+        let forecast = await generateEnergyForecast(from: time)
+        
         let insights = CircadianInsights(
-            timestamp: time,
-            currentPhase: phase,
-            energyLevel: energyLevel,
-            cognitiveOptimality: cognitiveOptimality,
-            recommendedActivities: getRecommendedActivities(for: phase),
-            avoidActivities: getActivitiesToAvoid(for: phase),
-            recommendations: generateCircadianRecommendations(
-                phase: phase,
-                energy: energyLevel,
-                cognitive: cognitiveOptimality
-            )
+            currentState: currentState,
+            recommendations: recommendations,
+            optimalWindows: optimalWindows,
+            energyForecast: forecast
         )
         
         // Learn from user interaction patterns
@@ -101,18 +108,7 @@ class CircadianOptimizer: ObservableObject {
     }
     
     func getCurrentCircadianState() async -> CircadianState {
-        let now = Date()
-        let phase = await getCurrentPhase(at: now)
-        let energyLevel = calculateEnergyLevel(at: now, phase: phase)
-        
-        return CircadianState(
-            currentPhase: phase,
-            energyLevel: energyLevel,
-            morningOptimalityScore: 0.9,
-            afternoonCreativityScore: 0.7,
-            eveningReflectionScore: 0.6,
-            lastUpdated: now
-        )
+        return CircadianState()
     }
     
     func optimizeResponse(
@@ -149,11 +145,16 @@ class CircadianOptimizer: ObservableObject {
     
     private func updateEnergyForecast() async {
         let now = Date()
+        let forecast = await generateEnergyForecast(from: now)
+        energyForecast = forecast
+    }
+    
+    private func generateEnergyForecast(from startTime: Date) async -> [EnergyForecastPoint] {
         var forecast: [EnergyForecastPoint] = []
         
         // Generate 24-hour forecast
         for hour in 0..<24 {
-            let futureTime = Calendar.current.date(byAdding: .hour, value: hour, to: now)!
+            let futureTime = Calendar.current.date(byAdding: .hour, value: hour, to: startTime)!
             let phase = await getCurrentPhase(at: futureTime)
             let energy = calculateEnergyLevel(at: futureTime, phase: phase)
             
@@ -161,11 +162,11 @@ class CircadianOptimizer: ObservableObject {
                 time: futureTime,
                 energyLevel: energy,
                 phase: phase,
-                confidence: 0.8 - (Double(hour) * 0.02) // Confidence decreases over time
+                activities: phase.optimalActivities
             ))
         }
         
-        energyForecast = forecast
+        return forecast
     }
     
     private func updateOptimalActivityWindows() async {
@@ -213,15 +214,6 @@ class CircadianOptimizer: ObservableObject {
         let baseOptimality = phase.energyLevel
         let userAdjustment = userCircadianProfile.cognitiveBoost(for: phase)
         return min(1.0, baseOptimality + userAdjustment)
-    }
-    
-    private func getRecommendedActivities(for phase: CircadianPhase) -> [ActivityType] {
-        return phase.optimalActivities
-    }
-    
-    private func getActivitiesToAvoid(for phase: CircadianPhase) -> [ActivityType] {
-        // Return activities that are not optimal for this phase
-        return ActivityType.allCases.filter { !phase.optimalActivities.contains($0) }
     }
     
     private func generateCircadianRecommendations(
@@ -279,17 +271,14 @@ class CircadianOptimizer: ObservableObject {
             let phase = await getCurrentPhase(at: timeSlot)
             
             if phase.optimalActivities.contains(activity) {
-                let startHour = calendar.component(.hour, from: timeSlot)
-                let endHour = startHour + 1
+                let endTime = calendar.date(byAdding: .hour, value: 1, to: timeSlot)!
                 
                 windows.append(ActivityWindow(
                     activity: activity,
                     startTime: timeSlot,
-                    endTime: calendar.date(byAdding: .hour, value: 1, to: timeSlot)!,
-                    optimalityScore: phase.energyLevel,
-                    dayOfWeek: calendar.component(.weekday, from: timeSlot),
-                    startHour: startHour,
-                    endHour: endHour
+                    endTime: endTime,
+                    energyLevel: phase.energyLevel,
+                    confidence: 0.8
                 ))
             }
         }

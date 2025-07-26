@@ -8,20 +8,7 @@
 
 import Foundation
 
-// MARK: - Local Season Enum (to avoid SharedQualityTypes dependency issues)
-
-enum Season: String, Codable, CaseIterable, Hashable {
-    case spring = "spring"
-    case summer = "summer"
-    case fall = "fall"
-    case winter = "winter"
-    
-    var displayName: String {
-        return rawValue.capitalized
-    }
-}
-
-// MARK: - Core Temporal Types
+// MARK: - Core Temporal Types (NO DUPLICATES - USE EXISTING SHARED TYPES)
 
 enum ActivityType: String, Codable, CaseIterable {
     case creative = "creative"
@@ -72,42 +59,33 @@ enum CircadianPhase: String, Codable, CaseIterable {
         }
     }
     
-    var energyLevel: Double {
-        switch self {
-        case .earlyMorningLow: return 0.3
-        case .morningRise: return 0.6
-        case .morningFocus: return 0.9
-        case .midMorningPeak: return 1.0
-        case .lunchDip: return 0.5
-        case .afternoonCreative: return 0.8
-        case .afternoonPeak: return 0.9
-        case .eveningTransition: return 0.7
-        case .eveningReflection: return 0.6
-        case .nightWindDown: return 0.4
-        case .lateNightLow: return 0.2
-        }
-    }
-    
     var optimalActivities: [ActivityType] {
         switch self {
+        case .earlyMorningLow, .lateNightLow:
+            return []
+        case .morningRise:
+            return [.planning]
         case .morningFocus, .midMorningPeak:
             return [.analytical, .planning]
+        case .lunchDip:
+            return []
         case .afternoonCreative:
             return [.creative, .communication]
+        case .afternoonPeak:
+            return [.analytical, .planning, .communication]
+        case .eveningTransition:
+            return [.communication, .creative]
         case .eveningReflection:
-            return [.planning, .creative]
-        default:
-            return [.communication]
+            return [.creative, .planning]
+        case .nightWindDown:
+            return [.creative]
         }
     }
     
-    var baseEnergyLevel: Double {
-        return energyLevel
-    }
-    
-    var baseCognitiveOptimality: Double {
+    var energyLevel: Double {
         switch self {
-        case .morningFocus, .midMorningPeak: return 0.95
+        case .midMorningPeak: return 0.95
+        case .morningFocus: return 0.9
         case .afternoonCreative: return 0.85
         case .eveningReflection: return 0.75
         case .afternoonPeak: return 0.8
@@ -135,7 +113,7 @@ enum CircadianPhase: String, Codable, CaseIterable {
     }
 }
 
-// MARK: - Temporal Context
+// MARK: - Temporal Context (USE SEASON FROM SHARED TYPES)
 
 struct TemporalContext: Codable {
     let timestamp: Date
@@ -144,7 +122,7 @@ struct TemporalContext: Codable {
     let dayOfYear: Int
     let weekOfYear: Int
     let month: Int
-    let season: Season
+    let season: Season  // Uses Season from SharedQualityTypes
     let circadianPhase: CircadianPhase
     let isWorkingHours: Bool
     let isWeekend: Bool
@@ -198,125 +176,17 @@ struct TemporalContext: Codable {
     }
 }
 
-// MARK: - Enhanced Temporal Context
+// MARK: - Communication and Preferences
 
-struct EnhancedTemporalContext: Codable {
-    let timestamp: Date
-    let circadianPhase: CircadianPhase
-    let energyLevel: Double
-    let cognitiveOptimality: Double
-    let seasonalContext: SeasonalContext?
-    let userPatternMatch: UserPatternMatch?
-    let temporalRecommendations: [TemporalRecommendation]
-}
-
-struct SeasonalContext: Codable {
-    let season: Season
-    let weekInSeason: Int
-    let seasonalEnergy: Double
-    let seasonalMood: String
-}
-
-struct UserPatternMatch: Codable {
-    let patternType: String
-    let confidence: Double
-    let historicalData: [String]
-}
-
-// MARK: - Temporal Intelligence Types
-
-struct TemporalRecommendation: Codable, Identifiable {
-    let id = UUID()
-    let type: RecommendationType
-    let title: String
-    let message: String
-    let confidence: Double
-    let action: RecommendedAction
-    
-    var priority: Int {
-        switch type {
-        case .circadian: return 3
-        case .seasonal: return 1
-        case .weeklyPattern: return 2
-        case .energyOptimization: return 4
-        case .optimalTiming: return 5
-        case .circadianAlignment: return 3
-        case .seasonalOptimization: return 1
-        case .energyManagement: return 4
-        }
-    }
-}
-
-enum RecommendationType: String, Codable {
-    case circadian = "circadian"
-    case seasonal = "seasonal"
-    case weeklyPattern = "weekly_pattern"
-    case energyOptimization = "energy_optimization"
-    case optimalTiming = "optimal_timing"
-    case circadianAlignment = "circadian_alignment"
-    case seasonalOptimization = "seasonal_optimization"
-    case energyManagement = "energy_management"
+enum CommunicationStyle: String, Codable {
+    case brief, detailed, conversational, technical, creative
     
     var displayName: String {
-        switch self {
-        case .circadian: return "Circadian"
-        case .seasonal: return "Seasonal"
-        case .weeklyPattern: return "Weekly Pattern"
-        case .energyOptimization: return "Energy Optimization"
-        case .optimalTiming: return "Optimal Timing"
-        case .circadianAlignment: return "Circadian Alignment"
-        case .seasonalOptimization: return "Seasonal Optimization"
-        case .energyManagement: return "Energy Management"
-        }
+        return rawValue.capitalized
     }
 }
 
-enum RecommendedAction: String, Codable {
-    case suggestCreativeTasks = "suggest_creative_tasks"
-    case suggestAnalyticalTasks = "suggest_analytical_tasks"
-    case suggestPlanningTasks = "suggest_planning_tasks"
-    case suggestBreak = "suggest_break"
-    case adjustWorkspace = "adjust_workspace"
-    case suggestComplexTasks = "suggest_complex_tasks"
-    case applySeasonalContext = "apply_seasonal_context"
-    
-    var displayName: String {
-        switch self {
-        case .suggestCreativeTasks: return "Creative Tasks"
-        case .suggestAnalyticalTasks: return "Analytical Tasks"
-        case .suggestPlanningTasks: return "Planning Tasks"
-        case .suggestBreak: return "Take a Break"
-        case .adjustWorkspace: return "Adjust Workspace"
-        case .suggestComplexTasks: return "Complex Tasks"
-        case .applySeasonalContext: return "Apply Seasonal Context"
-        }
-    }
-}
-
-// MARK: - Circadian Optimization Types
-
-struct CircadianInsights: Codable {
-    let timestamp: Date
-    let currentPhase: CircadianPhase
-    let energyLevel: Double
-    let cognitiveOptimality: Double
-    let recommendedActivities: [ActivityType]
-    let avoidActivities: [ActivityType]
-    let recommendations: [TemporalRecommendation]
-}
-
-struct EnergyForecastPoint: Codable {
-    let time: Date
-    let energyLevel: Double
-    let phase: CircadianPhase
-    let confidence: Double
-}
-
-struct ActivityWindow: Codable {
-    let activity: ActivityType
-    let startTime: Date
-    let endTime: Date
-    let optimalityScore: Double
+struct OptimalWindow: Codable {
     let dayOfWeek: Int?
     let startHour: Int
     let endHour: Int
@@ -338,21 +208,6 @@ struct CommunicationStylePreference: Codable {
     let style: CommunicationStyle
     let confidence: Double
     let timeContext: TimeContext
-}
-
-enum CommunicationStyle: String, Codable {
-    case brief, detailed, conversational, technical, creative
-    
-    var displayName: String {
-        return rawValue.capitalized
-    }
-}
-
-struct TimeContext: Codable {
-    let hour: Int
-    let dayOfWeek: Int
-    let season: Season
-    let energyLevel: Double
 }
 
 // MARK: - Temporal Predictions
@@ -387,72 +242,80 @@ enum PredictionType: String, Codable {
         }
     }
     
-    var icon: String {
+    var temporalWeight: Double {
         switch self {
-        case .taskOriented: return "checkmark.square"
-        case .reflective: return "thought.bubble"
-        case .seasonal: return "leaf"
-        case .energyBased: return "bolt"
-        case .patternBased: return "chart.xyaxis.line"
+        case .taskOriented: return 0.4
+        case .reflective: return 0.6
+        case .seasonal: return 0.8
+        case .energyBased: return 0.9
+        case .patternBased: return 0.7
         }
     }
 }
 
-// MARK: - Enhanced Prediction Types
+// MARK: - Enhanced Temporal Intelligence
 
-struct EnhancedPrediction: Codable {
-    let content: String
+struct TemporalRecommendation: Codable, Identifiable {
+    let id = UUID()
+    let type: RecommendationType
+    let title: String
+    let message: String
     let confidence: Double
-    let temporalBoost: Double
-    let privacyScore: Double
-    let workspaceAlignment: Double
-    let generatedAt: Date
+    let action: RecommendedAction
     
-    var overallScore: Double {
-        return (confidence * 0.4 + temporalBoost * 0.3 + workspaceAlignment * 0.2 + privacyScore * 0.1)
-    }
-    
-    var qualityGrade: String {
-        switch overallScore {
-        case 0.9...1.0: return "Excellent"
-        case 0.8..<0.9: return "Good"
-        case 0.7..<0.8: return "Fair"
-        default: return "Poor"
+    var priority: Int {
+        switch type {
+        case .circadian: return 3
+        case .seasonal: return 1
+        case .weeklyPattern: return 2
+        case .energyOptimization: return 4
+        case .optimalTiming: return 5
+        case .circadianAlignment: return 3
+        case .seasonalOptimization: return 1
+        case .energyManagement: return 4
         }
     }
 }
 
-// MARK: - Circadian State Types
-
-struct CircadianState: Codable {
-    var currentPhase: CircadianPhase = .morningFocus
-    var energyLevel: Double = 0.8
-    var morningOptimalityScore: Double = 0.9
-    var afternoonCreativityScore: Double = 0.7
-    var eveningReflectionScore: Double = 0.6
-    var lastUpdated: Date = Date()
-    
-    var overallOptimality: Double {
-        switch currentPhase {
-        case .morningFocus, .midMorningPeak:
-            return morningOptimalityScore
-        case .afternoonCreative:
-            return afternoonCreativityScore
-        case .eveningReflection:
-            return eveningReflectionScore
-        default:
-            return energyLevel
-        }
-    }
+enum RecommendationType: String, Codable {
+    case circadian = "circadian"
+    case seasonal = "seasonal"
+    case weeklyPattern = "weekly_pattern"
+    case energyOptimization = "energy_optimization"
+    case optimalTiming = "optimal_timing"
+    case circadianAlignment = "circadian_alignment"
+    case seasonalOptimization = "seasonal_optimization"
+    case energyManagement = "energy_management"
 }
 
-// MARK: - Intelligence Integration Types
+enum RecommendedAction: String, Codable {
+    case adjustTiming = "adjust_timing"
+    case changeWorkspace = "change_workspace"
+    case modifyApproach = "modify_approach"
+    case enhanceContext = "enhance_context"
+    case optimizeEnergy = "optimize_energy"
+    case alignWithRhythm = "align_with_rhythm"
+    case suggestAnalyticalTasks = "suggest_analytical_tasks"
+    case suggestBreak = "suggest_break"
+    case suggestCreativeTasks = "suggest_creative_tasks"
+    case suggestPlanningTasks = "suggest_planning_tasks"
+    case adjustWorkspace = "adjust_workspace"
+}
 
-struct EnhancedTemporalRecommendation {
-    let originalRecommendation: TemporalRecommendation
+// MARK: - Temporal Intelligence Analysis (NO CODABLE - USE STRUCTS WITHOUT CONFORMANCE)
+
+struct TemporalIntelligence {
+    let contextualRecommendation: ContextualRecommendation
     let workspaceOptimization: WorkspaceOptimization
     let privacyConsiderations: PrivacyConsideration
     let intelligenceBoost: IntelligenceBoost
+}
+
+struct ContextualRecommendation {
+    let communicationStyle: CommunicationStyle
+    let urgencyLevel: UrgencyLevel
+    let detailLevel: DetailLevel
+    let suggestionType: SuggestionType
 }
 
 struct WorkspaceOptimization {
@@ -468,7 +331,7 @@ struct WorkspaceOptimization {
 }
 
 struct PrivacyConsideration {
-    let recommendedPrivacyLevel: PrivacyLevel
+    let recommendedPrivacyLevel: PrivacyLevel  // Use local definition
     let reasoning: String
     let dataRetentionGuidance: String
     
@@ -485,9 +348,9 @@ struct IntelligenceBoost {
     let qualityPrediction: Double
 }
 
-// MARK: - User Patterns
+// MARK: - User Patterns (NO CODABLE FOR SEASON DICTIONARY)
 
-struct UserTemporalPatterns: Codable {
+struct UserTemporalPatterns {
     var morningPatterns: [String] = []
     var afternoonPatterns: [String] = []
     var eveningPatterns: [String] = []
@@ -496,10 +359,54 @@ struct UserTemporalPatterns: Codable {
     var lastUpdated: Date = Date()
 }
 
-struct TimeBasedPreferences: Codable {
+struct TimeBasedPreferences {
     var communicationStyles: [CircadianPhase: CommunicationStyle] = [:]
     var workspacePreferences: [CircadianPhase: WorkspaceManager.WorkspaceType] = [:]
     var privacyLevels: [CircadianPhase: PrivacyLevel] = [:]
+}
+
+// MARK: - Enhanced Temporal Context
+
+struct EnhancedTemporalContext: Codable {
+    let timestamp: Date
+    let circadianPhase: CircadianPhase
+    let energyLevel: Double
+    let cognitiveOptimality: Double
+    let seasonalContext: SeasonalContext?
+    let userPatternMatch: UserPatternMatch?
+    let temporalRecommendations: [TemporalRecommendation]
+}
+
+struct SeasonalContext: Codable {
+    let season: Season  // Uses Season from SharedQualityTypes
+    let weekInSeason: Int
+    let seasonalEnergy: Double
+    let seasonalMood: String
+}
+
+struct UserPatternMatch: Codable {
+    let patternType: String
+    let confidence: Double
+    let historicalData: [String]
+}
+
+// MARK: - Supporting Types
+
+enum UrgencyLevel: String, Codable {
+    case low, medium, high, critical
+}
+
+enum DetailLevel: String, Codable {
+    case brief, standard, detailed, comprehensive
+}
+
+enum SuggestionType: String, Codable {
+    case productive, creative, reflective, social
+}
+
+// MARK: - LOCAL PRIVACY LEVEL (TO AVOID DEPENDENCY)
+enum PrivacyLevel: String, Codable {
+    case minimal, standard, enhanced, maximum
 }
 
 // MARK: - CircadianPhase Extensions
@@ -509,71 +416,84 @@ extension CircadianPhase {
         return optimalActivities.contains(activity)
     }
     
-    var preferredCommunicationStyle: CommunicationStyle {
-        switch self {
-        case .morningFocus, .midMorningPeak:
-            return .brief
-        case .afternoonCreative:
-            return .conversational
-        case .eveningReflection:
-            return .detailed
-        default:
-            return .conversational
-        }
+    func getActivityRecommendations() -> [ActivityType] {
+        return optimalActivities
+    }
+    
+    func getEnergyDescription() -> String {
+        let percentage = Int(energyLevel * 100)
+        return "\(percentage)% energy"
     }
 }
 
-// MARK: - Supporting Types for Cultural and Seasonal Context
+// MARK: - Circadian Types for CircadianOptimizer
 
-struct CulturalEvent: Codable {
-    let name: String
-    let date: Date
-    let significance: String
-    let impact: CulturalImpact
-}
-
-enum CulturalImpact: String, Codable {
-    case low, medium, high
-}
-
-struct NaturalCycle: Codable {
-    let type: CycleType
-    let intensity: Double
-    let description: String
+struct CircadianState: Codable {
+    let phase: CircadianPhase
+    let energyLevel: Double
+    let optimalActivities: [ActivityType]
+    let timestamp: Date
+    let afternoonCreativityScore: Double  // ADDED MISSING PROPERTY
     
-    init(type: CycleType, intensity: Double) {
-        self.type = type
-        self.intensity = intensity
-        self.description = type.description
+    init() {
+        let context = TemporalContext()
+        self.phase = context.circadianPhase
+        self.energyLevel = context.circadianPhase.energyLevel
+        self.optimalActivities = context.circadianPhase.optimalActivities
+        self.timestamp = Date()
+        self.afternoonCreativityScore = 0.8  // Default value
     }
 }
 
-enum CycleType: String, Codable {
-    case daylightIncrease = "daylight_increase"
-    case longDays = "long_days"
-    case daylightDecrease = "daylight_decrease"
-    case shortDays = "short_days"
+struct EnergyForecastPoint: Codable, Identifiable {
+    let id = UUID()
+    let time: Date
+    let energyLevel: Double
+    let phase: CircadianPhase
+    let activities: [ActivityType]
     
-    var description: String {
-        switch self {
-        case .daylightIncrease: return "Increasing daylight hours"
-        case .longDays: return "Long summer days"
-        case .daylightDecrease: return "Decreasing daylight hours"
-        case .shortDays: return "Short winter days"
-        }
+    init(time: Date, energyLevel: Double, phase: CircadianPhase, activities: [ActivityType]) {
+        self.time = time
+        self.energyLevel = energyLevel
+        self.phase = phase
+        self.activities = activities
     }
 }
 
-struct SeasonalOptimization: Codable {
-    let title: String
-    let description: String
-    let applicableMonths: [Int]
-    let recommendedActions: [String]
+struct ActivityWindow: Codable, Identifiable {
+    let id = UUID()
+    let activity: ActivityType
+    let startTime: Date
+    let endTime: Date
+    let energyLevel: Double
+    let confidence: Double
     
-    init(title: String, description: String) {
-        self.title = title
-        self.description = description
-        self.applicableMonths = []
-        self.recommendedActions = []
+    init(activity: ActivityType, startTime: Date, endTime: Date, energyLevel: Double, confidence: Double) {
+        self.activity = activity
+        self.startTime = startTime
+        self.endTime = endTime
+        self.energyLevel = energyLevel
+        self.confidence = confidence
+    }
+}
+
+struct CircadianInsights: Codable {
+    let currentState: CircadianState
+    let recommendations: [TemporalRecommendation]
+    let optimalWindows: [ActivityWindow]
+    let energyForecast: [EnergyForecastPoint]
+    let timestamp: Date
+    
+    // ADDED CONVENIENCE PROPERTIES FOR TEMPORALINTELLIGENCEENGINE
+    var currentPhase: CircadianPhase { currentState.phase }
+    var energyLevel: Double { currentState.energyLevel }
+    var cognitiveOptimality: Double { currentState.energyLevel * 0.9 } // Calculated from energy
+    
+    init(currentState: CircadianState, recommendations: [TemporalRecommendation], optimalWindows: [ActivityWindow], energyForecast: [EnergyForecastPoint]) {
+        self.currentState = currentState
+        self.recommendations = recommendations
+        self.optimalWindows = optimalWindows
+        self.energyForecast = energyForecast
+        self.timestamp = Date()
     }
 }

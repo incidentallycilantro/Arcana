@@ -85,7 +85,7 @@ struct ResponseQuality: Codable, Hashable {
         return uncertaintyFactors.contains { $0.isCritical }
     }
     
-    /// Get quality tier for UI display
+    /// Get quality tier for UI display - USES EXTERNAL QualityTier
     var qualityTier: QualityTier {
         switch overallScore {
         case 0.9...1.0:
@@ -211,7 +211,7 @@ struct ResponseQuality: Codable, Hashable {
     }
 }
 
-// MARK: - Quality Tier Enumeration
+// MARK: - Quality Tier Enumeration (MOVED TO HERE FROM SHARED TYPES)
 
 enum QualityTier: String, Codable, CaseIterable {
     case excellent = "excellent"
@@ -266,6 +266,22 @@ enum QualityTier: String, Codable, CaseIterable {
             return 0.6
         case .poor:
             return 0.0
+        }
+    }
+    
+    /// Create QualityTier from a score
+    static func fromScore(_ score: Double) -> QualityTier {
+        switch score {
+        case 0.9...1.0:
+            return .excellent
+        case 0.8..<0.9:
+            return .good
+        case 0.7..<0.8:
+            return .fair
+        case 0.6..<0.7:
+            return .acceptable
+        default:
+            return .poor
         }
     }
 }

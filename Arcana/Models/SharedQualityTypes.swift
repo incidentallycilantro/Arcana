@@ -26,11 +26,16 @@ enum DayOfWeek: String, Codable, CaseIterable, Hashable {
     case saturday = "saturday"
 }
 
+// MARK: - SINGLE SEASON DEFINITION (AUTHORITATIVE)
 enum Season: String, Codable, CaseIterable, Hashable {
     case spring = "spring"
     case summer = "summer"
     case fall = "fall"
     case winter = "winter"
+    
+    var displayName: String {
+        return rawValue.capitalized
+    }
 }
 
 // MARK: - Quality Assessment Types
@@ -93,33 +98,45 @@ struct UncertaintyFactor: Codable, Hashable {
     let type: UncertaintyType
     let description: String
     let severity: Double // 0.0 to 1.0
-    let location: String? // Where in the response this uncertainty was detected
-    let confidence: Double // How confident we are about this uncertainty
+    let location: String?
+    let confidence: Double
     
-    init(
-        type: UncertaintyType,
-        description: String,
-        severity: Double,
-        location: String? = nil,
-        confidence: Double = 0.8
-    ) {
+    init(type: UncertaintyType, description: String, severity: Double, location: String? = nil, confidence: Double = 0.8) {
         self.type = type
         self.description = description
-        self.severity = min(max(severity, 0.0), 1.0) // Clamp between 0 and 1
+        self.severity = severity
         self.location = location
-        self.confidence = min(max(confidence, 0.0), 1.0)
+        self.confidence = confidence
     }
     
-    /// Calculate weighted severity based on type and individual severity
+    var isCritical: Bool {
+        return severity >= 0.8
+    }
+    
+    var isModerate: Bool {
+        return severity >= 0.5 && severity < 0.8
+    }
+    
+    var isMinor: Bool {
+        return severity < 0.5
+    }
+    
     var weightedSeverity: Double {
         return severity * type.severityWeight
     }
     
-    /// Determine if this uncertainty is critical
-    var isCritical: Bool {
-        return weightedSeverity > 0.7
+    var displaySeverity: String {
+        if isCritical {
+            return "Critical"
+        } else if isModerate {
+            return "Moderate"
+        } else {
+            return "Minor"
+        }
     }
 }
+
+// MARK: - Response Provenance
 
 struct ResponseProvenance: Codable, Hashable {
     let primaryModel: String
@@ -191,7 +208,7 @@ struct ResponseProvenance: Codable, Hashable {
     }
 }
 
-// MARK: - Temporal Context
+// MARK: - Temporal Context (SINGLE AUTHORITATIVE DEFINITION)
 
 struct TimeContext: Codable, Hashable {
     let timestamp: Date
@@ -237,48 +254,61 @@ struct TimeContext: Codable, Hashable {
         case 5: self.dayOfWeek = .thursday
         case 6: self.dayOfWeek = .friday
         case 7: self.dayOfWeek = .saturday
-        default: self.dayOfWeek = .monday
+        default: self.dayOfWeek = .sunday
         }
         
-        // Determine season (Northern Hemisphere)
+        // Determine season
         switch month {
-        case 3...5: self.season = .spring
-        case 6...8: self.season = .summer
-        case 9...11: self.season = .fall
+        case 3, 4, 5: self.season = .spring
+        case 6, 7, 8: self.season = .summer
+        case 9, 10, 11: self.season = .fall
         default: self.season = .winter
         }
         
-        // Calculate derived properties
-        self.isWeekend = weekday == 1 || weekday == 7 // Sunday or Saturday
-        self.isBusinessHours = hour >= 9 && hour < 17 && !isWeekend
+        self.isWeekend = calendar.isDateInWeekend(timestamp)
+        self.isBusinessHours = hour >= 9 && hour < 17 && !self.isWeekend
     }
     
-    /// Get a human-readable time description
-    var contextDescription: String {
+    // MARK: - Convenience Properties
+    
+    var contextualDescription: String {
         var components: [String] = []
         
         components.append(timeOfDay.rawValue.replacingOccurrences(of: "_", with: " "))
-        components.append("on \(dayOfWeek.rawValue)")
+        components.append("on")
+        components.append(dayOfWeek.rawValue)
         
         if isWeekend {
             components.append("(weekend)")
         }
         
-        components.append("in \(season.rawValue)")
+        components.append("in")
+        components.append(season.rawValue)
         
-        return components.joined(separator: " ")
+        return components.joined(separator: " ").capitalized
+    }
+    
+    var isOptimalForFocus: Bool {
+        return timeOfDay == .morning || (timeOfDay == .afternoon && !isWeekend)
+    }
+    
+    var isOptimalForCreativity: Bool {
+        return timeOfDay == .afternoon || timeOfDay == .evening
+    }
+    
+    var energyLevel: Double {
+        switch timeOfDay {
+        case .earlyMorning: return 0.3
+        case .morning: return 0.9
+        case .afternoon: return 0.8
+        case .evening: return 0.6
+        case .night: return 0.2
+        }
     }
     
     /// Determine if this is an optimal time for complex reasoning
     var isOptimalForReasoning: Bool {
-        // Morning and afternoon are generally better for complex tasks
         return timeOfDay == .morning || timeOfDay == .afternoon
-    }
-    
-    /// Determine if this is an optimal time for creative tasks
-    var isOptimalForCreativity: Bool {
-        // Evening and night can be good for creative work
-        return timeOfDay == .evening || timeOfDay == .night
     }
 }
 
@@ -406,7 +436,7 @@ struct ModelPerformanceProfile: Codable, Hashable {
         factualAccuracyScore: Double = 0.8,
         creativityScore: Double = 0.7,
         reasoningScore: Double = 0.8,
-        codingScore: Double = 0.6
+        codingScore: Double = 0.7
     ) {
         self.modelName = modelName
         self.averageConfidence = averageConfidence
@@ -420,69 +450,92 @@ struct ModelPerformanceProfile: Codable, Hashable {
         self.reasoningScore = reasoningScore
         self.codingScore = codingScore
     }
+}
+
+// MARK: - Performance Summary
+
+struct PerformanceSummary: Codable {
+    let responseTime: TimeInterval
+    let confidence: Double
+    let memoryUsage: Int
+    let cacheHitRate: Double
     
-    /// Get overall capability score
-    var overallCapability: Double {
-        return (factualAccuracyScore + creativityScore + reasoningScore + codingScore) / 4.0
+    var performanceGrade: String {
+        let score = calculatePerformanceScore()
+        switch score {
+        case 0.9...1.0: return "Excellent"
+        case 0.7..<0.9: return "Good"
+        case 0.5..<0.7: return "Average"
+        case 0.3..<0.5: return "Below Average"
+        default: return "Poor"
+        }
     }
     
-    /// Get recommended use cases based on scores
-    var recommendedUseCases: [String] {
-        var useCases: [String] = []
+    private func calculatePerformanceScore() -> Double {
+        let timeScore = responseTime < 2.0 ? 1.0 : max(0.0, 1.0 - (responseTime - 2.0) / 10.0)
+        let confidenceScore = confidence
+        let cacheScore = cacheHitRate
         
-        if factualAccuracyScore >= 0.8 {
-            useCases.append("Factual queries")
-        }
-        if creativityScore >= 0.8 {
-            useCases.append("Creative writing")
-        }
-        if reasoningScore >= 0.8 {
-            useCases.append("Complex reasoning")
-        }
-        if codingScore >= 0.8 {
-            useCases.append("Code generation")
-        }
+        return (timeScore + confidenceScore + cacheScore) / 3.0
+    }
+}
+
+// MARK: - Quality Standards
+
+struct QualityStandards {
+    static let minimumAcceptableScore: Double = 0.6
+    static let professionalStandardScore: Double = 0.8
+    static let excellenceStandardScore: Double = 0.9
+    
+    static let maxUncertaintyFactors: Int = 3
+    static let maxResponseTime: TimeInterval = 5.0
+    static let minimumConfidence: Double = 0.7
+    
+    static func meetsProfessionalStandards(
+        score: Double,
+        uncertaintyCount: Int,
+        confidence: Double?
+    ) -> Bool {
+        return score >= professionalStandardScore &&
+               uncertaintyCount <= maxUncertaintyFactors &&
+               (confidence ?? 0.0) >= minimumConfidence
+    }
+}
+
+// MARK: - Quality Metrics
+
+struct QualityMetrics: Codable {
+    let accuracyScore: Double
+    let completenessScore: Double
+    let clarityScore: Double
+    let relevanceScore: Double
+    let consistencyScore: Double
+    
+    var overallScore: Double {
+        return (accuracyScore + completenessScore + clarityScore + relevanceScore + consistencyScore) / 5.0
+    }
+    
+    var topStrength: String {
+        let scores = [
+            ("Accuracy", accuracyScore),
+            ("Completeness", completenessScore),
+            ("Clarity", clarityScore),
+            ("Relevance", relevanceScore),
+            ("Consistency", consistencyScore)
+        ]
         
-        return useCases
+        return scores.max(by: { $0.1 < $1.1 })?.0 ?? "Unknown"
     }
-}
-
-// MARK: - Extensions for Better Integration
-
-extension TimeOfDay {
-    var emoji: String {
-        switch self {
-        case .earlyMorning:
-            return "🌅"
-        case .morning:
-            return "☀️"
-        case .afternoon:
-            return "🌤️"
-        case .evening:
-            return "🌇"
-        case .night:
-            return "🌙"
-        }
-    }
-}
-
-extension Season {
-    var emoji: String {
-        switch self {
-        case .spring:
-            return "🌸"
-        case .summer:
-            return "☀️"
-        case .fall:
-            return "🍂"
-        case .winter:
-            return "❄️"
-        }
-    }
-}
-
-extension DayOfWeek {
-    var isWeekend: Bool {
-        return self == .saturday || self == .sunday
+    
+    var improvementAreas: [String] {
+        let scores = [
+            ("Accuracy", accuracyScore),
+            ("Completeness", completenessScore),
+            ("Clarity", clarityScore),
+            ("Relevance", relevanceScore),
+            ("Consistency", consistencyScore)
+        ]
+        
+        return scores.filter { $0.1 < 0.7 }.map { $0.0 }
     }
 }

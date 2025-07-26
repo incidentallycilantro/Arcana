@@ -1,6 +1,6 @@
 //
 // ChatMessage.swift
-// Arcana - Enhanced message model with quality metadata
+// Arcana - Enhanced Chat Message Model with Revolutionary Quality Metadata
 // Created by Spectral Labs
 //
 // FOLDER: Arcana/Models/
@@ -8,40 +8,60 @@
 
 import Foundation
 
+// MARK: - Chat Message Model
+
 struct ChatMessage: Identifiable, Codable, Hashable {
-    let id: UUID
+    let id = UUID()
     var content: String
     var isFromUser: Bool
-    let timestamp: Date
+    var timestamp: Date = Date()
     var threadId: UUID?
-    
-    // MARK: - Revolutionary Quality Metadata
     var metadata: MessageMetadata?
     
-    init(
-        content: String,
-        isFromUser: Bool,
-        threadId: UUID? = nil,
-        timestamp: Date = Date()
-    ) {
-        self.id = UUID()
+    // MARK: - Message Role
+    
+    enum Role: String, Codable {
+        case user = "user"
+        case assistant = "assistant"
+        case system = "system"
+        
+        var displayName: String {
+            switch self {
+            case .user: return "You"
+            case .assistant: return "Assistant"
+            case .system: return "System"
+            }
+        }
+    }
+    
+    var role: Role {
+        return isFromUser ? .user : .assistant
+    }
+    
+    // MARK: - Initializers
+    
+    init(content: String, isFromUser: Bool, threadId: UUID? = nil) {
         self.content = content
         self.isFromUser = isFromUser
         self.threadId = threadId
-        self.timestamp = timestamp
+        
+        // Initialize metadata for assistant messages
+        if !isFromUser {
+            self.metadata = MessageMetadata()
+        }
     }
     
     // MARK: - Quality Assessment Properties
     
-    /// Get the quality assessment if available
+    /// Get overall quality score from metadata
     var qualityScore: Double? {
         return metadata?.qualityScore?.overallScore
     }
     
-    /// Get the quality tier for this message
+    /// Get quality tier from metadata
     var qualityTier: QualityTier {
-        guard let quality = metadata?.qualityScore else { return .unknown }
-        return quality.qualityTier
+        guard let score = qualityScore else { return .adequate }
+        return QualityTier.fromScore(score)
     }
     
     /// Check if message has quality assessment
@@ -49,14 +69,10 @@ struct ChatMessage: Identifiable, Codable, Hashable {
         return metadata?.qualityScore != nil
     }
     
-    /// Get confidence score if available
-    var confidenceScore: Double? {
-        return metadata?.confidence
-    }
-    
     /// Check if message meets professional standards
     var meetsProfessionalStandards: Bool {
-        return metadata?.qualityScore?.meetsProfessionalStandards ?? false
+        guard let quality = metadata?.qualityScore else { return false }
+        return quality.meetsProfessionalStandards
     }
     
     /// Get uncertainty factors count
@@ -117,7 +133,7 @@ struct ChatMessage: Identifiable, Codable, Hashable {
         metadata?.modelUsed = primaryModel
     }
     
-    /// Add temporal context information
+    /// Add temporal context information - FIXED: Use TimeContext directly
     mutating func updateTemporalContext(_ context: TimeContext) {
         if metadata == nil {
             metadata = MessageMetadata()
@@ -148,7 +164,7 @@ struct MessageMetadata: Codable, Hashable {
     var confidence: Double?                       // Calibrated confidence score
     var ensembleContributions: [String]?         // Models that contributed
     var ensembleStrategy: String?                // Strategy used for ensemble
-    var temporalContext: TimeContext?            // Time-aware context
+    var temporalContext: TimeContext?            // FIXED: Use TimeContext directly
     
     // MARK: - Validation Metadata
     var validatedBy: String?                     // Validation engine used
@@ -164,6 +180,11 @@ struct MessageMetadata: Codable, Hashable {
     var contextLength: Int?                      // Length of context used
     var promptTokens: Int?                       // Tokens in the prompt
     var responseTokens: Int?                     // Tokens in the response
+    
+    // MARK: - Completeness Tracking
+    var completeness: Double?                    // Response completeness score
+    var expectedLength: Int?                     // Expected response length
+    var actualLength: Int?                       // Actual response length
     
     init() {
         // Initialize with current timestamp
@@ -190,137 +211,58 @@ struct MessageMetadata: Codable, Hashable {
     /// Get ensemble summary
     var ensembleSummary: String? {
         guard let contributions = ensembleContributions,
-              let strategy = ensembleStrategy else {
+              !contributions.isEmpty else {
             return nil
         }
         
-        return "\(contributions.count) models using \(strategy)"
-    }
-    
-    /// Get validation status
-    var isValidated: Bool {
-        return validatedBy != nil && validationTimestamp != nil
-    }
-    
-    /// Get completeness score
-    var completeness: Double {
-        var score = 0.0
-        let totalFields = 12.0
-        
-        if modelUsed != nil { score += 1 }
-        if confidence != nil { score += 1 }
-        if qualityScore != nil { score += 1 }
-        if ensembleContributions != nil { score += 1 }
-        if temporalContext != nil { score += 1 }
-        if validatedBy != nil { score += 1 }
-        if inferenceTime != nil { score += 1 }
-        if memoryUsage != nil { score += 1 }
-        if cacheHitRate != nil { score += 1 }
-        if contextLength != nil { score += 1 }
-        if promptTokens != nil { score += 1 }
-        if responseTokens != nil { score += 1 }
-        
-        return score / totalFields
-    }
-}
-
-// MARK: - Performance Analysis Types
-
-struct PerformanceSummary: Codable, Hashable {
-    let responseTime: TimeInterval
-    let confidence: Double
-    let memoryUsage: Int
-    let cacheHitRate: Double
-    
-    var performanceGrade: PerformanceGrade {
-        let timeScore = responseTime < 1.0 ? 1.0 : (responseTime < 5.0 ? 0.7 : 0.4)
-        let confidenceScore = confidence
-        let cacheScore = cacheHitRate
-        
-        let averageScore = (timeScore + confidenceScore + cacheScore) / 3.0
-        
-        switch averageScore {
-        case 0.9...1.0: return .excellent
-        case 0.8..<0.9: return .good
-        case 0.7..<0.8: return .fair
-        default: return .poor
+        var summary = "\(contributions.count) models"
+        if let strategy = ensembleStrategy {
+            summary += " (\(strategy))"
         }
-    }
-}
-
-enum PerformanceGrade: String, Codable {
-    case excellent = "excellent"
-    case good = "good"
-    case fair = "fair"
-    case poor = "poor"
-    
-    var displayName: String {
-        return rawValue.capitalized
+        return summary
     }
     
-    var color: String {
-        switch self {
-        case .excellent: return "green"
-        case .good: return "blue"
-        case .fair: return "yellow"
-        case .poor: return "red"
+    /// Get validation summary
+    var validationSummary: String? {
+        guard let validator = validatedBy,
+              let timestamp = validationTimestamp else {
+            return nil
         }
+        
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        
+        return "Validated by \(validator) at \(formatter.string(from: timestamp))"
     }
-}
-
-// MARK: - Message Attachments (Legacy Support)
-
-struct MessageAttachment: Codable, Hashable, Identifiable {
-    var id = UUID()
-    let fileName: String
-    let fileType: String
-    let filePath: String
-    let fileSize: Int
-    let uploadTimestamp: Date
     
-    init(
-        fileName: String,
-        fileType: String,
-        filePath: String,
-        fileSize: Int,
-        uploadTimestamp: Date = Date()
-    ) {
-        self.fileName = fileName
-        self.fileType = fileType
-        self.filePath = filePath
-        self.fileSize = fileSize
-        self.uploadTimestamp = uploadTimestamp
+    /// Get temporal context summary
+    var temporalSummary: String? {
+        return temporalContext?.contextualDescription
     }
 }
 
-// MARK: - Extensions for Better Integration
+// MARK: - Message Factory Methods
 
 extension ChatMessage {
-    /// Create a user message with basic metadata
+    /// Create user message
     static func userMessage(
         content: String,
         threadId: UUID? = nil
     ) -> ChatMessage {
-        var message = ChatMessage(
+        return ChatMessage(
             content: content,
             isFromUser: true,
             threadId: threadId
         )
-        
-        // Add basic metadata for user messages
-        message.metadata = MessageMetadata()
-        message.metadata?.contextLength = content.count
-        message.metadata?.promptTokens = content.components(separatedBy: .whitespacesAndNewlines).count
-        
-        return message
     }
     
-    /// Create an assistant message with enhanced metadata
+    /// Create assistant message with enhanced metadata
     static func assistantMessage(
         content: String,
-        model: String,
-        confidence: Double,
         threadId: UUID? = nil,
+        model: String = "Default",
+        confidence: Double? = nil,
         ensembleContributions: [String] = []
     ) -> ChatMessage {
         var message = ChatMessage(
@@ -335,12 +277,7 @@ extension ChatMessage {
         metadata.confidence = confidence
         metadata.ensembleContributions = ensembleContributions
         metadata.responseTokens = content.components(separatedBy: .whitespacesAndNewlines).count
-        metadata.temporalContext = TimeContext(
-            hour: Calendar.current.component(.hour, from: Date()),
-            dayOfWeek: Calendar.current.component(.weekday, from: Date()),
-            season: .spring, // Default to spring for now
-            energyLevel: 0.8
-        )
+        metadata.temporalContext = TimeContext() // FIXED: Use TimeContext directly
         
         message.metadata = metadata
         
@@ -400,57 +337,50 @@ extension Array where Element == ChatMessage {
         return sorted { ($0.qualityScore ?? 0) > ($1.qualityScore ?? 0) }
     }
     
-    /// Get quality statistics for the message array
-    var qualityStatistics: MessageQualityStatistics {
-        let messagesWithQuality = self.filter { $0.hasQualityAssessment }
-        let totalMessages = messagesWithQuality.count
-        
-        guard totalMessages > 0 else {
-            return MessageQualityStatistics(
-                totalMessages: self.count,
-                messagesWithQuality: 0,
-                averageQuality: 0,
-                professionalStandardsRate: 0,
-                qualityDistribution: [:]
-            )
-        }
-        
-        let totalQuality = messagesWithQuality.compactMap { $0.qualityScore }.reduce(0, +)
-        let averageQuality = totalQuality / Double(totalMessages)
-        
-        let professionalMessages = messagesWithQuality.filter { $0.meetsProfessionalStandards }
-        let professionalRate = Double(professionalMessages.count) / Double(totalMessages)
-        
+    /// Get quality distribution
+    func qualityDistribution() -> [QualityTier: Int] {
         var distribution: [QualityTier: Int] = [:]
-        for message in messagesWithQuality {
-            distribution[message.qualityTier, default: 0] += 1
+        
+        for tier in QualityTier.allCases {
+            distribution[tier] = 0
         }
         
-        return MessageQualityStatistics(
-            totalMessages: self.count,
-            messagesWithQuality: totalMessages,
-            averageQuality: averageQuality,
-            professionalStandardsRate: professionalRate,
-            qualityDistribution: distribution
-        )
+        for message in self {
+            let tier = message.qualityTier
+            distribution[tier, default: 0] += 1
+        }
+        
+        return distribution
     }
 }
 
-// MARK: - Quality Statistics
+// MARK: - Sample Data
 
-struct MessageQualityStatistics {
-    let totalMessages: Int
-    let messagesWithQuality: Int
-    let averageQuality: Double
-    let professionalStandardsRate: Double
-    let qualityDistribution: [QualityTier: Int]
-    
-    var qualityAssessmentRate: Double {
-        return totalMessages > 0 ? Double(messagesWithQuality) / Double(totalMessages) : 0
-    }
-    
-    var topTierRate: Double {
-        let topTierCount = qualityDistribution[.exceptional, default: 0] + qualityDistribution[.high, default: 0]
-        return messagesWithQuality > 0 ? Double(topTierCount) / Double(messagesWithQuality) : 0
+extension ChatMessage {
+    static func sampleMessages(for threadId: UUID) -> [ChatMessage] {
+        return [
+            ChatMessage.userMessage(
+                content: "Can you help me understand the key concepts of quantum computing?",
+                threadId: threadId
+            ),
+            ChatMessage.assistantMessage(
+                content: "Quantum computing is a revolutionary computing paradigm that leverages quantum mechanical phenomena like superposition and entanglement to process information. Here are the key concepts:\n\n1. **Qubits**: Unlike classical bits that can only be 0 or 1, qubits can exist in superposition of both states simultaneously.\n\n2. **Superposition**: This allows quantum computers to explore multiple solution paths simultaneously.\n\n3. **Entanglement**: Qubits can be correlated in ways that classical particles cannot, enabling powerful quantum algorithms.",
+                threadId: threadId,
+                model: "Enhanced Intelligence",
+                confidence: 0.92,
+                ensembleContributions: ["GPT-4", "Claude-3", "Gemini-Pro"]
+            ),
+            ChatMessage.userMessage(
+                content: "What are some practical applications?",
+                threadId: threadId
+            ),
+            ChatMessage.assistantMessage(
+                content: "Quantum computing has several promising applications:\n\n• **Cryptography**: Breaking current encryption methods and creating quantum-safe alternatives\n• **Drug Discovery**: Modeling molecular interactions for pharmaceutical research\n• **Financial Modeling**: Optimizing portfolios and risk analysis\n• **Machine Learning**: Accelerating certain AI algorithms\n• **Climate Modeling**: Simulating complex environmental systems",
+                threadId: threadId,
+                model: "Enhanced Intelligence",
+                confidence: 0.88,
+                ensembleContributions: ["GPT-4", "Claude-3"]
+            )
+        ]
     }
 }
