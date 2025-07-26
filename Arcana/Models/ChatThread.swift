@@ -1,176 +1,238 @@
+//
 // ChatThread.swift
-// Created by Dylan E. | Spectral Labs
-// Arcana - Privacy-first AI Assistant for macOS
+// Arcana - Enhanced Thread Model with Intelligence
+// Created by Spectral Labs
+//
+// FOLDER: Arcana/Models/
+//
 
 import Foundation
-import SwiftUI
 
+@MainActor
 class ChatThread: ObservableObject, Identifiable, Codable {
-    let id: UUID
-    @Published var messages: [ChatMessage]
-    @Published var title: String
-    @Published var summary: String
-    @Published var createdAt: Date
-    @Published var lastModified: Date
+    
+    // MARK: - Core Properties
+    var id = UUID()
+    @Published var title: String = ""
+    @Published var messages: [ChatMessage] = []
+    @Published var lastModified: Date = Date()
+    
+    // MARK: - Intelligence Properties
+    @Published var detectedType: WorkspaceManager.WorkspaceType = .general
+    @Published var summary: String = ""
+    @Published var tags: [String] = []
+    
+    // MARK: - Workspace Integration
+    @Published var isPromotedToWorkspace: Bool = false
     @Published var workspaceId: UUID?
-    @Published var isPromotedToWorkspace: Bool
-    @Published var detectedType: WorkspaceManager.WorkspaceType
-    @Published var contextualTags: [String]
+    @Published var promotionEligibility: Double = 0.0
+    @Published var conversationDepth: Int = 0
+    @Published var topicConsistency: Double = 0.0
     
-    // Enhanced properties for invisible intelligence
-    @Published var conversationDepth: Int
-    @Published var topicConsistency: Double
-    @Published var userEngagement: Double
-    @Published var promotionEligibility: Double
-    
-    init(messages: [ChatMessage] = []) {
-        self.id = UUID()
-        self.messages = messages
-        self.title = "New Conversation"
-        self.summary = ""
-        self.createdAt = Date()
-        self.lastModified = Date()
-        self.workspaceId = nil
-        self.isPromotedToWorkspace = false
-        self.detectedType = .general
-        self.contextualTags = []
-        self.conversationDepth = 0
-        self.topicConsistency = 0.0
-        self.userEngagement = 0.0
-        self.promotionEligibility = 0.0
+    // FIXED: Added missing shouldPromoteToWorkspace computed property
+    var shouldPromoteToWorkspace: Bool {
+        return promotionEligibility > 0.75 &&
+               conversationDepth >= 4 &&
+               topicConsistency > 0.6 &&
+               !isPromotedToWorkspace
     }
     
-    // MARK: - Codable Implementation
+    // MARK: - Thread Quality Metrics
+    @Published var qualityScore: Double = 0.0
+    @Published var averageResponseTime: TimeInterval = 0.0
+    @Published var userSatisfactionScore: Double = 0.0
+    
+    // MARK: - Temporal Intelligence
+    @Published var createdAt: Date = Date()
+    @Published var preferredTimeContext: String = ""
+    @Published var optimalEngagementTimes: [Date] = []
+    
+    // MARK: - Codable Support
+    
     enum CodingKeys: String, CodingKey {
-        case id, messages, title, summary, createdAt, lastModified
-        case workspaceId, isPromotedToWorkspace, detectedType, contextualTags
-        case conversationDepth, topicConsistency, userEngagement, promotionEligibility
+        case id, title, messages, lastModified
+        case detectedType, summary, tags
+        case isPromotedToWorkspace, workspaceId, promotionEligibility
+        case conversationDepth, topicConsistency
+        case qualityScore, averageResponseTime, userSatisfactionScore
+        case createdAt, preferredTimeContext, optimalEngagementTimes
+    }
+    
+    init() {
+        self.createdAt = Date()
+        self.lastModified = Date()
     }
     
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         id = try container.decode(UUID.self, forKey: .id)
-        messages = try container.decode([ChatMessage].self, forKey: .messages)
         title = try container.decode(String.self, forKey: .title)
-        summary = try container.decode(String.self, forKey: .summary)
-        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        messages = try container.decode([ChatMessage].self, forKey: .messages)
         lastModified = try container.decode(Date.self, forKey: .lastModified)
-        workspaceId = try container.decodeIfPresent(UUID.self, forKey: .workspaceId)
-        isPromotedToWorkspace = try container.decode(Bool.self, forKey: .isPromotedToWorkspace)
-        // FIXED: WorkspaceType now conforms to Codable
+        
         detectedType = try container.decode(WorkspaceManager.WorkspaceType.self, forKey: .detectedType)
-        contextualTags = try container.decode([String].self, forKey: .contextualTags)
+        summary = try container.decode(String.self, forKey: .summary)
+        tags = try container.decode([String].self, forKey: .tags)
+        
+        isPromotedToWorkspace = try container.decode(Bool.self, forKey: .isPromotedToWorkspace)
+        workspaceId = try container.decodeIfPresent(UUID.self, forKey: .workspaceId)
+        promotionEligibility = try container.decode(Double.self, forKey: .promotionEligibility)
         conversationDepth = try container.decode(Int.self, forKey: .conversationDepth)
         topicConsistency = try container.decode(Double.self, forKey: .topicConsistency)
-        userEngagement = try container.decode(Double.self, forKey: .userEngagement)
-        promotionEligibility = try container.decode(Double.self, forKey: .promotionEligibility)
+        
+        qualityScore = try container.decode(Double.self, forKey: .qualityScore)
+        averageResponseTime = try container.decode(TimeInterval.self, forKey: .averageResponseTime)
+        userSatisfactionScore = try container.decode(Double.self, forKey: .userSatisfactionScore)
+        
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        preferredTimeContext = try container.decode(String.self, forKey: .preferredTimeContext)
+        optimalEngagementTimes = try container.decode([Date].self, forKey: .optimalEngagementTimes)
     }
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
         try container.encode(id, forKey: .id)
-        try container.encode(messages, forKey: .messages)
         try container.encode(title, forKey: .title)
-        try container.encode(summary, forKey: .summary)
-        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(messages, forKey: .messages)
         try container.encode(lastModified, forKey: .lastModified)
-        try container.encodeIfPresent(workspaceId, forKey: .workspaceId)
-        try container.encode(isPromotedToWorkspace, forKey: .isPromotedToWorkspace)
-        // FIXED: WorkspaceType now conforms to Codable
+        
         try container.encode(detectedType, forKey: .detectedType)
-        try container.encode(contextualTags, forKey: .contextualTags)
+        try container.encode(summary, forKey: .summary)
+        try container.encode(tags, forKey: .tags)
+        
+        try container.encode(isPromotedToWorkspace, forKey: .isPromotedToWorkspace)
+        try container.encode(workspaceId, forKey: .workspaceId)
+        try container.encode(promotionEligibility, forKey: .promotionEligibility)
         try container.encode(conversationDepth, forKey: .conversationDepth)
         try container.encode(topicConsistency, forKey: .topicConsistency)
-        try container.encode(userEngagement, forKey: .userEngagement)
-        try container.encode(promotionEligibility, forKey: .promotionEligibility)
+        
+        try container.encode(qualityScore, forKey: .qualityScore)
+        try container.encode(averageResponseTime, forKey: .averageResponseTime)
+        try container.encode(userSatisfactionScore, forKey: .userSatisfactionScore)
+        
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(preferredTimeContext, forKey: .preferredTimeContext)
+        try container.encode(optimalEngagementTimes, forKey: .optimalEngagementTimes)
     }
     
-    // MARK: - Thread Intelligence Methods
+    // MARK: - Message Management
     
     func addMessage(_ message: ChatMessage) {
         messages.append(message)
-        updateThreadIntelligence()
         lastModified = Date()
+        updateConversationMetrics()
+        analyzeForWorkspacePromotion()
     }
     
-    func updateThreadIntelligence() {
+    func removeMessage(at index: Int) {
+        guard index >= 0 && index < messages.count else { return }
+        messages.remove(at: index)
+        lastModified = Date()
+        updateConversationMetrics()
+    }
+    
+    func updateMessage(at index: Int, with newContent: String) {
+        guard index >= 0 && index < messages.count else { return }
+        messages[index].content = newContent
+        lastModified = Date()
+        updateConversationMetrics()
+    }
+    
+    // MARK: - Intelligence Analysis
+    
+    private func updateConversationMetrics() {
         conversationDepth = messages.count
-        
-        // Calculate topic consistency by analyzing content similarity
-        if messages.count >= 2 {
-            let content = messages.map { $0.content }.joined(separator: " ")
-            let words = Set(content.lowercased().components(separatedBy: .whitespacesAndNewlines))
-            topicConsistency = min(1.0, Double(words.count) / Double(content.count / 10))
+        calculateTopicConsistency()
+        calculatePromotionEligibility()
+        updateQualityScore()
+    }
+    
+    private func calculateTopicConsistency() {
+        guard messages.count > 1 else {
+            topicConsistency = 0.0
+            return
         }
         
-        // Calculate user engagement based on message frequency and length
-        // FIXED: Use isFromUser instead of role
+        // Simple topic consistency calculation
+        // In a real implementation, this would use semantic analysis
+        let allContent = messages.map { $0.content.lowercased() }
+        let words = allContent.flatMap { $0.components(separatedBy: .whitespacesAndNewlines) }
+        let wordCounts = Dictionary(grouping: words, by: { $0 }).mapValues { $0.count }
+        
+        let totalWords = words.count
+        let repeatedWords = wordCounts.values.filter { $0 > 1 }.reduce(0, +)
+        
+        topicConsistency = totalWords > 0 ? Double(repeatedWords) / Double(totalWords) : 0.0
+    }
+    
+    private func calculatePromotionEligibility() {
+        var score = 0.0
+        
+        // Length factor
+        if conversationDepth >= 4 { score += 0.3 }
+        if conversationDepth >= 8 { score += 0.2 }
+        
+        // Topic consistency factor
+        score += topicConsistency * 0.3
+        
+        // Quality factor
+        score += qualityScore * 0.2
+        
+        promotionEligibility = min(1.0, score)
+    }
+    
+    private func updateQualityScore() {
+        // Calculate quality based on message length, user engagement, etc.
+        let avgMessageLength = messages.isEmpty ? 0 : messages.map { $0.content.count }.reduce(0, +) / messages.count
+        let engagementScore = Double(conversationDepth) / 10.0
+        
+        qualityScore = min(1.0, (Double(avgMessageLength) / 100.0 + engagementScore) / 2.0)
+    }
+    
+    private func analyzeForWorkspacePromotion() {
+        // This would trigger intelligent analysis for workspace promotion
+        if shouldPromoteToWorkspace && !isPromotedToWorkspace {
+            // Could trigger UI notifications or suggestions
+            print("🎯 Thread \(title) is ready for workspace promotion")
+        }
+    }
+    
+    // MARK: - Content Generation
+    
+    var intelligentTitle: String {
+        if !title.isEmpty { return title }
+        
+        guard let firstMessage = messages.first(where: { $0.isFromUser }) else {
+            return "New Conversation"
+        }
+        
+        let content = firstMessage.content
+        if content.count > 50 {
+            return String(content.prefix(50)) + "..."
+        }
+        return content.isEmpty ? "New Conversation" : content
+    }
+    
+    var messageCount: Int {
+        return messages.count
+    }
+    
+    var lastActivity: Date {
+        return lastModified
+    }
+    
+    var contextSummary: String {
+        guard !messages.isEmpty else { return "No conversation yet" }
+        
         let userMessages = messages.filter { $0.isFromUser }
-        if !userMessages.isEmpty {
-            let avgLength = userMessages.map { $0.content.count }.reduce(0, +) / userMessages.count
-            userEngagement = min(1.0, Double(avgLength) / 100.0)
+        if let lastUserMessage = userMessages.last {
+            let content = lastUserMessage.content
+            return content.count > 100 ? String(content.prefix(100)) + "..." : content
         }
         
-        // Update promotion eligibility
-        updatePromotionEligibility()
-        
-        // Update contextual tags
-        updateContextualTags()
-        
-        // Update title if still default
-        if title == "New Conversation" && messages.count >= 2 {
-            updateIntelligentTitle()
-        }
-    }
-    
-    private func updatePromotionEligibility() {
-        let depthScore = min(1.0, Double(conversationDepth) / 10.0)
-        let consistencyScore = topicConsistency
-        let engagementScore = userEngagement
-        let lengthScore = messages.map { $0.content.count }.reduce(0, +) > 500 ? 1.0 : 0.5
-        
-        promotionEligibility = (depthScore + consistencyScore + engagementScore + lengthScore) / 4.0
-    }
-    
-    private func updateContextualTags() {
-        let allContent = messages.map { $0.content }.joined(separator: " ").lowercased()
-        
-        let codeKeywords = ["code", "function", "variable", "class", "import", "export", "debug", "error", "bug", "syntax"]
-        let creativeKeywords = ["story", "write", "creative", "character", "plot", "narrative", "draft", "edit"]
-        let researchKeywords = ["research", "analysis", "study", "data", "statistics", "survey", "report", "findings"]
-        let businessKeywords = ["business", "strategy", "market", "revenue", "profit", "customer", "sales", "marketing"]
-        
-        contextualTags.removeAll()
-        
-        if codeKeywords.contains(where: { allContent.contains($0) }) {
-            contextualTags.append("Development")
-        }
-        if creativeKeywords.contains(where: { allContent.contains($0) }) {
-            contextualTags.append("Creative")
-        }
-        if researchKeywords.contains(where: { allContent.contains($0) }) {
-            contextualTags.append("Research")
-        }
-        if businessKeywords.contains(where: { allContent.contains($0) }) {
-            contextualTags.append("Business")
-        }
-    }
-    
-    private func updateIntelligentTitle() {
-        // FIXED: Use isFromUser instead of role
-        let userMessages = messages.filter { $0.isFromUser }
-        guard let firstUserMessage = userMessages.first else { return }
-        
-        let content = firstUserMessage.content
-        let words = content.components(separatedBy: .whitespacesAndNewlines)
-        
-        if words.count > 6 {
-            title = words.prefix(6).joined(separator: " ") + "..."
-        } else {
-            title = content.count > 50 ? String(content.prefix(50)) + "..." : content
-        }
+        return "Conversation in progress"
     }
     
     // MARK: - Workspace Detection and Promotion
@@ -250,33 +312,37 @@ extension ChatThread {
     
     var lastMessagePreview: String {
         guard let lastMessage = messages.last else { return "No messages" }
-        let preview = lastMessage.content.count > 60 ? String(lastMessage.content.prefix(60)) + "..." : lastMessage.content
-        return preview
+        let preview = lastMessage.content.count > 60 ?
+            String(lastMessage.content.prefix(60)) + "..." :
+            lastMessage.content
+        return preview.isEmpty ? "No content" : preview
     }
     
-    var messageCount: Int {
-        return messages.count
+    var timeAgo: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: lastModified, relativeTo: Date())
     }
     
-    var hasMessages: Bool {
-        return !messages.isEmpty
-    }
-    
-    var promotionBadgeText: String? {
-        if isPromotedToWorkspace {
-            return "Workspace"
-        } else if isWorkspaceWorthy {
-            return "Ready"
+    var statusDescription: String {
+        if shouldPromoteToWorkspace {
+            return "Ready for workspace"
+        } else if conversationDepth >= 3 {
+            return "Developing conversation"
+        } else {
+            return "New conversation"
         }
-        return nil
+    }
+}
+
+// MARK: - Hashable Conformance
+
+extension ChatThread: Hashable {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
     
-    var qualityIndicatorColor: String {
-        switch promotionEligibility {
-        case 0.8...1.0: return "green"
-        case 0.6..<0.8: return "blue"
-        case 0.4..<0.6: return "yellow"
-        default: return "gray"
-        }
+    static func == (lhs: ChatThread, rhs: ChatThread) -> Bool {
+        return lhs.id == rhs.id
     }
 }

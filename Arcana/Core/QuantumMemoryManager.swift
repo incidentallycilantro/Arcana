@@ -499,47 +499,47 @@ class QuantumMemoryManager: ObservableObject {
     }
     
     private func calculateTemporalFactors() -> TemporalFactors {
-        let now = Date()
-        let calendar = Calendar.current
-        
-        // Simple temporal factor calculation
-        let hour = calendar.component(.hour, from: now)
-        let weekday = calendar.component(.weekday, from: now)
-        let month = calendar.component(.month, from: now)
-        
-        let timeOfDay: TimeOfDay = {
-            switch hour {
-            case 5..<7: return .earlyMorning
-            case 7..<12: return .morning
-            case 12..<17: return .afternoon
-            case 17..<21: return .evening
-            default: return .night
-            }
-        }()
-        
-        let dayOfWeek: DayOfWeek = {
-            switch weekday {
-            case 2: return .monday
-            case 3: return .tuesday
-            case 4: return .wednesday
-            case 5: return .thursday
-            case 6: return .friday
-            case 7: return .saturday
-            default: return .sunday
-            }
-        }()
-        
-        let season: Season = {
-            switch month {
-            case 3...5: return .spring
-            case 6...8: return .summer
-            case 9...11: return .fall
-            default: return .winter
-            }
-        }()
-        
-        return TemporalFactors(timeOfDay: timeOfDay, dayOfWeek: dayOfWeek, season: season)
-    }
+            let now = Date()
+            let calendar = Calendar.current
+            
+            // Simple temporal factor calculation
+            let hour = calendar.component(.hour, from: now)
+            let weekday = calendar.component(.weekday, from: now)
+            let month = calendar.component(.month, from: now)
+            
+            let timeOfDay: TimeOfDay = {
+                switch hour {
+                case 5..<7: return .earlyMorning
+                case 7..<12: return .morning
+                case 12..<17: return .afternoon
+                case 17..<21: return .evening
+                default: return .night
+                }
+            }()
+            
+            let dayOfWeek: DayOfWeek = {
+                switch weekday {
+                case 2: return .monday
+                case 3: return .tuesday
+                case 4: return .wednesday
+                case 5: return .thursday
+                case 6: return .friday
+                case 7: return .saturday
+                default: return .sunday
+                }
+            }()
+            
+            let season: Season = {
+                switch month {
+                case 3...5: return .spring
+                case 6...8: return .summer
+                case 9...11: return .autumn  // FIXED: Changed from .fall to .autumn
+                default: return .winter
+                }
+            }()
+            
+            return TemporalFactors(timeOfDay: timeOfDay, dayOfWeek: dayOfWeek, season: season)
+        }
     
     private func predictModelSequence(_ queryAnalysis: QueryAnalysis, temporal: TemporalFactors) -> [ModelPrediction] {
         var predictions: [ModelPrediction] = []
