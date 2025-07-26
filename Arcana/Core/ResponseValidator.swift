@@ -246,7 +246,7 @@ class ResponseValidator: ObservableObject {
             return 0.8 // Default score when fact checking unavailable
         }
         
-        return await factChecker.checkFactualAccuracy(content: content, model: model)
+        return await factChecker.verifyFactualAccuracy(content: content)
     }
     
     private func generateQualityAssessment(
@@ -298,45 +298,38 @@ class ResponseValidator: ObservableObject {
             coherence: contentQuality.coherence,
             completeness: contentQuality.completeness,
             clarity: contentQuality.clarity,
-            rawConfidence: calibratedConfidence, // Store calibrated as raw for this context
+            rawConfidence: calibratedConfidence,
             calibratedConfidence: calibratedConfidence,
             consensusScore: consensusScore,
             uncertaintyFactors: uncertaintyFactors,
             uncertaintyScore: uncertaintyScore,
             validationLevel: validationLevel,
             modelContributions: [model],
-            processingTime: 0.0 // Will be set by caller
+            processingTime: 0.0
         )
     }
     
     // MARK: - Helper Methods
     
     private func analyzeRelevance(content: String, prompt: String) async -> Double {
-        // Simple relevance analysis based on keyword matching
         let promptWords = Set(prompt.lowercased().components(separatedBy: .whitespacesAndNewlines))
         let contentWords = Set(content.lowercased().components(separatedBy: .whitespacesAndNewlines))
         
         let intersection = promptWords.intersection(contentWords)
         let relevanceScore = Double(intersection.count) / Double(max(promptWords.count, 1))
         
-        return min(1.0, relevanceScore * 2.0) // Scale and cap at 1.0
+        return min(1.0, relevanceScore * 2.0)
     }
     
     private func analyzeCoherence(content: String) async -> Double {
-        // Analyze sentence structure and flow
         let sentences = content.components(separatedBy: ". ").filter { !$0.isEmpty }
-        
         guard sentences.count > 1 else { return 0.8 }
         
-        // Check for proper transitions and logical flow
         var coherenceScore = 0.8
-        
-        // Analyze sentence length variation
         let sentenceLengths = sentences.map { $0.count }
         let avgLength = sentenceLengths.reduce(0, +) / sentenceLengths.count
         let variance = sentenceLengths.map { pow(Double($0 - avgLength), 2) }.reduce(0, +) / Double(sentenceLengths.count)
         
-        // Good coherence has some sentence length variation
         if variance > 100 && variance < 1000 {
             coherenceScore += 0.1
         }
@@ -345,7 +338,6 @@ class ResponseValidator: ObservableObject {
     }
     
     private func analyzeCompleteness(content: String, prompt: String) async -> Double {
-        // Analyze if the response addresses all aspects of the prompt
         let promptComponents = extractPromptComponents(prompt)
         var addressedComponents = 0
         
@@ -356,29 +348,21 @@ class ResponseValidator: ObservableObject {
         }
         
         guard promptComponents.count > 0 else { return 0.8 }
-        
         return Double(addressedComponents) / Double(promptComponents.count)
     }
     
     private func analyzeClarity(content: String) async -> Double {
-        // Analyze readability and clarity
         let words = content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
         let avgWordLength = Double(words.map { $0.count }.reduce(0, +)) / Double(max(words.count, 1))
         
-        // Optimal word length for clarity is around 4-6 characters
         let clarityScore = 1.0 - abs(avgWordLength - 5.0) / 10.0
-        
         return max(0.3, min(1.0, clarityScore))
     }
     
     private func detectContradictions(content: String) async -> Bool {
-        // Simple contradiction detection
         let contradictionPairs = [
-            ("yes", "no"),
-            ("true", "false"),
-            ("always", "never"),
-            ("all", "none"),
-            ("possible", "impossible")
+            ("yes", "no"), ("true", "false"), ("always", "never"),
+            ("all", "none"), ("possible", "impossible")
         ]
         
         let lowercasedContent = content.lowercased()
@@ -393,7 +377,6 @@ class ResponseValidator: ObservableObject {
     }
     
     private func extractPromptComponents(_ prompt: String) -> [String] {
-        // Extract key components from prompt (questions, requests, etc.)
         let questionWords = ["what", "how", "why", "when", "where", "who", "which"]
         let actionWords = ["explain", "describe", "analyze", "compare", "summarize"]
         
@@ -419,20 +402,18 @@ class ResponseValidator: ObservableObject {
         validationMetrics.totalValidations += 1
         validationMetrics.successfulValidations += successCount
         
-        // Update success rate
         let totalValidations = validationMetrics.totalValidations
         validationMetrics.successRate = totalValidations > 1 ?
             (validationMetrics.successRate * Double(totalValidations - 1) + Double(successCount)) / Double(totalValidations) :
             Double(successCount)
         
-        // Update average quality score
         validationMetrics.averageQualityScore = totalValidations > 1 ?
             (validationMetrics.averageQualityScore * Double(totalValidations - 1) + result.overallScore) / Double(totalValidations) :
             result.overallScore
     }
 }
 
-// MARK: - Supporting Structures (DO NOT duplicate UncertaintyFactor - use SharedQualityTypes)
+// MARK: - Supporting Structures
 
 struct EnsembleInfo {
     let models: [String]
@@ -488,8 +469,6 @@ struct ContentQuality {
     let overallScore: Double
 }
 
-// REMOVED: UncertaintyFactor - Use the one from SharedQualityTypes.swift instead
-
 struct ValidationMetrics {
     var totalValidations: Int = 0
     var successfulValidations: Int = 0
@@ -500,7 +479,6 @@ struct ValidationMetrics {
 // MARK: - Extensions
 
 extension ResponseValidator {
-    /// Quick validation for basic use cases
     func quickValidate(content: String, confidence: Double) async -> ValidationResult {
         let basicQuality = ResponseQuality.basic(
             overallScore: confidence,
@@ -515,7 +493,6 @@ extension ResponseValidator {
         )
     }
     
-    /// Validate multiple responses and return the best one
     func validateAndSelectBest(
         responses: [(content: String, model: String, confidence: Double)],
         prompt: String
@@ -563,11 +540,4 @@ enum ValidationError: Error, LocalizedError {
     }
 }
 
-// MARK: - Stub Classes
-
-class FactCheckingEngine {
-    func checkFactualAccuracy(content: String, model: String) async -> Double {
-        // Placeholder implementation
-        return 0.8
-    }
-}
+// REMOVED: Duplicate FactCheckingEngine class - use the actual implementation from FactCheckingEngine.swift

@@ -399,9 +399,7 @@ class TemporalPatternLearner {
     func loadTimeBasedPreferences() async -> TimeBasedPreferences { return TimeBasedPreferences() }
 }
 
-class ContextualAdaptationEngine {
-    func initialize() async {}
-}
+// REMOVED: ContextualAdaptationEngine stub class - use the actual implementation from ContextualAdaptationEngine.swift
 
 // MARK: - Supporting Types
 
