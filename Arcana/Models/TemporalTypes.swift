@@ -8,78 +8,38 @@
 
 import Foundation
 
-// MARK: - Core Temporal Types
+// MARK: - Local Season Enum (to avoid SharedQualityTypes dependency issues)
 
-struct TemporalContext: Codable {
-    let timestamp: Date
-    let hour: Int
-    let dayOfWeek: Int
-    let dayOfYear: Int
-    let weekOfYear: Int
-    let month: Int
-    let season: Season
-    let circadianPhase: CircadianPhase
-    let isWorkingHours: Bool
-    let isWeekend: Bool
-    
-    init() {
-        let now = Date()
-        let calendar = Calendar.current
-        
-        self.timestamp = now
-        self.hour = calendar.component(.hour, from: now)
-        self.dayOfWeek = calendar.component(.weekday, from: now)
-        self.dayOfYear = calendar.component(.dayOfYear, from: now)
-        self.weekOfYear = calendar.component(.weekOfYear, from: now)
-        self.month = calendar.component(.month, from: now)
-        self.season = Season.current
-        self.circadianPhase = .morningFocus // Would be calculated
-        self.isWorkingHours = (hour >= 9 && hour <= 17)
-        self.isWeekend = calendar.isDateInWeekend(now)
-    }
-    
-    init(timestamp: Date, hour: Int, dayOfWeek: Int, dayOfYear: Int, weekOfYear: Int, month: Int, season: Season, circadianPhase: CircadianPhase, isWorkingHours: Bool, isWeekend: Bool) {
-        self.timestamp = timestamp
-        self.hour = hour
-        self.dayOfWeek = dayOfWeek
-        self.dayOfYear = dayOfYear
-        self.weekOfYear = weekOfYear
-        self.month = month
-        self.season = season
-        self.circadianPhase = circadianPhase
-        self.isWorkingHours = isWorkingHours
-        self.isWeekend = isWeekend
-    }
-}
-
-struct EnhancedTemporalContext: Codable {
-    let timestamp: Date
-    let circadianPhase: CircadianPhase
-    let energyLevel: Double
-    let cognitiveOptimality: Double
-    let seasonalContext: SeasonalContext?
-    let userPatternMatch: UserPatternMatch?
-    let temporalRecommendations: [TemporalRecommendation]
-}
-
-// MARK: - Season & Circadian Types
-
-enum Season: String, Codable, CaseIterable {
-    case spring, summer, fall, winter
-    
-    static var current: Season {
-        let month = Calendar.current.component(.month, from: Date())
-        switch month {
-        case 12, 1, 2: return .winter
-        case 3, 4, 5: return .spring
-        case 6, 7, 8: return .summer
-        case 9, 10, 11: return .fall
-        default: return .spring
-        }
-    }
+enum Season: String, Codable, CaseIterable, Hashable {
+    case spring = "spring"
+    case summer = "summer"
+    case fall = "fall"
+    case winter = "winter"
     
     var displayName: String {
         return rawValue.capitalized
+    }
+}
+
+// MARK: - Core Temporal Types
+
+enum ActivityType: String, Codable, CaseIterable {
+    case creative = "creative"
+    case analytical = "analytical"
+    case communication = "communication"
+    case planning = "planning"
+    
+    var displayName: String {
+        return rawValue.capitalized
+    }
+    
+    var icon: String {
+        switch self {
+        case .creative: return "paintbrush"
+        case .analytical: return "chart.bar"
+        case .communication: return "message"
+        case .planning: return "calendar"
+        }
     }
 }
 
@@ -98,31 +58,51 @@ enum CircadianPhase: String, Codable, CaseIterable {
     
     var displayName: String {
         switch self {
-        case .earlyMorningLow: return "Early Morning"
+        case .earlyMorningLow: return "Early Morning Low"
         case .morningRise: return "Morning Rise"
         case .morningFocus: return "Morning Focus"
-        case .midMorningPeak: return "Peak Focus"
+        case .midMorningPeak: return "Mid-Morning Peak"
         case .lunchDip: return "Lunch Dip"
-        case .afternoonCreative: return "Creative Peak"
+        case .afternoonCreative: return "Afternoon Creative"
         case .afternoonPeak: return "Afternoon Peak"
         case .eveningTransition: return "Evening Transition"
         case .eveningReflection: return "Evening Reflection"
-        case .nightWindDown: return "Winding Down"
-        case .lateNightLow: return "Late Night"
+        case .nightWindDown: return "Night Wind Down"
+        case .lateNightLow: return "Late Night Low"
+        }
+    }
+    
+    var energyLevel: Double {
+        switch self {
+        case .earlyMorningLow: return 0.3
+        case .morningRise: return 0.6
+        case .morningFocus: return 0.9
+        case .midMorningPeak: return 1.0
+        case .lunchDip: return 0.5
+        case .afternoonCreative: return 0.8
+        case .afternoonPeak: return 0.9
+        case .eveningTransition: return 0.7
+        case .eveningReflection: return 0.6
+        case .nightWindDown: return 0.4
+        case .lateNightLow: return 0.2
+        }
+    }
+    
+    var optimalActivities: [ActivityType] {
+        switch self {
+        case .morningFocus, .midMorningPeak:
+            return [.analytical, .planning]
+        case .afternoonCreative:
+            return [.creative, .communication]
+        case .eveningReflection:
+            return [.planning, .creative]
+        default:
+            return [.communication]
         }
     }
     
     var baseEnergyLevel: Double {
-        switch self {
-        case .earlyMorningLow, .lateNightLow: return 0.2
-        case .morningRise: return 0.6
-        case .morningFocus, .midMorningPeak: return 0.9
-        case .lunchDip: return 0.4
-        case .afternoonCreative, .afternoonPeak: return 0.8
-        case .eveningTransition: return 0.6
-        case .eveningReflection: return 0.7
-        case .nightWindDown: return 0.3
-        }
+        return energyLevel
     }
     
     var baseCognitiveOptimality: Double {
@@ -155,24 +135,95 @@ enum CircadianPhase: String, Codable, CaseIterable {
     }
 }
 
-enum ActivityType: String, Codable, CaseIterable {
-    case creative, analytical, communication, planning
+// MARK: - Temporal Context
+
+struct TemporalContext: Codable {
+    let timestamp: Date
+    let hour: Int
+    let dayOfWeek: Int
+    let dayOfYear: Int
+    let weekOfYear: Int
+    let month: Int
+    let season: Season
+    let circadianPhase: CircadianPhase
+    let isWorkingHours: Bool
+    let isWeekend: Bool
     
-    var displayName: String {
-        return rawValue.capitalized
+    init() {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        self.timestamp = now
+        self.hour = calendar.component(.hour, from: now)
+        self.dayOfWeek = calendar.component(.weekday, from: now)
+        self.dayOfYear = calendar.component(.dayOfYear, from: now)
+        self.weekOfYear = calendar.component(.weekOfYear, from: now)
+        self.month = calendar.component(.month, from: now)
+        self.season = Self.determineSeason(for: now)
+        self.circadianPhase = Self.determineCircadianPhase(for: now)
+        self.isWorkingHours = Self.isWorkingHours(now)
+        self.isWeekend = calendar.isDateInWeekend(now)
     }
     
-    var icon: String {
-        switch self {
-        case .creative: return "paintbrush"
-        case .analytical: return "chart.bar"
-        case .communication: return "bubble.left.and.bubble.right"
-        case .planning: return "calendar"
+    static func determineSeason(for date: Date) -> Season {
+        let month = Calendar.current.component(.month, from: date)
+        switch month {
+        case 3, 4, 5: return .spring
+        case 6, 7, 8: return .summer
+        case 9, 10, 11: return .fall
+        default: return .winter
         }
+    }
+    
+    static func determineCircadianPhase(for date: Date) -> CircadianPhase {
+        let hour = Calendar.current.component(.hour, from: date)
+        switch hour {
+        case 5..<7: return .earlyMorningLow
+        case 7..<9: return .morningRise
+        case 9..<11: return .morningFocus
+        case 11..<12: return .midMorningPeak
+        case 12..<14: return .lunchDip
+        case 14..<16: return .afternoonCreative
+        case 16..<18: return .afternoonPeak
+        case 18..<20: return .eveningTransition
+        case 20..<22: return .eveningReflection
+        case 22..<24: return .nightWindDown
+        default: return .lateNightLow
+        }
+    }
+    
+    static func isWorkingHours(_ date: Date) -> Bool {
+        let hour = Calendar.current.component(.hour, from: date)
+        return hour >= 9 && hour < 17
     }
 }
 
-// MARK: - Temporal Recommendations
+// MARK: - Enhanced Temporal Context
+
+struct EnhancedTemporalContext: Codable {
+    let timestamp: Date
+    let circadianPhase: CircadianPhase
+    let energyLevel: Double
+    let cognitiveOptimality: Double
+    let seasonalContext: SeasonalContext?
+    let userPatternMatch: UserPatternMatch?
+    let temporalRecommendations: [TemporalRecommendation]
+}
+
+struct SeasonalContext: Codable {
+    let season: Season
+    let weekInSeason: Int
+    let seasonalEnergy: Double
+    let seasonalMood: String
+}
+
+struct UserPatternMatch: Codable {
+    let patternType: String
+    let confidence: Double
+    let historicalData: [String]
+}
+
+// MARK: - Temporal Intelligence Types
 
 struct TemporalRecommendation: Codable, Identifiable {
     let id = UUID()
@@ -182,196 +233,93 @@ struct TemporalRecommendation: Codable, Identifiable {
     let confidence: Double
     let action: RecommendedAction
     
-    var priority: RecommendationPriority {
-        switch confidence {
-        case 0.9...1.0: return .critical
-        case 0.8..<0.9: return .high
-        case 0.6..<0.8: return .medium
-        default: return .low
+    var priority: Int {
+        switch type {
+        case .circadian: return 3
+        case .seasonal: return 1
+        case .weeklyPattern: return 2
+        case .energyOptimization: return 4
+        case .optimalTiming: return 5
+        case .circadianAlignment: return 3
+        case .seasonalOptimization: return 1
+        case .energyManagement: return 4
         }
     }
 }
 
 enum RecommendationType: String, Codable {
+    case circadian = "circadian"
+    case seasonal = "seasonal"
+    case weeklyPattern = "weekly_pattern"
+    case energyOptimization = "energy_optimization"
     case optimalTiming = "optimal_timing"
     case circadianAlignment = "circadian_alignment"
-    case productivityPeak = "productivity_peak"
-    case energyManagement = "energy_management"
-    case weeklyPattern = "weekly_pattern"
     case seasonalOptimization = "seasonal_optimization"
+    case energyManagement = "energy_management"
     
     var displayName: String {
         switch self {
+        case .circadian: return "Circadian"
+        case .seasonal: return "Seasonal"
+        case .weeklyPattern: return "Weekly Pattern"
+        case .energyOptimization: return "Energy Optimization"
         case .optimalTiming: return "Optimal Timing"
         case .circadianAlignment: return "Circadian Alignment"
-        case .productivityPeak: return "Productivity Peak"
-        case .energyManagement: return "Energy Management"
-        case .weeklyPattern: return "Weekly Pattern"
         case .seasonalOptimization: return "Seasonal Optimization"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .optimalTiming: return "clock"
-        case .circadianAlignment: return "sun.and.horizon"
-        case .productivityPeak: return "chart.line.uptrend.xyaxis"
-        case .energyManagement: return "battery.100"
-        case .weeklyPattern: return "calendar.badge.clock"
-        case .seasonalOptimization: return "leaf"
+        case .energyManagement: return "Energy Management"
         }
     }
 }
 
 enum RecommendedAction: String, Codable {
-    case suggestComplexTasks = "suggest_complex_tasks"
     case suggestCreativeTasks = "suggest_creative_tasks"
+    case suggestAnalyticalTasks = "suggest_analytical_tasks"
     case suggestPlanningTasks = "suggest_planning_tasks"
     case suggestBreak = "suggest_break"
+    case adjustWorkspace = "adjust_workspace"
+    case suggestComplexTasks = "suggest_complex_tasks"
     case applySeasonalContext = "apply_seasonal_context"
     
     var displayName: String {
         switch self {
-        case .suggestComplexTasks: return "Complex Tasks"
         case .suggestCreativeTasks: return "Creative Tasks"
+        case .suggestAnalyticalTasks: return "Analytical Tasks"
         case .suggestPlanningTasks: return "Planning Tasks"
         case .suggestBreak: return "Take a Break"
-        case .applySeasonalContext: return "Seasonal Context"
+        case .adjustWorkspace: return "Adjust Workspace"
+        case .suggestComplexTasks: return "Complex Tasks"
+        case .applySeasonalContext: return "Apply Seasonal Context"
         }
     }
 }
 
-enum RecommendationPriority: String, Codable {
-    case low, medium, high, critical
-    
-    var displayName: String {
-        return rawValue.capitalized
-    }
-    
-    var color: String {
-        switch self {
-        case .low: return "gray"
-        case .medium: return "blue"
-        case .high: return "orange"
-        case .critical: return "red"
-        }
-    }
-}
+// MARK: - Circadian Optimization Types
 
-// MARK: - Seasonal Context
-
-struct SeasonalContext: Codable {
-    let season: Season
-    let seasonalMood: SeasonalMood
-    let culturalEvents: [CulturalEvent]
-    let naturalCycles: [NaturalCycle]
-    let seasonalOptimizations: [SeasonalOptimization]
-}
-
-enum SeasonalMood: String, Codable {
-    case renewal, energetic, reflective, contemplative
-    
-    var displayName: String {
-        return rawValue.capitalized
-    }
-    
-    var contextualPrefix: String {
-        switch self {
-        case .renewal: return "With spring's energy in mind,"
-        case .energetic: return "Taking advantage of summer's vigor,"
-        case .reflective: return "As we move through fall's contemplative season,"
-        case .contemplative: return "In winter's thoughtful spirit,"
-        }
-    }
-    
-    var description: String {
-        switch self {
-        case .renewal: return "A time of new beginnings and fresh energy"
-        case .energetic: return "Peak energy and long days for productivity"
-        case .reflective: return "Time for planning and thoughtful consideration"
-        case .contemplative: return "Deep thinking and strategic reflection"
-        }
-    }
-}
-
-struct CulturalEvent: Codable {
-    let name: String
-    let date: Date
-    let significance: String
-    let impact: CulturalImpact
-}
-
-enum CulturalImpact: String, Codable {
-    case low, medium, high
-}
-
-struct NaturalCycle: Codable {
-    let type: CycleType
-    let intensity: Double
-    let description: String
-    
-    init(type: CycleType, intensity: Double) {
-        self.type = type
-        self.intensity = intensity
-        self.description = type.description
-    }
-}
-
-enum CycleType: String, Codable {
-    case daylightIncrease = "daylight_increase"
-    case longDays = "long_days"
-    case daylightDecrease = "daylight_decrease"
-    case shortDays = "short_days"
-    
-    var description: String {
-        switch self {
-        case .daylightIncrease: return "Increasing daylight hours"
-        case .longDays: return "Long summer days"
-        case .daylightDecrease: return "Decreasing daylight hours"
-        case .shortDays: return "Short winter days"
-        }
-    }
-}
-
-struct SeasonalOptimization: Codable {
-    let title: String
-    let description: String
-    let applicableMonths: [Int]
-    let recommendedActions: [String]
-    
-    init(title: String, description: String) {
-        self.title = title
-        self.description = description
-        self.applicableMonths = []
-        self.recommendedActions = []
-    }
-}
-
-// MARK: - User Pattern Types
-
-struct UserPatternMatch: Codable {
-    let patternId: UUID
-    let confidence: Double
-    let patternType: PatternType
+struct CircadianInsights: Codable {
+    let timestamp: Date
+    let currentPhase: CircadianPhase
+    let energyLevel: Double
+    let cognitiveOptimality: Double
+    let recommendedActivities: [ActivityType]
+    let avoidActivities: [ActivityType]
     let recommendations: [TemporalRecommendation]
-    let prefersBriefResponses: Bool
-    let prefersDetailedExplanations: Bool
-    let optimalInteractionTimes: [TimeRange]
-    let communicationStylePreferences: [CommunicationStylePreference]
 }
 
-enum PatternType: String, Codable {
-    case daily, weekly, seasonal, irregular
-    
-    var displayName: String {
-        return rawValue.capitalized
-    }
+struct EnergyForecastPoint: Codable {
+    let time: Date
+    let energyLevel: Double
+    let phase: CircadianPhase
+    let confidence: Double
 }
 
-struct TimeRange: Codable {
+struct ActivityWindow: Codable {
+    let activity: ActivityType
+    let startTime: Date
+    let endTime: Date
+    let optimalityScore: Double
+    let dayOfWeek: Int?
     let startHour: Int
     let endHour: Int
-    let dayOfWeek: Int?
     
     var description: String {
         let startTime = String(format: "%02d:00", startHour)
@@ -410,7 +358,6 @@ struct TimeContext: Codable {
 // MARK: - Temporal Predictions
 
 struct TemporalPrediction: Codable {
-    let id = UUID()
     let type: PredictionType
     let content: String
     let confidence: Double
@@ -454,7 +401,6 @@ enum PredictionType: String, Codable {
 // MARK: - Enhanced Prediction Types
 
 struct EnhancedPrediction: Codable {
-    let id = UUID()
     let content: String
     let confidence: Double
     let temporalBoost: Double
@@ -534,205 +480,100 @@ struct PrivacyConsideration {
 }
 
 struct IntelligenceBoost {
-    let boostType: BoostType
-    let multiplier: Double
-    let description: String
-    let estimatedImprovement: String
-    
-    init(boostType: BoostType, multiplier: Double, description: String) {
-        self.boostType = boostType
-        self.multiplier = multiplier
-        self.description = description
-        self.estimatedImprovement = "\(Int(multiplier * 100))% improvement"
-    }
+    let enhancedProcessing: Bool
+    let ensembleRecommendation: Bool
+    let qualityPrediction: Double
 }
 
-enum BoostType: String, Codable {
-    case temporal = "temporal"
-    case contextual = "contextual"
-    case seasonal = "seasonal"
-    case circadian = "circadian"
-    
-    var displayName: String {
-        return rawValue.capitalized
-    }
+// MARK: - User Patterns
+
+struct UserTemporalPatterns: Codable {
+    var morningPatterns: [String] = []
+    var afternoonPatterns: [String] = []
+    var eveningPatterns: [String] = []
+    var weekendPatterns: [String] = []
+    var seasonalPatterns: [Season: [String]] = [:]
+    var lastUpdated: Date = Date()
 }
 
-// MARK: - Privacy Response Integration
-
-struct PrivacyProcessedResponse {
-    let content: String
-    let privacyProcessedMessage: PrivacyProcessedMessage
-    let temporalContext: EnhancedTemporalContext
-    let privacyLevel: PrivacyLevel
-    let processingMetrics: ResponseProcessingMetrics
+struct TimeBasedPreferences: Codable {
+    var communicationStyles: [CircadianPhase: CommunicationStyle] = [:]
+    var workspacePreferences: [CircadianPhase: WorkspaceManager.WorkspaceType] = [:]
+    var privacyLevels: [CircadianPhase: PrivacyLevel] = [:]
 }
 
-struct ResponseProcessingMetrics {
-    let temporalAnalysisTime: TimeInterval
-    let privacyProcessingTime: TimeInterval
-    let totalProcessingTime: TimeInterval
-    let confidenceScore: Double
-    let qualityScore: Double
-    
-    init() {
-        self.temporalAnalysisTime = 0.0
-        self.privacyProcessingTime = 0.0
-        self.totalProcessingTime = 0.0
-        self.confidenceScore = 0.0
-        self.qualityScore = 0.0
-    }
-}
-
-// MARK: - Prediction Integration Types
-
-struct Prediction {
-    let content: String
-    let confidence: Double
-    let estimatedComplexity: Double
-    let generatedAt: Date
-    
-    init(content: String, confidence: Double, estimatedComplexity: Double = 0.5) {
-        self.content = content
-        self.confidence = confidence
-        self.estimatedComplexity = estimatedComplexity
-        self.generatedAt = Date()
-    }
-}
-
-struct QualityComparison {
-    let higherQualityMessage: UUID
-    let qualityDifference: Double
-    let primaryFactors: [String]
-    let recommendation: String
-}
-
-// MARK: - Supporting Utility Types
+// MARK: - CircadianPhase Extensions
 
 extension CircadianPhase {
-    var isOptimalForActivity(_ activity: ActivityType) -> Bool {
-        switch (self, activity) {
-        case (.morningFocus, .analytical), (.midMorningPeak, .analytical):
-            return true
-        case (.afternoonCreative, .creative):
-            return true
-        case (.eveningReflection, .planning):
-            return true
-        case (.afternoonPeak, .communication):
-            return true
-        default:
-            return false
-        }
+    func isOptimalForActivity(_ activity: ActivityType) -> Bool {
+        return optimalActivities.contains(activity)
     }
     
-    var suggestedActivities: [ActivityType] {
+    var preferredCommunicationStyle: CommunicationStyle {
         switch self {
         case .morningFocus, .midMorningPeak:
-            return [.analytical, .planning]
+            return .brief
         case .afternoonCreative:
-            return [.creative]
-        case .afternoonPeak:
-            return [.communication, .analytical]
+            return .conversational
         case .eveningReflection:
-            return [.planning, .communication]
+            return .detailed
         default:
-            return []
+            return .conversational
         }
     }
 }
 
-extension Season {
-    var characteristics: SeasonCharacteristics {
+// MARK: - Supporting Types for Cultural and Seasonal Context
+
+struct CulturalEvent: Codable {
+    let name: String
+    let date: Date
+    let significance: String
+    let impact: CulturalImpact
+}
+
+enum CulturalImpact: String, Codable {
+    case low, medium, high
+}
+
+struct NaturalCycle: Codable {
+    let type: CycleType
+    let intensity: Double
+    let description: String
+    
+    init(type: CycleType, intensity: Double) {
+        self.type = type
+        self.intensity = intensity
+        self.description = type.description
+    }
+}
+
+enum CycleType: String, Codable {
+    case daylightIncrease = "daylight_increase"
+    case longDays = "long_days"
+    case daylightDecrease = "daylight_decrease"
+    case shortDays = "short_days"
+    
+    var description: String {
         switch self {
-        case .spring:
-            return SeasonCharacteristics(
-                primaryMood: .renewal,
-                energyLevel: 0.8,
-                creativityBoost: 0.7,
-                planningOptimality: 0.9,
-                keyThemes: ["new beginnings", "growth", "renewal"]
-            )
-        case .summer:
-            return SeasonCharacteristics(
-                primaryMood: .energetic,
-                energyLevel: 1.0,
-                creativityBoost: 0.8,
-                planningOptimality: 0.6,
-                keyThemes: ["energy", "productivity", "achievement"]
-            )
-        case .fall:
-            return SeasonCharacteristics(
-                primaryMood: .reflective,
-                energyLevel: 0.7,
-                creativityBoost: 0.6,
-                planningOptimality: 1.0,
-                keyThemes: ["preparation", "reflection", "planning"]
-            )
-        case .winter:
-            return SeasonCharacteristics(
-                primaryMood: .contemplative,
-                energyLevel: 0.5,
-                creativityBoost: 0.9,
-                planningOptimality: 0.8,
-                keyThemes: ["contemplation", "strategy", "deep work"]
-            )
+        case .daylightIncrease: return "Increasing daylight hours"
+        case .longDays: return "Long summer days"
+        case .daylightDecrease: return "Decreasing daylight hours"
+        case .shortDays: return "Short winter days"
         }
     }
 }
 
-struct SeasonCharacteristics {
-    let primaryMood: SeasonalMood
-    let energyLevel: Double
-    let creativityBoost: Double
-    let planningOptimality: Double
-    let keyThemes: [String]
-}
-
-// MARK: - Time-based Utilities
-
-extension Date {
-    var circadianPhase: CircadianPhase {
-        let hour = Calendar.current.component(.hour, from: self)
-        let minute = Calendar.current.component(.minute, from: self)
-        let timeDecimal = Double(hour) + Double(minute) / 60.0
-        
-        switch timeDecimal {
-        case 5.0..<7.0: return .earlyMorningLow
-        case 7.0..<9.0: return .morningRise
-        case 9.0..<11.0: return .morningFocus
-        case 11.0..<12.0: return .midMorningPeak
-        case 12.0..<14.0: return .lunchDip
-        case 14.0..<16.0: return .afternoonCreative
-        case 16.0..<18.0: return .afternoonPeak
-        case 18.0..<20.0: return .eveningTransition
-        case 20.0..<22.0: return .eveningReflection
-        case 22.0..<24.0: return .nightWindDown
-        case 0.0..<5.0: return .lateNightLow
-        default: return .morningFocus
-        }
-    }
+struct SeasonalOptimization: Codable {
+    let title: String
+    let description: String
+    let applicableMonths: [Int]
+    let recommendedActions: [String]
     
-    var season: Season {
-        let month = Calendar.current.component(.month, from: self)
-        switch month {
-        case 12, 1, 2: return .winter
-        case 3, 4, 5: return .spring
-        case 6, 7, 8: return .summer
-        case 9, 10, 11: return .fall
-        default: return .spring
-        }
-    }
-    
-    var isWorkingHours: Bool {
-        let hour = Calendar.current.component(.hour, from: self)
-        return hour >= 9 && hour <= 17
-    }
-    
-    var energyLevel: Double {
-        return circadianPhase.baseEnergyLevel
-    }
-    
-    var cognitiveOptimality: Double {
-        return circadianPhase.baseCognitiveOptimality
+    init(title: String, description: String) {
+        self.title = title
+        self.description = description
+        self.applicableMonths = []
+        self.recommendedActions = []
     }
 }

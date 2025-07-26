@@ -113,175 +113,31 @@ class ZeroKnowledgePrivacy: ObservableObject {
             outcome: .success
         )
         
-        // 7. Update privacy metrics
-        await updatePrivacyMetrics(processedMessage)
+        // 7. Update metrics
+        await updatePrivacyMetrics(privacyLevel: privacyLevel)
         
         return processedMessage
     }
     
-    func decryptMessageForProcessing(
-        _ processedMessage: PrivacyProcessedMessage
-    ) async throws -> String {
-        
-        // Decrypt using local encryption manager
-        let decryptedContent = try await localEncryptionManager.decryptMessage(
-            encryptedContent: processedMessage.encryptedContent,
-            keyId: processedMessage.encryptionKeyId
-        )
-        
-        // Record decryption audit
+    func startPrivacyMonitoring() async {
         await recordPrivacyAudit(
-            messageId: processedMessage.originalId,
-            privacyLevel: processedMessage.privacyLevel,
-            operations: ["decryption"],
-            outcome: .success
-        )
-        
-        return decryptedContent
-    }
-    
-    // MARK: - Privacy Level Management
-    
-    func setPrivacyLevel(_ level: PrivacyLevel) async {
-        privacyLevel = level
-        
-        // Adjust processing mode based on privacy level
-        switch level {
-        case .minimum:
-            dataProcessingMode = .localOnly
-        case .moderate:
-            dataProcessingMode = .localWithValidation
-        case .high:
-            dataProcessingMode = .encryptedLocal
-        case .maximum:
-            dataProcessingMode = .zeroKnowledge
-        }
-        
-        // Update all components with new privacy level
-        await localEncryptionManager.updatePrivacyLevel(level)
-        await memoryPoisoningEngine.updatePrivacyLevel(level)
-        await differentialPrivacy.updatePrivacyLevel(level)
-        
-        // Record privacy level change
-        await recordPrivacyAudit(
-            messageId: UUID(), // System-level change
-            privacyLevel: level,
-            operations: ["privacy_level_change"],
+            messageId: UUID(),
+            privacyLevel: privacyLevel,
+            operations: ["monitoring_start"],
             outcome: .success
         )
     }
     
-    // MARK: - Data Governance
-    
-    func requestDataDeletion(for messageIds: [UUID]) async -> DataDeletionResult {
-        var deletionResults: [UUID: Bool] = [:]
-        
-        for messageId in messageIds {
-            // 1. Delete encrypted data
-            let encryptionDeletion = await localEncryptionManager.deleteEncryptedData(messageId: messageId)
-            
-            // 2. Apply memory poisoning to remove any traces
-            let memoryPoisoning = await memoryPoisoningEngine.poisonMemoryForMessage(messageId: messageId)
-            
-            // 3. Validate deletion
-            let deletionValidation = await privacyValidator.validateDeletion(messageId: messageId)
-            
-            deletionResults[messageId] = encryptionDeletion && memoryPoisoning && deletionValidation
-            
-            // Record deletion audit
-            await recordPrivacyAudit(
-                messageId: messageId,
-                privacyLevel: privacyLevel,
-                operations: ["data_deletion", "memory_poisoning", "deletion_validation"],
-                outcome: deletionResults[messageId]! ? .success : .failure
-            )
-        }
-        
-        return DataDeletionResult(
-            requestedDeletions: messageIds.count,
-            successfulDeletions: deletionResults.values.filter { $0 }.count,
-            failedDeletions: deletionResults.values.filter { !$0 }.count,
-            deletionDetails: deletionResults
+    func stopPrivacyMonitoring() async {
+        await recordPrivacyAudit(
+            messageId: UUID(),
+            privacyLevel: privacyLevel,
+            operations: ["monitoring_stop"],
+            outcome: .success
         )
     }
     
-    func generatePrivacyReport() -> PrivacyReport {
-        let recentAudits = privacyAuditTrail.suffix(100)
-        let recentProcessing = dataProcessingLog.suffix(100)
-        
-        return PrivacyReport(
-            currentPrivacyLevel: privacyLevel,
-            encryptionStatus: encryptionStatus,
-            dataProcessingMode: dataProcessingMode,
-            metrics: privacyMetrics,
-            recentAudits: Array(recentAudits),
-            recentProcessing: Array(recentProcessing),
-            generatedAt: Date()
-        )
-    }
-    
-    // MARK: - Privacy Validation
-    
-    func validatePrivacyCompliance() async -> PrivacyComplianceResult {
-        let encryptionCompliance = await localEncryptionManager.validateCompliance()
-        let memoryCompliance = await memoryPoisoningEngine.validateCompliance()
-        let overallCompliance = await privacyValidator.validateSystemCompliance()
-        
-        let result = PrivacyComplianceResult(
-            overallCompliance: overallCompliance,
-            encryptionCompliance: encryptionCompliance,
-            memoryManagementCompliance: memoryCompliance,
-            dataGovernanceCompliance: validateDataGovernance(),
-            recommendedActions: generateComplianceRecommendations(
-                encryption: encryptionCompliance,
-                memory: memoryCompliance,
-                overall: overallCompliance
-            ),
-            lastValidated: Date()
-        )
-        
-        return result
-    }
-    
-    // MARK: - Emergency Privacy Functions
-    
-    func emergencyPrivacyWipe() async -> EmergencyWipeResult {
-        print("🚨 Initiating Emergency Privacy Wipe...")
-        
-        var results: [String: Bool] = [:]
-        
-        // 1. Wipe all encryption keys
-        results["encryption_keys"] = await localEncryptionManager.emergencyWipeKeys()
-        
-        // 2. Apply comprehensive memory poisoning
-        results["memory_poisoning"] = await memoryPoisoningEngine.emergencyMemoryWipe()
-        
-        // 3. Clear all processing logs
-        results["processing_logs"] = await clearAllProcessingLogs()
-        
-        // 4. Reset privacy system
-        results["system_reset"] = await resetPrivacySystem()
-        
-        let wipeResult = EmergencyWipeResult(
-            timestamp: Date(),
-            componentsWiped: results.keys.count,
-            successfulWipes: results.values.filter { $0 }.count,
-            failedWipes: results.values.filter { !$0 }.count,
-            wipeDetails: results
-        )
-        
-        print("✅ Emergency Privacy Wipe completed")
-        return wipeResult
-    }
-    
-    // MARK: - Private Helper Methods
-    
-    private func startPrivacyMonitoring() async {
-        // Start continuous privacy monitoring
-        print("👁️ Starting privacy monitoring...")
-    }
-    
-    private func recordPrivacyAudit(
+    func recordPrivacyAudit(
         messageId: UUID,
         privacyLevel: PrivacyLevel,
         operations: [String],
@@ -297,19 +153,110 @@ class ZeroKnowledgePrivacy: ObservableObject {
         
         privacyAuditTrail.append(auditEntry)
         
-        // Keep only recent audit entries
+        // Keep audit trail manageable
         if privacyAuditTrail.count > 1000 {
-            privacyAuditTrail.removeFirst(100)
+            privacyAuditTrail.removeFirst(500)
         }
     }
     
-    private func updatePrivacyMetrics(_ processedMessage: PrivacyProcessedMessage) async {
-        privacyMetrics.totalMessagesProcessed += 1
-        privacyMetrics.averageProcessingTime = (
-            privacyMetrics.averageProcessingTime + processedMessage.processingTime
-        ) / 2.0
+    func requestDataDeletion(for messageIds: [UUID]) async -> DataDeletionResult {
+        var deletionResults: [UUID: Bool] = [:]
         
-        switch processedMessage.privacyLevel {
+        for messageId in messageIds {
+            // Attempt deletion through various privacy layers
+            let encryptionDeletion = await localEncryptionManager.deleteEncryptedData(messageId: messageId)
+            let memoryDeletion = await memoryPoisoningEngine.poisonMemoryForMessage(messageId: messageId)
+            
+            let success = encryptionDeletion && memoryDeletion
+            deletionResults[messageId] = success
+            
+            // Record audit
+            await recordPrivacyAudit(
+                messageId: messageId,
+                privacyLevel: privacyLevel,
+                operations: ["data_deletion"],
+                outcome: deletionResults[messageId]! ? .success : .failure
+            )
+        }
+        
+        let successfulDeletions = deletionResults.values.filter { $0 }.count
+        
+        return DataDeletionResult(
+            requestedDeletions: messageIds.count,
+            successfulDeletions: successfulDeletions,
+            failedDeletions: messageIds.count - successfulDeletions,
+            deletionDetails: deletionResults
+        )
+    }
+    
+    func generatePrivacyReport() -> PrivacyReport {
+        return PrivacyReport(
+            currentPrivacyLevel: privacyLevel,
+            encryptionStatus: encryptionStatus,
+            dataProcessingMode: dataProcessingMode,
+            metrics: privacyMetrics,
+            recentAudits: Array(privacyAuditTrail.suffix(10)),
+            recentProcessing: Array(dataProcessingLog.suffix(10)),
+            generatedAt: Date()
+        )
+    }
+    
+    func validatePrivacyCompliance() async -> PrivacyComplianceResult {
+        let encryptionCompliance = await localEncryptionManager.validateCompliance()
+        let memoryCompliance = await memoryPoisoningEngine.validateCompliance()
+        let overallCompliance = encryptionCompliance && memoryCompliance && validateDataGovernance()
+        
+        let recommendations = generateComplianceRecommendations(
+            encryption: encryptionCompliance,
+            memory: memoryCompliance,
+            overall: overallCompliance
+        )
+        
+        return PrivacyComplianceResult(
+            overallCompliance: overallCompliance,
+            encryptionCompliance: encryptionCompliance,
+            memoryManagementCompliance: memoryCompliance,
+            dataGovernanceCompliance: validateDataGovernance(),
+            recommendedActions: recommendations,
+            lastValidated: Date()
+        )
+    }
+    
+    func emergencyPrivacyWipe() async -> EmergencyWipeResult {
+        let startTime = Date()
+        
+        // Wipe all privacy-sensitive components
+        let encryptionWipe = await localEncryptionManager.emergencyWipeKeys()
+        let memoryWipe = await memoryPoisoningEngine.emergencyMemoryWipe()
+        let validatorWipe = await privacyValidator.emergencyWipe()
+        let processingWipe = await clearAllProcessingLogs()
+        let systemReset = await resetPrivacySystem()
+        
+        let wipeDetails: [String: Bool] = [
+            "encryption": encryptionWipe,
+            "memory": memoryWipe,
+            "validator": validatorWipe,
+            "processing_logs": processingWipe,
+            "system_reset": systemReset
+        ]
+        
+        let successfulWipes = wipeDetails.values.filter { $0 }.count
+        
+        encryptionStatus = .emergencyWiped
+        
+        return EmergencyWipeResult(
+            timestamp: startTime,
+            componentsWiped: wipeDetails.count,
+            successfulWipes: successfulWipes,
+            failedWipes: wipeDetails.count - successfulWipes,
+            wipeDetails: wipeDetails
+        )
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    private func updatePrivacyMetrics(privacyLevel: PrivacyLevel) async {
+        switch privacyLevel {
         case .maximum:
             privacyMetrics.maximumPrivacyMessages += 1
         case .high:
@@ -375,6 +322,7 @@ class PrivacyValidator {
     }
     func validateDeletion(messageId: UUID) async -> Bool { return true }
     func validateSystemCompliance() async -> Bool { return true }
+    func emergencyWipe() async -> Bool { return true }
 }
 
 class DifferentialPrivacyEngine {
@@ -383,69 +331,4 @@ class DifferentialPrivacyEngine {
         return content // Would apply differential privacy noise
     }
     func updatePrivacyLevel(_ level: PrivacyLevel) async {}
-}
-
-// MARK: - Supporting Types
-
-struct PrivacyValidation {
-    let sensitivityLevel: Double
-    let piiLevel: PIILevel
-    let requiresEncryption: Bool
-}
-
-enum PIILevel {
-    case none, minimal, moderate, aggressive
-}
-
-struct PrivacyAuditEntry {
-    let timestamp: Date
-    let messageId: UUID
-    let privacyLevel: PrivacyLevel
-    let operations: [String]
-    let outcome: PrivacyAuditOutcome
-}
-
-enum PrivacyAuditOutcome {
-    case success, failure
-}
-
-struct DataProcessingEntry {
-    let timestamp: Date
-    let operation: String
-    let dataSize: Int
-    let processingTime: TimeInterval
-}
-
-struct DataDeletionResult {
-    let requestedDeletions: Int
-    let successfulDeletions: Int
-    let failedDeletions: Int
-    let deletionDetails: [UUID: Bool]
-}
-
-struct PrivacyReport {
-    let currentPrivacyLevel: PrivacyLevel
-    let encryptionStatus: EncryptionStatus
-    let dataProcessingMode: DataProcessingMode
-    let metrics: PrivacyMetrics
-    let recentAudits: [PrivacyAuditEntry]
-    let recentProcessing: [DataProcessingEntry]
-    let generatedAt: Date
-}
-
-struct PrivacyComplianceResult {
-    let overallCompliance: Bool
-    let encryptionCompliance: Bool
-    let memoryManagementCompliance: Bool
-    let dataGovernanceCompliance: Bool
-    let recommendedActions: [String]
-    let lastValidated: Date
-}
-
-struct EmergencyWipeResult {
-    let timestamp: Date
-    let componentsWiped: Int
-    let successfulWipes: Int
-    let failedWipes: Int
-    let wipeDetails: [String: Bool]
 }

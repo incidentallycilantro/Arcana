@@ -231,10 +231,12 @@ class MemoryPoisoningEngine: ObservableObject {
     
     private func lightObfuscation(_ content: String, item: PIIDetectionItem) async -> String {
         // Light obfuscation - partial hiding
-        let range = item.range
-        let originalText = String(content[range])
+        let startIndex = item.range.lowerBound
+        let endIndex = item.range.upperBound
+        
+        let originalText = String(content[startIndex..<endIndex])
         let obfuscated = String(originalText.prefix(2)) + "***" + String(originalText.suffix(2))
-        return content.replacingCharacters(in: range, with: obfuscated)
+        return content.replacingCharacters(in: item.range, with: obfuscated)
     }
     
     private func patternReplacement(_ content: String, item: PIIDetectionItem) async -> String {
@@ -250,11 +252,9 @@ class MemoryPoisoningEngine: ObservableObject {
             replacement = "***-**-****"
         case .creditCardNumber:
             replacement = "**** **** **** ****"
-        default:
-            replacement = "[REDACTED]"
         }
         
-        return content.replacingCharacters(in: range, with: replacement)
+        return content.replacingCharacters(in: item.range, with: replacement)
     }
     
     private func completeRemoval(_ content: String, item: PIIDetectionItem) async -> String {

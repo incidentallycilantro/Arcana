@@ -1,54 +1,57 @@
 //
 // ChatMessage.swift
-// Created by Dylan E. | Spectral Labs
-// Arcana - Enhanced with Revolutionary Quality Metadata
+// Arcana - Enhanced message model with quality metadata
+// Created by Spectral Labs
+//
+// FOLDER: Arcana/Models/
 //
 
 import Foundation
 
 struct ChatMessage: Identifiable, Codable, Hashable {
-    var id = UUID()
+    let id: UUID
     var content: String
     var isFromUser: Bool
-    var timestamp: Date
+    let timestamp: Date
     var threadId: UUID?
     
-    // MARK: - Revolutionary Metadata
+    // MARK: - Revolutionary Quality Metadata
     var metadata: MessageMetadata?
-    
-    // MARK: - Legacy Properties (Maintained for Compatibility)
-    var isTyping: Bool = false
-    var attachments: [MessageAttachment] = []
     
     init(
         content: String,
         isFromUser: Bool,
-        timestamp: Date = Date(),
         threadId: UUID? = nil,
-        metadata: MessageMetadata? = nil
+        timestamp: Date = Date()
     ) {
+        self.id = UUID()
         self.content = content
         self.isFromUser = isFromUser
-        self.timestamp = timestamp
         self.threadId = threadId
-        self.metadata = metadata
+        self.timestamp = timestamp
     }
     
-    // MARK: - Quality Access Properties
+    // MARK: - Quality Assessment Properties
     
-    /// Quick access to overall quality score
+    /// Get the quality assessment if available
     var qualityScore: Double? {
         return metadata?.qualityScore?.overallScore
     }
     
-    /// Quick access to confidence level
-    var confidence: Double? {
-        return metadata?.confidence
+    /// Get the quality tier for this message
+    var qualityTier: QualityTier {
+        guard let quality = metadata?.qualityScore else { return .unknown }
+        return quality.qualityTier
     }
     
-    /// Quick access to ensemble contributions
-    var ensembleModels: [String]? {
-        return metadata?.ensembleContributions
+    /// Check if message has quality assessment
+    var hasQualityAssessment: Bool {
+        return metadata?.qualityScore != nil
+    }
+    
+    /// Get confidence score if available
+    var confidenceScore: Double? {
+        return metadata?.confidence
     }
     
     /// Check if message meets professional standards
@@ -56,30 +59,8 @@ struct ChatMessage: Identifiable, Codable, Hashable {
         return metadata?.qualityScore?.meetsProfessionalStandards ?? false
     }
     
-    /// Get quality tier for UI display
-    var qualityTier: QualityTier? {
-        return metadata?.qualityScore?.qualityTier
-    }
-    
-    /// Get display-ready quality information
-    var displayQuality: DisplayQuality? {
-        return metadata?.qualityScore?.displayQuality
-    }
-    
-    // MARK: - Quality Analysis Methods
-    
-    /// Check if message has quality assessment
-    var hasQualityAssessment: Bool {
-        return metadata?.qualityScore != nil
-    }
-    
-    /// Check if message has uncertainties
-    var hasUncertainties: Bool {
-        return metadata?.qualityScore?.uncertaintyFactors.isEmpty == false
-    }
-    
-    /// Get uncertainty count
-    var uncertaintyCount: Int {
+    /// Get uncertainty factors count
+    var uncertaintyFactorCount: Int {
         return metadata?.qualityScore?.uncertaintyFactors.count ?? 0
     }
     
@@ -202,41 +183,48 @@ struct MessageMetadata: Codable, Hashable {
             responseTime: responseTime,
             confidence: confidence,
             memoryUsage: memoryUsage ?? 0,
-            cacheHitRate: cacheHitRate ?? 0.0
+            cacheHitRate: cacheHitRate ?? 0
         )
     }
     
-    /// Check if metadata is complete
-    var isComplete: Bool {
-        return qualityScore != nil &&
-               confidence != nil &&
-               modelUsed != nil &&
-               validationTimestamp != nil
+    /// Get ensemble summary
+    var ensembleSummary: String? {
+        guard let contributions = ensembleContributions,
+              let strategy = ensembleStrategy else {
+            return nil
+        }
+        
+        return "\(contributions.count) models using \(strategy)"
     }
     
-    /// Get metadata completeness percentage
+    /// Get validation status
+    var isValidated: Bool {
+        return validatedBy != nil && validationTimestamp != nil
+    }
+    
+    /// Get completeness score
     var completeness: Double {
-        let totalFields = 12 // Total metadata fields
-        var filledFields = 0
+        var score = 0.0
+        let totalFields = 12.0
         
-        if qualityScore != nil { filledFields += 1 }
-        if confidence != nil { filledFields += 1 }
-        if ensembleContributions != nil { filledFields += 1 }
-        if temporalContext != nil { filledFields += 1 }
-        if validatedBy != nil { filledFields += 1 }
-        if inferenceTime != nil { filledFields += 1 }
-        if memoryUsage != nil { filledFields += 1 }
-        if cacheHitRate != nil { filledFields += 1 }
-        if contextLength != nil { filledFields += 1 }
-        if promptTokens != nil { filledFields += 1 }
-        if responseTokens != nil { filledFields += 1 }
-        if modelUsed != nil { filledFields += 1 }
+        if modelUsed != nil { score += 1 }
+        if confidence != nil { score += 1 }
+        if qualityScore != nil { score += 1 }
+        if ensembleContributions != nil { score += 1 }
+        if temporalContext != nil { score += 1 }
+        if validatedBy != nil { score += 1 }
+        if inferenceTime != nil { score += 1 }
+        if memoryUsage != nil { score += 1 }
+        if cacheHitRate != nil { score += 1 }
+        if contextLength != nil { score += 1 }
+        if promptTokens != nil { score += 1 }
+        if responseTokens != nil { score += 1 }
         
-        return Double(filledFields) / Double(totalFields)
+        return score / totalFields
     }
 }
 
-// MARK: - Performance Summary
+// MARK: - Performance Analysis Types
 
 struct PerformanceSummary: Codable, Hashable {
     let responseTime: TimeInterval
@@ -245,8 +233,7 @@ struct PerformanceSummary: Codable, Hashable {
     let cacheHitRate: Double
     
     var performanceGrade: PerformanceGrade {
-        // Calculate overall performance grade
-        let timeScore = responseTime < 2.0 ? 1.0 : (responseTime < 5.0 ? 0.7 : 0.4)
+        let timeScore = responseTime < 1.0 ? 1.0 : (responseTime < 5.0 ? 0.7 : 0.4)
         let confidenceScore = confidence
         let cacheScore = cacheHitRate
         
@@ -348,7 +335,12 @@ extension ChatMessage {
         metadata.confidence = confidence
         metadata.ensembleContributions = ensembleContributions
         metadata.responseTokens = content.components(separatedBy: .whitespacesAndNewlines).count
-        metadata.temporalContext = TimeContext()
+        metadata.temporalContext = TimeContext(
+            hour: Calendar.current.component(.hour, from: Date()),
+            dayOfWeek: Calendar.current.component(.weekday, from: Date()),
+            season: .spring, // Default to spring for now
+            energyLevel: 0.8
+        )
         
         message.metadata = metadata
         
@@ -395,35 +387,70 @@ extension Array where Element == ChatMessage {
     
     /// Filter messages by minimum quality score
     func filterByMinimumQuality(_ minimumScore: Double) -> [ChatMessage] {
-        return filter { ($0.qualityScore ?? 0.0) >= minimumScore }
+        return filter { ($0.qualityScore ?? 0) >= minimumScore }
     }
     
     /// Get messages that meet professional standards
-    var professionalQualityMessages: [ChatMessage] {
+    func professionalQualityMessages() -> [ChatMessage] {
         return filter { $0.meetsProfessionalStandards }
     }
     
-    /// Get messages with uncertainties
-    var messagesWithUncertainties: [ChatMessage] {
-        return filter { $0.hasUncertainties }
+    /// Sort by quality score (descending)
+    func sortedByQuality() -> [ChatMessage] {
+        return sorted { ($0.qualityScore ?? 0) > ($1.qualityScore ?? 0) }
     }
     
-    /// Calculate average quality score
-    var averageQualityScore: Double {
-        let qualityScores = compactMap { $0.qualityScore }
-        guard !qualityScores.isEmpty else { return 0.0 }
-        return qualityScores.reduce(0, +) / Double(qualityScores.count)
-    }
-    
-    /// Get quality distribution
-    var qualityDistribution: [QualityTier: Int] {
-        let qualityTiers = compactMap { $0.qualityTier }
-        var distribution: [QualityTier: Int] = [:]
+    /// Get quality statistics for the message array
+    var qualityStatistics: MessageQualityStatistics {
+        let messagesWithQuality = self.filter { $0.hasQualityAssessment }
+        let totalMessages = messagesWithQuality.count
         
-        for tier in qualityTiers {
-            distribution[tier, default: 0] += 1
+        guard totalMessages > 0 else {
+            return MessageQualityStatistics(
+                totalMessages: self.count,
+                messagesWithQuality: 0,
+                averageQuality: 0,
+                professionalStandardsRate: 0,
+                qualityDistribution: [:]
+            )
         }
         
-        return distribution
+        let totalQuality = messagesWithQuality.compactMap { $0.qualityScore }.reduce(0, +)
+        let averageQuality = totalQuality / Double(totalMessages)
+        
+        let professionalMessages = messagesWithQuality.filter { $0.meetsProfessionalStandards }
+        let professionalRate = Double(professionalMessages.count) / Double(totalMessages)
+        
+        var distribution: [QualityTier: Int] = [:]
+        for message in messagesWithQuality {
+            distribution[message.qualityTier, default: 0] += 1
+        }
+        
+        return MessageQualityStatistics(
+            totalMessages: self.count,
+            messagesWithQuality: totalMessages,
+            averageQuality: averageQuality,
+            professionalStandardsRate: professionalRate,
+            qualityDistribution: distribution
+        )
+    }
+}
+
+// MARK: - Quality Statistics
+
+struct MessageQualityStatistics {
+    let totalMessages: Int
+    let messagesWithQuality: Int
+    let averageQuality: Double
+    let professionalStandardsRate: Double
+    let qualityDistribution: [QualityTier: Int]
+    
+    var qualityAssessmentRate: Double {
+        return totalMessages > 0 ? Double(messagesWithQuality) / Double(totalMessages) : 0
+    }
+    
+    var topTierRate: Double {
+        let topTierCount = qualityDistribution[.exceptional, default: 0] + qualityDistribution[.high, default: 0]
+        return messagesWithQuality > 0 ? Double(topTierCount) / Double(messagesWithQuality) : 0
     }
 }
