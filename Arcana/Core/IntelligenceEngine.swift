@@ -46,10 +46,10 @@ class IntelligenceEngine: ObservableObject {
         logger.info("🎯 Generating contextual response for workspace type: \(workspaceType.rawValue)")
         
         // 1. Analyze prompt and context
-        let analysisResult = analyzePromptIntelligence(prompt, context: context)
+        let analysisResult = await analyzePromptIntelligence(prompt, context: context)
         
         // 2. Generate appropriate response based on workspace type
-        let response = generateIntelligentResponse(
+        let response = await generateIntelligentResponse(
             prompt: prompt,
             context: context,
             detectedType: analysisResult.detectedType,
@@ -57,301 +57,221 @@ class IntelligenceEngine: ObservableObject {
         )
         
         // 3. Update state
-        currentWorkspaceType = analysisResult.detectedType
-        confidenceScore = analysisResult.confidence
         lastGeneratedResponse = response
+        confidenceScore = analysisResult.confidence
+        currentWorkspaceType = analysisResult.detectedType
         
         return response
     }
     
     // MARK: - Workspace Type Detection
     
-    func detectWorkspaceType(from content: String) -> WorkspaceManager.WorkspaceType {
-        let analysisResult = analyzePromptIntelligence(content, context: [])
-        return analysisResult.detectedType
-    }
-    
-    func analyzePromptIntelligence(
-        _ prompt: String,
-        context: [ChatMessage] = []
-    ) -> PromptAnalysisResult {
+    func detectWorkspaceType(from content: String) async -> WorkspaceManager.WorkspaceType {
+        logger.info("🔍 Detecting workspace type from content")
         
-        let combinedContent = ([prompt] + context.map { $0.content }).joined(separator: " ")
+        guard content.count >= minimumContextLength else {
+            return .general
+        }
         
-        // Detect workspace type using keyword analysis
-        let detectedType = performWorkspaceTypeDetection(combinedContent)
+        let contentLower = content.lowercased()
         
-        // Calculate confidence based on content analysis
-        let confidence = calculateAnalysisConfidence(combinedContent, detectedType: detectedType)
-        
-        return PromptAnalysisResult(
-            detectedType: detectedType,
-            confidence: confidence,
-            keywords: extractKeywords(from: combinedContent),
-            primaryContext: extractPrimaryContext(from: combinedContent)
-        )
-    }
-    
-    private func performWorkspaceTypeDetection(_ content: String) -> WorkspaceManager.WorkspaceType {
-        let lowercaseContent = content.lowercased()
-        
-        // Code-related patterns
+        // Code detection patterns
         let codePatterns = [
-            "function", "class", "method", "variable", "array", "object",
-            "api", "endpoint", "rest", "graphql", "database", "sql",
-            "javascript", "python", "swift", "react", "node", "express",
-            "authentication", "authorization", "jwt", "oauth",
-            "frontend", "backend", "server", "client", "web development",
-            "mobile app", "ios", "android", "xcode", "git", "github",
-            "bug", "debug", "testing", "deployment", "devops"
+            "function", "class", "import", "export", "const", "let", "var",
+            "return", "if", "else", "for", "while", "switch", "case",
+            "def", "class", "import", "from", "return", "if", "elif", "else",
+            "public", "private", "static", "async", "await", "try", "catch",
+            "git", "commit", "merge", "pull", "push", "branch", "repository",
+            "api", "endpoint", "request", "response", "http", "https",
+            "database", "sql", "query", "table", "column", "index"
         ]
         
-        // Research-related patterns
-        let researchPatterns = [
-            "research", "study", "analysis", "data", "statistics",
-            "experiment", "hypothesis", "methodology", "findings",
-            "literature review", "academic", "paper", "journal",
-            "survey", "interview", "qualitative", "quantitative",
-            "correlation", "trend", "pattern", "insight"
-        ]
-        
-        // Creative-related patterns
+        // Creative detection patterns
         let creativePatterns = [
-            "story", "narrative", "character", "plot", "creative writing",
-            "blog post", "article", "content", "marketing", "campaign",
-            "brand", "design", "visual", "creative", "brainstorm",
-            "idea", "concept", "inspiration", "artistic", "creative brief"
+            "story", "character", "plot", "narrative", "dialogue", "scene",
+            "chapter", "draft", "write", "writing", "creative", "fiction",
+            "poetry", "poem", "verse", "rhyme", "metaphor", "imagery",
+            "design", "color", "font", "layout", "visual", "aesthetic",
+            "brand", "logo", "marketing", "campaign", "content", "copy"
         ]
         
-        // Calculate scores for each type
-        let codeScore = calculatePatternScore(content: lowercaseContent, patterns: codePatterns)
-        let researchScore = calculatePatternScore(content: lowercaseContent, patterns: researchPatterns)
-        let creativeScore = calculatePatternScore(content: lowercaseContent, patterns: creativePatterns)
-        
-        // Determine the highest scoring type
-        let scores = [
-            (WorkspaceManager.WorkspaceType.code, codeScore),
-            (WorkspaceManager.WorkspaceType.research, researchScore),
-            (WorkspaceManager.WorkspaceType.creative, creativeScore)
+        // Research detection patterns
+        let researchPatterns = [
+            "research", "study", "analysis", "data", "findings", "hypothesis",
+            "methodology", "experiment", "survey", "interview", "observation",
+            "literature", "review", "citation", "reference", "bibliography",
+            "thesis", "dissertation", "paper", "publication", "journal",
+            "statistics", "correlation", "causation", "significant", "p-value"
         ]
         
-        let bestMatch = scores.max { $0.1 < $1.1 }
+        let codeScore = calculatePatternScore(content: contentLower, patterns: codePatterns)
+        let creativeScore = calculatePatternScore(content: contentLower, patterns: creativePatterns)
+        let researchScore = calculatePatternScore(content: contentLower, patterns: researchPatterns)
         
-        // Return detected type if confidence is high enough, otherwise general
-        if let match = bestMatch, match.1 >= workspaceTypeThreshold {
-            return match.0
-        } else {
+        let maxScore = max(codeScore, creativeScore, researchScore)
+        
+        if maxScore < workspaceTypeThreshold {
+            return .general
+        }
+        
+        switch maxScore {
+        case codeScore:
+            return .code
+        case creativeScore:
+            return .creative
+        case researchScore:
+            return .research
+        default:
             return .general
         }
     }
     
-    private func calculatePatternScore(content: String, patterns: [String]) -> Double {
-        let matchingPatterns = patterns.filter { pattern in
-            content.contains(pattern)
+    // MARK: - Intelligent Content Generation
+    
+    func generateIntelligentWorkspaceTitle(from content: String) async -> String {
+        logger.info("📝 Generating intelligent workspace title")
+        
+        let keywords = await extractKeywords(from: content)
+        let topKeywords = Array(keywords.prefix(3))
+        
+        if topKeywords.isEmpty {
+            return "New Workspace"
         }
         
-        return Double(matchingPatterns.count) / Double(patterns.count)
+        // Create a meaningful title from keywords
+        let title = topKeywords.joined(separator: " & ").capitalized
+        return title.count > 50 ? String(title.prefix(47)) + "..." : title
     }
     
-    private func calculateAnalysisConfidence(
-        _ content: String,
-        detectedType: WorkspaceManager.WorkspaceType
-    ) -> Double {
+    func generateIntelligentWorkspaceDescription(from messages: [ChatMessage]) async -> String {
+        logger.info("📋 Generating intelligent workspace description")
         
-        // Base confidence on content length and structure
-        let lengthScore = min(Double(content.count) / 200.0, 1.0)
-        let structureScore = content.contains(" ") && content.count > minimumContextLength ? 0.8 : 0.4
-        
-        // Adjust for workspace-specific patterns
-        let typeSpecificScore = calculateTypeSpecificConfidence(content, type: detectedType)
-        
-        return (lengthScore + structureScore + typeSpecificScore) / 3.0
-    }
-    
-    private func calculateTypeSpecificConfidence(
-        _ content: String,
-        type: WorkspaceManager.WorkspaceType
-    ) -> Double {
-        
-        switch type {
-        case .code:
-            let codeIndicators = ["function", "class", "api", "database", "javascript", "python", "swift"]
-            let matches = codeIndicators.filter { content.lowercased().contains($0) }
-            return Double(matches.count) / Double(codeIndicators.count)
-            
-        case .research:
-            let researchIndicators = ["research", "study", "analysis", "data", "findings", "methodology"]
-            let matches = researchIndicators.filter { content.lowercased().contains($0) }
-            return Double(matches.count) / Double(researchIndicators.count)
-            
-        case .creative:
-            let creativeIndicators = ["story", "creative", "content", "brand", "campaign", "design"]
-            let matches = creativeIndicators.filter { content.lowercased().contains($0) }
-            return Double(matches.count) / Double(creativeIndicators.count)
-            
-        case .general:
-            return 0.6 // Moderate confidence for general type
+        guard !messages.isEmpty else {
+            return "A new workspace for organizing your conversations and ideas."
         }
+        
+        let userMessages = messages.filter { $0.isFromUser }
+        let allContent = userMessages.map { $0.content }.joined(separator: " ")
+        
+        if allContent.count > 200 {
+            return String(allContent.prefix(197)) + "..."
+        }
+        
+        return allContent.isEmpty ? "A new workspace for organizing your conversations and ideas." : allContent
     }
     
-    // MARK: - Response Generation
+    func generateConversationSummary(from messages: [ChatMessage]) async -> String {
+        logger.info("📊 Generating conversation summary")
+        
+        guard !messages.isEmpty else {
+            return "No conversation to summarize."
+        }
+        
+        let messageCount = messages.count
+        let userMessageCount = messages.filter { $0.isFromUser }.count
+        let assistantMessageCount = messageCount - userMessageCount
+        
+        let lastUserMessage = messages.last { $0.isFromUser }?.content ?? "No user messages"
+        let preview = lastUserMessage.count > 100 ? String(lastUserMessage.prefix(97)) + "..." : lastUserMessage
+        
+        return """
+        Conversation with \(messageCount) messages (\(userMessageCount) from user, \(assistantMessageCount) from assistant).
+        Latest topic: \(preview)
+        """
+    }
+    
+    func extractKeywords(from content: String) async -> [String] {
+        logger.info("🔑 Extracting keywords from content")
+        
+        let words = content.components(separatedBy: .whitespacesAndNewlines)
+            .map { $0.trimmingCharacters(in: .punctuationCharacters) }
+            .filter { $0.count > 3 }
+            .map { $0.lowercased() }
+        
+        // Filter out common words
+        let commonWords = Set([
+            "the", "and", "for", "are", "but", "not", "you", "all", "can", "had", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "its", "may", "new", "now", "old", "see", "two", "who", "boy", "did", "man", "men", "oil", "sit", "way", "what", "when", "with", "this", "that", "have", "from", "they", "know", "want", "been", "good", "much", "some", "time", "very", "when", "come", "here", "just", "like", "long", "make", "many", "over", "such", "take", "than", "them", "well", "were"
+        ])
+        
+        let keywords = words.filter { !commonWords.contains($0) }
+        
+        // Return top keywords by frequency
+        let frequency = Dictionary(grouping: keywords, by: { $0 })
+            .mapValues { $0.count }
+            .sorted { $0.value > $1.value }
+        
+        return Array(frequency.prefix(10).map { $0.key })
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    private func analyzePromptIntelligence(_ prompt: String, context: [ChatMessage]) async -> AnalysisResult {
+        let detectedType = await detectWorkspaceType(from: prompt)
+        let confidence = calculateConfidence(for: prompt, context: context)
+        
+        return AnalysisResult(
+            detectedType: detectedType,
+            confidence: confidence,
+            keywords: await extractKeywords(from: prompt)
+        )
+    }
     
     private func generateIntelligentResponse(
         prompt: String,
         context: [ChatMessage],
         detectedType: WorkspaceManager.WorkspaceType,
         confidence: Double
-    ) -> String {
+    ) async -> String {
         
-        // This is a placeholder implementation
-        // In the full PRISM system, this would integrate with the ensemble orchestrator
-        
-        let contextualPrompt = buildContextualPrompt(
-            prompt: prompt,
-            type: detectedType,
-            context: context
-        )
-        
-        // For now, return a contextually appropriate response template
-        return generateResponseTemplate(
-            prompt: contextualPrompt,
-            type: detectedType,
-            confidence: confidence
-        )
-    }
-    
-    private func buildContextualPrompt(
-        prompt: String,
-        type: WorkspaceManager.WorkspaceType,
-        context: [ChatMessage]
-    ) -> String {
-        
-        let typeContext = getWorkspaceTypeContext(type)
-        let conversationContext = context.suffix(5).map { $0.content }.joined(separator: "\n")
-        
-        var contextualPrompt = ""
-        
-        if !conversationContext.isEmpty {
-            contextualPrompt += "Previous conversation:\n\(conversationContext)\n\n"
-        }
-        
-        contextualPrompt += "Context: \(typeContext)\n\nUser request: \(prompt)"
-        
-        return contextualPrompt
-    }
-    
-    private func getWorkspaceTypeContext(_ type: WorkspaceManager.WorkspaceType) -> String {
-        switch type {
+        // This is a placeholder for the actual AI response generation
+        // In the real implementation, this would integrate with the PRISM engine
+        switch detectedType {
         case .code:
-            return "Software development and coding assistance"
-        case .research:
-            return "Research analysis and academic work"
+            return generateCodeResponse(for: prompt, context: context)
         case .creative:
-            return "Creative writing and content development"
+            return generateCreativeResponse(for: prompt, context: context)
+        case .research:
+            return generateResearchResponse(for: prompt, context: context)
         case .general:
-            return "General conversation and assistance"
+            return generateGeneralResponse(for: prompt, context: context)
         }
     }
     
-    private func generateResponseTemplate(
-        prompt: String,
-        type: WorkspaceManager.WorkspaceType,
-        confidence: Double
-    ) -> String {
-        
-        // This is a placeholder that would be replaced with actual PRISM inference
-        let confidenceIndicator = confidence > responseConfidenceThreshold ? "High confidence" : "Moderate confidence"
-        
-        return """
-        [PRISM Response Template - \(type.rawValue)]
-        Confidence: \(confidenceIndicator) (\(String(format: "%.1f", confidence * 100))%)
-        
-        Based on your \(type.rawValue) workspace context, I understand you're asking about:
-        \(prompt)
-        
-        [This is a placeholder response that would be generated by the full PRISM ensemble system]
-        
-        Key insights:
-        • Contextual understanding: ✓
-        • Workspace type detected: \(type.rawValue)
-        • Analysis confidence: \(String(format: "%.1f", confidence * 100))%
-        
-        [In the full implementation, this would be replaced with actual model inference]
-        """
+    private func calculatePatternScore(content: String, patterns: [String]) -> Double {
+        let matches = patterns.filter { content.contains($0) }.count
+        return Double(matches) / Double(patterns.count)
     }
     
-    // MARK: - Utility Methods
-    
-    func extractKeywords(from content: String) -> [String] {
-        let words = content.components(separatedBy: .whitespacesAndNewlines)
-            .compactMap { word in
-                let cleaned = word.trimmingCharacters(in: .punctuationCharacters).lowercased()
-                return cleaned.count > 3 && !isStopWord(cleaned) ? cleaned.capitalized : nil
-            }
-        
-        let wordCounts = Dictionary(grouping: words, by: { $0 })
-            .mapValues { $0.count }
-            .sorted { $0.value > $1.value }
-        
-        return wordCounts.prefix(5).map { $0.key }
+    private func calculateConfidence(for prompt: String, context: [ChatMessage]) -> Double {
+        // Simple confidence calculation based on prompt length and context
+        let promptScore = min(Double(prompt.count) / 100.0, 1.0)
+        let contextScore = min(Double(context.count) / 10.0, 1.0)
+        return (promptScore + contextScore) / 2.0
     }
     
-    func extractPrimaryContext(from content: String) -> String? {
-        let contextPatterns = [
-            "API (\\w+)",
-            "(\\w+) authentication",
-            "(\\w+) database",
-            "(React|Vue|Angular) (\\w+)",
-            "(iOS|Android|mobile) (\\w+)",
-            "(\\w+) story",
-            "(\\w+) article",
-            "(\\w+) campaign",
-            "(\\w+) brand",
-            "(\\w+) research",
-            "(\\w+) analysis",
-            "(\\w+) study",
-            "(\\w+) project",
-            "(\\w+) system",
-            "(\\w+) platform"
-        ]
-        
-        for pattern in contextPatterns {
-            let regex = try! NSRegularExpression(pattern: pattern, options: .caseInsensitive)
-            let range = NSRange(location: 0, length: content.utf16.count)
-            if let match = regex.firstMatch(in: content, options: [], range: range) {
-                let matchRange = Range(match.range, in: content)!
-                let matchedText = String(content[matchRange])
-                return matchedText
-                    .components(separatedBy: .whitespacesAndNewlines)
-                    .first { !isStopWord($0.lowercased()) }
-            }
-        }
-        
-        return nil
+    // MARK: - Response Generation by Type
+    
+    private func generateCodeResponse(for prompt: String, context: [ChatMessage]) -> String {
+        return "I'll help you with that code-related question. Let me analyze the requirements and provide a solution..."
     }
     
-    private func isStopWord(_ word: String) -> Bool {
-        let stopWords = Set([
-            "the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
-            "from", "up", "about", "into", "through", "during", "before", "after", "above",
-            "below", "between", "among", "this", "that", "these", "those", "i", "you", "he",
-            "she", "it", "we", "they", "me", "him", "her", "us", "them", "my", "your", "his",
-            "her", "its", "our", "their", "myself", "yourself", "himself", "herself", "itself",
-            "ourselves", "yourselves", "themselves", "what", "which", "who", "whom", "whose",
-            "where", "when", "why", "how", "all", "any", "both", "each", "few", "more", "most",
-            "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than",
-            "too", "very", "can", "will", "just", "should", "now"
-        ])
-        
-        return stopWords.contains(word.lowercased())
+    private func generateCreativeResponse(for prompt: String, context: [ChatMessage]) -> String {
+        return "That's an interesting creative challenge! Let me help you explore some ideas and possibilities..."
+    }
+    
+    private func generateResearchResponse(for prompt: String, context: [ChatMessage]) -> String {
+        return "Great research question! Let me help you approach this systematically and find reliable information..."
+    }
+    
+    private func generateGeneralResponse(for prompt: String, context: [ChatMessage]) -> String {
+        return "I understand what you're asking. Let me provide you with a helpful and comprehensive response..."
     }
 }
 
 // MARK: - Supporting Types
 
-struct PromptAnalysisResult {
+private struct AnalysisResult {
     let detectedType: WorkspaceManager.WorkspaceType
     let confidence: Double
     let keywords: [String]
-    let primaryContext: String?
 }

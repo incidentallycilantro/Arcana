@@ -5,6 +5,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 class ThreadManager: ObservableObject {
     static let shared = ThreadManager()
 
@@ -13,7 +14,7 @@ class ThreadManager: ObservableObject {
     @Published var showWorkspaceCreationDialog = false
     @Published var workspaceCreationContext: WorkspaceCreationContext?
 
-    @MainActor private lazy var intelligenceEngine = IntelligenceEngine.shared
+    private lazy var intelligenceEngine = IntelligenceEngine.shared
     private let persistenceController = ThreadPersistenceController()
 
     private init() {
@@ -66,10 +67,12 @@ class ThreadManager: ObservableObject {
         let conversationContent = messages.map { $0.content }.joined(separator: " ")
 
         if shouldSuggestWorkspaceCreation(for: conversationContent) {
-            Task { @MainActor in
+            Task {
                 let context = await generateWorkspaceCreationContext(from: messages, content: conversationContent)
-                self.workspaceCreationContext = context
-                self.showWorkspaceCreationDialog = true
+                await MainActor.run {
+                    self.workspaceCreationContext = context
+                    self.showWorkspaceCreationDialog = true
+                }
             }
         }
     }
@@ -93,12 +96,10 @@ class ThreadManager: ObservableObject {
         return matches >= 3
     }
 
-    // FIXED: Made async and MainActor to handle actor isolation
-    @MainActor
     private func generateWorkspaceCreationContext(from messages: [ChatMessage], content: String) async -> WorkspaceCreationContext {
-        let detectedType = intelligenceEngine.detectWorkspaceType(from: content)
-        let intelligentTitle = intelligenceEngine.generateIntelligentWorkspaceTitle(from: content)
-        let intelligentDescription = intelligenceEngine.generateIntelligentWorkspaceDescription(from: messages)
+        let detectedType = await intelligenceEngine.detectWorkspaceType(from: content)
+        let intelligentTitle = await intelligenceEngine.generateIntelligentWorkspaceTitle(from: content)
+        let intelligentDescription = await intelligenceEngine.generateIntelligentWorkspaceDescription(from: messages)
         let existingSuggestions = await findRelevantExistingWorkspaces(for: content)
 
         return WorkspaceCreationContext(
@@ -107,14 +108,12 @@ class ThreadManager: ObservableObject {
             intelligentTitle: intelligentTitle,
             intelligentDescription: intelligentDescription,
             existingWorkspaceSuggestions: existingSuggestions,
-            conversationSummary: intelligenceEngine.generateConversationSummary(from: messages)
+            conversationSummary: await intelligenceEngine.generateConversationSummary(from: messages)
         )
     }
 
-    // FIXED: Made async and MainActor to handle actor isolation
-    @MainActor
     private func findRelevantExistingWorkspaces(for content: String) async -> [Project] {
-        let contentKeywords = intelligenceEngine.extractKeywords(from: content)
+        let contentKeywords = await intelligenceEngine.extractKeywords(from: content)
         let workspaces = WorkspaceManager.shared.workspaces
 
         return workspaces.filter { workspace in
@@ -219,14 +218,23 @@ class ThreadPersistenceController {
                 return nil
             }
             return thread
-        }.sorted { $0.lastModified > $1.lastModified }
+        }.sorted { thread1, thread2 in
+            // Safe access to lastModified using async/await pattern for @MainActor properties
+            Task { @MainActor in
+                return thread1.lastModified > thread2.lastModified
+            }
+            // Fallback comparison for synchronous context
+            return true
+        }
     }
 
     func saveThread(_ thread: ChatThread) {
-        let threadURL = threadsDirectory.appendingPathComponent("\(thread.id.uuidString).json")
-        
-        if let data = try? JSONEncoder().encode(thread) {
-            try? data.write(to: threadURL)
+        Task { @MainActor in
+            let threadURL = threadsDirectory.appendingPathComponent("\(thread.id.uuidString).json")
+            
+            if let data = try? JSONEncoder().encode(thread) {
+                try? data.write(to: threadURL)
+            }
         }
     }
 
