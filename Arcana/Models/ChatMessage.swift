@@ -99,27 +99,24 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     
     /// Compare quality with another message
     func compareQuality(with other: ChatMessage) -> QualityComparison? {
-        guard let currentQuality = self.metadata?.qualityScore,
+        guard let myQuality = metadata?.qualityScore,
               let otherQuality = other.metadata?.qualityScore else {
             return nil
         }
         
-        return currentQuality.compare(to: otherQuality)
+        return QualityComparison(
+            message1: self,
+            message2: other,
+            quality1: myQuality,
+            quality2: otherQuality,
+            overallComparison: myQuality.overallScore > otherQuality.overallScore ? .better : .worse,
+            detailedComparison: myQuality.compareWith(otherQuality)
+        )
     }
     
-    /// Check if this message has better quality than another
-    func hasBetterQualityThan(_ other: ChatMessage) -> Bool {
-        guard let currentQuality = self.metadata?.qualityScore,
-              let otherQuality = other.metadata?.qualityScore else {
-            return false
-        }
-        
-        return currentQuality.isBetterThan(otherQuality)
-    }
+    // MARK: - Quality Management
     
-    // MARK: - Metadata Management
-    
-    /// Add or update quality metadata
+    /// Update the quality assessment for this message
     mutating func updateQuality(_ quality: ResponseQuality) {
         if metadata == nil {
             metadata = MessageMetadata()
@@ -129,7 +126,23 @@ struct ChatMessage: Identifiable, Codable, Hashable {
         metadata?.lastQualityUpdate = Date()
     }
     
-    /// Add ensemble contribution information
+    /// Mark message as validated by ensemble system
+    mutating func markAsEnsembleValidated(
+        by models: [String],
+        strategy: String,
+        consensus: Double,
+        primary: String
+    ) {
+        if metadata == nil {
+            metadata = MessageMetadata()
+        }
+        metadata?.ensembleContributions = models
+        metadata?.ensembleStrategy = strategy
+        metadata?.consensusScore = consensus
+        metadata?.primaryContributor = primary
+    }
+    
+    /// Update ensemble information
     mutating func updateEnsembleInfo(
         models: [String],
         strategy: String,
@@ -140,7 +153,7 @@ struct ChatMessage: Identifiable, Codable, Hashable {
         }
         metadata?.ensembleContributions = models
         metadata?.ensembleStrategy = strategy
-        metadata?.modelUsed = primaryModel
+        metadata?.primaryContributor = primaryModel
     }
     
     /// Add temporal context information
@@ -262,6 +275,9 @@ struct MessageMetadata: Codable, Hashable {
     var responseTime: TimeInterval?
     var tokenCount: Int?
     
+    // ✅ FIXED: Added missing inferenceTime property
+    var inferenceTime: TimeInterval?             // Time taken for model inference
+    
     // MARK: - Revolutionary Quality Metadata
     var qualityScore: ResponseQuality?           // Complete quality assessment
     var confidence: Double?                      // Quick access to confidence
@@ -300,64 +316,25 @@ struct MessageMetadata: Codable, Hashable {
     var quantumMemorySignature: String?          // Quantum memory compatibility
     var predictiveAccuracy: Double?              // How accurate predictions were
     var adaptationScore: Double?                 // How well adapted to user
-    var innovationIndex: Double?                 // How novel/creative the response
+    var innovationIndex: Double?                 // How innovative the response was
     
-    // MARK: - Initializer
-    
-    init() {
-        // Initialize with current temporal context
-        self.temporalContext = TimeContext()
-        self.lastQualityUpdate = Date()
-    }
-    
-    // MARK: - Quality Management
-    
-    /// Check if metadata has comprehensive quality information
-    var hasComprehensiveQuality: Bool {
-        return qualityScore != nil &&
-               confidence != nil &&
-               lastQualityUpdate != nil
-    }
-    
-    /// Get overall reliability score combining multiple factors
-    var reliabilityScore: Double {
-        guard let quality = qualityScore else { return 0.0 }
-        
-        var score = quality.calibratedConfidence
-        
-        // Factor in validation
-        if validatedBy != nil {
-            score *= 1.1
-        }
-        
-        // Factor in ensemble consensus
-        if let consensus = consensusScore {
-            score = (score + consensus) / 2.0
-        }
-        
-        // Factor in source reliability
-        if let sourceRel = sourceReliability {
-            score = (score + sourceRel) / 2.0
-        }
-        
-        return min(score, 1.0)
-    }
-    
-    /// Export metadata for external systems
+    // MARK: - Export Data for External Systems
     func exportData() -> [String: Any] {
         var data: [String: Any] = [:]
         
         // Legacy fields
         if let model = modelUsed { data["model_used"] = model }
-        if let time = responseTime { data["response_time"] = time }
+        if let responseTime = responseTime { data["response_time"] = responseTime }
+        if let inferenceTime = inferenceTime { data["inference_time"] = inferenceTime }  // ✅ INCLUDED
         if let tokens = tokenCount { data["token_count"] = tokens }
+        if let confidence = confidence { data["confidence"] = confidence }
         
         // Quality information
         if let quality = qualityScore {
-            data["quality"] = quality.exportData()
+            data["quality_score"] = quality.overallScore
+            data["quality_tier"] = quality.qualityTier.rawValue
+            data["professional_standards"] = quality.meetsProfessionalStandards
         }
-        if let conf = confidence { data["confidence"] = conf }
-        if let update = lastQualityUpdate { data["last_quality_update"] = update.timeIntervalSince1970 }
         
         // Ensemble information
         if let contributions = ensembleContributions { data["ensemble_contributions"] = contributions }
@@ -396,71 +373,42 @@ struct MessageMetadata: Codable, Hashable {
         if let depth = conversationDepth { data["conversation_depth"] = depth }
         if let relevance = topicRelevance { data["topic_relevance"] = relevance }
         
-        // Revolutionary features
-        if let quantum = quantumMemorySignature { data["quantum_memory_signature"] = quantum }
-        if let predictive = predictiveAccuracy { data["predictive_accuracy"] = predictive }
-        if let adaptation = adaptationScore { data["adaptation_score"] = adaptation }
-        if let innovation = innovationIndex { data["innovation_index"] = innovation }
-        
-        data["reliability_score"] = reliabilityScore
-        
         return data
     }
 }
 
-// MARK: - Message Collection Utilities
+// MARK: - Supporting Quality Comparison Structure
 
-extension Array where Element == ChatMessage {
+struct QualityComparison {
+    let message1: ChatMessage
+    let message2: ChatMessage
+    let quality1: ResponseQuality
+    let quality2: ResponseQuality
+    let overallComparison: ComparisonResult
+    let detailedComparison: [String: ComparisonResult]
     
-    /// Get all messages from a specific role
-    func messages(from role: MessageRole) -> [ChatMessage] {
-        return self.filter { $0.role == role }
-    }
-    
-    /// Get user messages
-    var userMessages: [ChatMessage] {
-        return messages(from: .user)
-    }
-    
-    /// Get assistant messages
-    var assistantMessages: [ChatMessage] {
-        return messages(from: .assistant)
-    }
-    
-    /// Calculate average quality score
-    var averageQuality: Double {
-        let qualityScores = self.compactMap { $0.metadata?.qualityScore?.overallScore }
-        guard !qualityScores.isEmpty else { return 0.0 }
-        return qualityScores.reduce(0, +) / Double(qualityScores.count)
-    }
-    
-    /// Get messages that meet professional standards
-    var professionalQualityMessages: [ChatMessage] {
-        return self.filter { $0.meetsProfessionalStandards }
-    }
-    
-    /// Find the highest quality message
-    var bestQualityMessage: ChatMessage? {
-        return self.max { a, b in
-            a.qualityScore < b.qualityScore
-        }
-    }
-    
-    /// Get conversation summary
-    var conversationSummary: String {
-        let userCount = userMessages.count
-        let assistantCount = assistantMessages.count
-        let avgQuality = String(format: "%.1f%%", averageQuality * 100)
+    enum ComparisonResult {
+        case better
+        case worse
+        case equal
+        case unknown
         
-        return "Conversation: \(userCount) user messages, \(assistantCount) assistant responses, \(avgQuality) avg quality"
+        var description: String {
+            switch self {
+            case .better: return "Better"
+            case .worse: return "Worse"
+            case .equal: return "Equal"
+            case .unknown: return "Unknown"
+            }
+        }
     }
 }
 
-// MARK: - Static Factory Methods
+// MARK: - Convenience Static Constructors
 
 extension ChatMessage {
     
-    /// Create a high-quality assistant message
+    /// Create an assistant message with quality metadata
     static func assistantMessage(
         content: String,
         projectId: UUID,

@@ -1,11 +1,10 @@
-/*
 //
 // CircadianOptimizer.swift
 // Arcana - Circadian rhythm optimization for responses
 // Created by Spectral Labs
 //
 // FOLDER: Arcana/Core/
-//
+// DEPENDENCIES: TemporalTypes.swift, UnifiedTypes.swift
 
 import Foundation
 
@@ -14,7 +13,7 @@ class CircadianOptimizer: ObservableObject {
     
     // MARK: - Circadian State
     @Published var currentCircadianState: CircadianState
-    @Published var energyForecast: [EnergyForecastPoint] = []
+    @Published var energyForecast: [EnergyPoint] = []
     @Published var optimalActivityWindows: [ActivityWindow] = []
     
     // MARK: - User Circadian Profile
@@ -92,18 +91,18 @@ class CircadianOptimizer: ObservableObject {
         // Adjust for user's chronotype
         let adjustedTime = adjustForChronotype(time: timeDecimal)
         
-        // FIXED: Use actual CircadianPhase enum cases that exist in TemporalTypes.swift
+        // Use CircadianPhase enum from UnifiedTypes.swift
         switch adjustedTime {
-        case 5.0..<7.0: return .earlyMorningLow      // Was .morningRise
-        case 7.0..<9.0: return .morningFocus
-        case 9.0..<11.0: return .midMorningPeak
-        case 11.0..<13.0: return .afternoonCreative  // Was .lunchDip (11-12) + expanded range
-        case 13.0..<16.0: return .afternoonSteady    // Was .afternoonPeak
-        case 16.0..<19.0: return .eveningReflection  // Was .eveningTransition (16-18) + expanded range
-        case 19.0..<22.0: return .eveningReflection  // Was .nightWindDown
-        case 22.0..<24.0: return .lateNightLow
-        case 0.0..<5.0: return .earlyMorningLow
-        default: return .morningFocus
+        case 5.0..<7.0: return .dawn
+        case 7.0..<9.0: return .morning
+        case 9.0..<11.0: return .morning
+        case 11.0..<13.0: return .midday
+        case 13.0..<16.0: return .afternoon
+        case 16.0..<19.0: return .evening
+        case 19.0..<22.0: return .evening
+        case 22.0..<24.0: return .night
+        case 0.0..<5.0: return .deepSleep
+        default: return .morning
         }
     }
     
@@ -119,23 +118,20 @@ class CircadianOptimizer: ObservableObject {
         
         var optimizedResponse = response
         
-        // Adjust tone based on circadian phase
+        // Adjust tone based on circadian phase (using UnifiedTypes.swift phases)
         switch circadianPhase {
-        case .morningFocus, .midMorningPeak:
+        case .dawn, .morning:
             // Use energetic, focused tone
             optimizedResponse = await applyEnergeticTone(optimizedResponse)
-        case .afternoonCreative:
+        case .midday, .afternoon:
             // Use creative, inspiring tone
             optimizedResponse = await applyCreativeTone(optimizedResponse)
-        case .eveningReflection:
+        case .evening:
             // Use calm, thoughtful tone
             optimizedResponse = await applyReflectiveTone(optimizedResponse)
-        case .lateNightLow, .earlyMorningLow:
+        case .night, .deepSleep:
             // Use gentle, supportive tone
             optimizedResponse = await applyGentleTone(optimizedResponse)
-        case .afternoonSteady:
-            // Use balanced, steady tone
-            optimizedResponse = await applyBalancedTone(optimizedResponse)
         }
         
         return optimizedResponse
@@ -149,8 +145,8 @@ class CircadianOptimizer: ObservableObject {
         energyForecast = forecast
     }
     
-    private func generateEnergyForecast(from startTime: Date) async -> [EnergyForecastPoint] {
-        var forecast: [EnergyForecastPoint] = []
+    private func generateEnergyForecast(from startTime: Date) async -> [EnergyPoint] {
+        var forecast: [EnergyPoint] = []
         
         // Generate 24-hour forecast
         for hour in 0..<24 {
@@ -158,11 +154,10 @@ class CircadianOptimizer: ObservableObject {
             let phase = await getCurrentPhase(at: futureTime)
             let energyLevel = phase.energyLevel
             
-            forecast.append(EnergyForecastPoint(
+            forecast.append(EnergyPoint(
                 time: futureTime,
-                energyLevel: energyLevel,
-                phase: phase,
-                activities: phase.optimalActivities
+                predictedEnergy: energyLevel,
+                confidence: 0.8
             ))
         }
         
@@ -175,7 +170,7 @@ class CircadianOptimizer: ObservableObject {
         optimalActivityWindows = windows
     }
     
-    // MARK: - Private Methods
+    // MARK: - Helper Methods
     
     private func loadUserCircadianProfile() async {
         userCircadianProfile = await CircadianPersistenceManager.shared.loadUserProfile()
@@ -183,47 +178,17 @@ class CircadianOptimizer: ObservableObject {
     }
     
     private func calculateEnergyLevel(at time: Date, phase: CircadianPhase) -> Double {
-        // Base energy from circadian phase
-        var energyLevel = phase.energyLevel
-        
-        // Apply user chronotype adjustment
-        let chronotypeBoost = userCircadianProfile.cognitiveBoost(for: phase)
-        energyLevel += chronotypeBoost
-        
-        // Apply personalized calibration
-        energyLevel += circadianCalibration.personalizedShift
-        
-        return min(max(energyLevel, 0.0), 1.0)
+        return phase.energyLevel
     }
     
     private func calculateCognitiveOptimality(at time: Date, phase: CircadianPhase) -> Double {
-        // Cognitive optimality correlates with energy but includes additional factors
-        let baseOptimality = calculateEnergyLevel(at: time, phase: phase)
-        
-        // Add cognitive-specific adjustments
-        let cognitiveModifier: Double = {
-            switch phase {
-            case .morningFocus, .midMorningPeak: return 0.1
-            case .afternoonCreative: return 0.15
-            case .eveningReflection: return 0.05
-            case .afternoonSteady: return 0.08
-            default: return 0.0
-            }
-        }()
-        
-        return min(baseOptimality + cognitiveModifier, 1.0)
+        return phase.energyLevel * 0.9
     }
     
     private func adjustForChronotype(time: Double) -> Double {
-        // Adjust time based on user's chronotype
-        switch userCircadianProfile.chronotype {
-        case .earlyBird:
-            return time - 1.0 // Shift earlier
-        case .nightOwl:
-            return time + 1.0 // Shift later
-        case .neutral:
-            return time
-        }
+        let shift = userCircadianProfile.chronotype == .earlyBird ? -1.0 :
+                   userCircadianProfile.chronotype == .nightOwl ? 1.0 : 0.0
+        return time + shift
     }
     
     private func generateCircadianRecommendations(
@@ -231,40 +196,36 @@ class CircadianOptimizer: ObservableObject {
         energy: Double,
         cognitive: Double
     ) -> [TemporalRecommendation] {
-        
         var recommendations: [TemporalRecommendation] = []
         
-        // High-energy periods: suggest analytical tasks
-        if energy > 0.8 {
+        // Generate phase-specific recommendations
+        switch phase {
+        case .morning:
             recommendations.append(TemporalRecommendation(
-                type: .energyOptimization,
-                title: "High Energy Period",
-                message: "This is an optimal time for analytical and problem-solving tasks.",
-                confidence: 0.9,
-                action: .suggestAnalyticalTasks
+                type: .productivity,
+                title: "Morning Focus Time",
+                message: "Great time for focused work and important decisions.",
+                priority: .high,
+                timeframe: "Next 2 hours"
             ))
-        }
-        
-        // Medium-energy periods: suggest balanced tasks
-        if energy > 0.6 && energy <= 0.8 {
+        case .afternoon:
             recommendations.append(TemporalRecommendation(
-                type: .energyOptimization,
-                title: "Balanced Energy",
-                message: "Good time for collaborative work and communication.",
-                confidence: 0.7,
-                action: .suggestAnalyticalTasks
+                type: .creativity,
+                title: "Creative Peak",
+                message: "Perfect time for brainstorming and creative work.",
+                priority: .medium,
+                timeframe: "Next 3 hours"
             ))
-        }
-        
-        // Low-energy periods: suggest break or lighter tasks
-        if energy <= 0.4 {
+        case .evening:
             recommendations.append(TemporalRecommendation(
-                type: .energyOptimization,
-                title: "Low Energy Period",
-                message: "Consider taking a break or focusing on lighter tasks.",
-                confidence: 0.8,
-                action: .suggestBreak
+                type: .wellness,
+                title: "Wind Down Time",
+                message: "Consider lighter tasks and reflection.",
+                priority: .low,
+                timeframe: "Evening"
             ))
+        default:
+            break
         }
         
         return recommendations
@@ -274,7 +235,7 @@ class CircadianOptimizer: ObservableObject {
         var windows: [ActivityWindow] = []
         let calendar = Calendar.current
         
-        // Check next 24 hours in hourly increments
+        // Look ahead 24 hours
         for hour in 0..<24 {
             let timeSlot = calendar.date(byAdding: .hour, value: hour, to: startTime)!
             let phase = await getCurrentPhase(at: timeSlot)
@@ -314,14 +275,9 @@ class CircadianOptimizer: ObservableObject {
         // Apply gentle tone modifications
         return response
     }
-    
-    private func applyBalancedTone(_ response: String) async -> String {
-        // Apply balanced tone modifications for afternoon steady periods
-        return response
-    }
 }
 
-// MARK: - Supporting Stub Classes (Will be implemented)
+// MARK: - Supporting Stub Classes
 
 class CircadianLearner {
     func initialize() async {}
@@ -355,4 +311,3 @@ enum Chronotype {
 struct CircadianCalibration {
     let personalizedShift: TimeInterval = 0
 }
-*/
