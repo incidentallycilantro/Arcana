@@ -161,28 +161,28 @@ class LocalEncryptionManager: ObservableObject {
     // MARK: - Key Management
     
     private func initializeMasterKey() async {
-        do {
-            // Try to load existing master key from Secure Enclave
-            if let existingKey = await secureEnclaveManager.loadMasterKey() {
-                masterKey = existingKey
-                print("✅ Loaded existing master key")
-            } else {
-                // Generate new master key
-                masterKey = SymmetricKey(size: .bits256)
-                
-                // Store in Secure Enclave
-                if let key = masterKey {
-                    await secureEnclaveManager.storeMasterKey(key)
-                    print("✅ Generated and stored new master key")
-                }
+        // FIXED: Removed unnecessary do-catch since no throwing operations
+        // Try to load existing master key from Secure Enclave
+        if let existingKey = await secureEnclaveManager.loadMasterKey() {
+            masterKey = existingKey
+            print("✅ Loaded existing master key")
+        } else {
+            // Generate new master key
+            masterKey = SymmetricKey(size: .bits256)
+            
+            // Store in Secure Enclave
+            if let key = masterKey {
+                await secureEnclaveManager.storeMasterKey(key)
+                print("✅ Generated and stored new master key")
             }
-            
-            // Generate key derivation salt
-            keyDerivationSalt = Data((0..<32).map { _ in UInt8.random(in: 0...255) })
-            
-        } catch {
-            print("❌ Master key initialization failed: \(error)")
-            // Create emergency key for basic operation
+        }
+        
+        // Generate key derivation salt
+        keyDerivationSalt = Data((0..<32).map { _ in UInt8.random(in: 0...255) })
+        
+        // If master key initialization fails, create emergency key for basic operation
+        if masterKey == nil {
+            print("⚠️ Master key initialization failed, creating emergency key")
             masterKey = SymmetricKey(size: .bits256)
         }
     }
@@ -258,11 +258,13 @@ class LocalEncryptionManager: ObservableObject {
         case .high:
             // Use strong encryption with key rotation
             await setEncryptionStrength(.strong)
-            await keyRotationScheduler.setRotationInterval(.hours(1))
+            // FIXED: Use correct TimeInterval values (seconds)
+            await keyRotationScheduler.setRotationInterval(3600) // 1 hour in seconds
         case .maximum:
             // Use maximum encryption with frequent rotation
             await setEncryptionStrength(.maximum)
-            await keyRotationScheduler.setRotationInterval(.minutes(30))
+            // FIXED: Use correct TimeInterval values (seconds)
+            await keyRotationScheduler.setRotationInterval(1800) // 30 minutes in seconds
         }
     }
     
@@ -487,5 +489,21 @@ struct BulkEncryptionResult {
     var successRate: Double {
         guard totalMessages > 0 else { return 0.0 }
         return Double(successfulEncryptions) / Double(totalMessages)
+    }
+}
+
+// MARK: - TimeInterval Extensions for Convenience
+
+extension TimeInterval {
+    static func hours(_ hours: Double) -> TimeInterval {
+        return hours * 3600
+    }
+    
+    static func minutes(_ minutes: Double) -> TimeInterval {
+        return minutes * 60
+    }
+    
+    static func seconds(_ seconds: Double) -> TimeInterval {
+        return seconds
     }
 }
