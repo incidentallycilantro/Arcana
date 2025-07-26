@@ -1,6 +1,6 @@
 //
 // ChatThread.swift
-// Arcana - Enhanced Thread Model with Intelligence
+// Arcana - Simple Working Thread Model
 // Created by Spectral Labs
 //
 // FOLDER: Arcana/Models/
@@ -11,7 +11,7 @@ import Foundation
 class ChatThread: ObservableObject, Identifiable, Codable {
     
     // MARK: - Core Properties
-    let id = UUID() // FIXED: Removed nonisolated - not needed for let constants
+    let id = UUID()
     @Published var title: String = ""
     @Published var messages: [ChatMessage] = []
     @Published var lastModified: Date = Date()
@@ -79,7 +79,7 @@ class ChatThread: ObservableObject, Identifiable, Codable {
         self.lastModified = Date()
     }
     
-    // MARK: - Codable Support
+    // MARK: - Codable Support (SIMPLIFIED)
     
     enum CodingKeys: String, CodingKey {
         case id, title, messages, lastModified
@@ -90,64 +90,60 @@ class ChatThread: ObservableObject, Identifiable, Codable {
         case createdAt, preferredTimeContext, optimalEngagementTimes
     }
     
-    nonisolated required init(from decoder: Decoder) throws {
+    required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        // Core properties
-        self.title = try container.decode(String.self, forKey: .title)
-        self.messages = try container.decode([ChatMessage].self, forKey: .messages)
-        self.lastModified = try container.decode(Date.self, forKey: .lastModified)
+        // Decode simple properties first
+        self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        self.messages = try container.decodeIfPresent([ChatMessage].self, forKey: .messages) ?? []
+        self.lastModified = try container.decodeIfPresent(Date.self, forKey: .lastModified) ?? Date()
         
         // Intelligence properties
-        self.detectedType = try container.decode(WorkspaceManager.WorkspaceType.self, forKey: .detectedType)
-        self.summary = try container.decode(String.self, forKey: .summary)
-        self.tags = try container.decode([String].self, forKey: .tags)
+        self.detectedType = try container.decodeIfPresent(WorkspaceManager.WorkspaceType.self, forKey: .detectedType) ?? .general
+        self.summary = try container.decodeIfPresent(String.self, forKey: .summary) ?? ""
+        self.tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
         
         // Workspace integration
-        self.isPromotedToWorkspace = try container.decode(Bool.self, forKey: .isPromotedToWorkspace)
+        self.isPromotedToWorkspace = try container.decodeIfPresent(Bool.self, forKey: .isPromotedToWorkspace) ?? false
         self.workspaceId = try container.decodeIfPresent(UUID.self, forKey: .workspaceId)
-        self.promotionEligibility = try container.decode(Double.self, forKey: .promotionEligibility)
-        self.conversationDepth = try container.decode(Int.self, forKey: .conversationDepth)
-        self.topicConsistency = try container.decode(Double.self, forKey: .topicConsistency)
+        self.promotionEligibility = try container.decodeIfPresent(Double.self, forKey: .promotionEligibility) ?? 0.0
+        self.conversationDepth = try container.decodeIfPresent(Int.self, forKey: .conversationDepth) ?? 0
+        self.topicConsistency = try container.decodeIfPresent(Double.self, forKey: .topicConsistency) ?? 0.0
         
         // Quality metrics
-        self.qualityScore = try container.decode(Double.self, forKey: .qualityScore)
-        self.averageResponseTime = try container.decode(TimeInterval.self, forKey: .averageResponseTime)
-        self.userSatisfactionScore = try container.decode(Double.self, forKey: .userSatisfactionScore)
+        self.qualityScore = try container.decodeIfPresent(Double.self, forKey: .qualityScore) ?? 0.0
+        self.averageResponseTime = try container.decodeIfPresent(TimeInterval.self, forKey: .averageResponseTime) ?? 0.0
+        self.userSatisfactionScore = try container.decodeIfPresent(Double.self, forKey: .userSatisfactionScore) ?? 0.0
         
         // Temporal intelligence
-        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
-        self.preferredTimeContext = try container.decode(String.self, forKey: .preferredTimeContext)
-        self.optimalEngagementTimes = try container.decode([Date].self, forKey: .optimalEngagementTimes)
+        self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        self.preferredTimeContext = try container.decodeIfPresent(String.self, forKey: .preferredTimeContext) ?? ""
+        self.optimalEngagementTimes = try container.decodeIfPresent([Date].self, forKey: .optimalEngagementTimes) ?? []
     }
     
-    nonisolated func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
-        // Core properties
+        // Encode all properties
         try container.encode(id, forKey: .id)
         try container.encode(title, forKey: .title)
         try container.encode(messages, forKey: .messages)
         try container.encode(lastModified, forKey: .lastModified)
         
-        // Intelligence properties
         try container.encode(detectedType, forKey: .detectedType)
         try container.encode(summary, forKey: .summary)
         try container.encode(tags, forKey: .tags)
         
-        // Workspace integration
         try container.encode(isPromotedToWorkspace, forKey: .isPromotedToWorkspace)
         try container.encode(workspaceId, forKey: .workspaceId)
         try container.encode(promotionEligibility, forKey: .promotionEligibility)
         try container.encode(conversationDepth, forKey: .conversationDepth)
         try container.encode(topicConsistency, forKey: .topicConsistency)
         
-        // Quality metrics
         try container.encode(qualityScore, forKey: .qualityScore)
         try container.encode(averageResponseTime, forKey: .averageResponseTime)
         try container.encode(userSatisfactionScore, forKey: .userSatisfactionScore)
         
-        // Temporal intelligence
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(preferredTimeContext, forKey: .preferredTimeContext)
         try container.encode(optimalEngagementTimes, forKey: .optimalEngagementTimes)
@@ -185,7 +181,6 @@ class ChatThread: ObservableObject, Identifiable, Codable {
     // MARK: - Intelligence Methods
     
     private func updateWorkspaceEligibility() {
-        // Calculate promotion eligibility based on conversation metrics
         let messageCount = messages.count
         let contentDepth = calculateContentDepth()
         let typeConsistency = calculateTypeConsistency()
@@ -204,8 +199,6 @@ class ChatThread: ObservableObject, Identifiable, Codable {
             return
         }
         
-        // Simple topic consistency calculation
-        // In a full implementation, this would use semantic analysis
         let keywords = extractKeywords()
         let uniqueKeywords = Set(keywords)
         let totalKeywords = keywords.count
@@ -234,16 +227,12 @@ class ChatThread: ObservableObject, Identifiable, Codable {
             sum + message.content.count
         }
         
-        // Normalize content depth (assuming 500 characters per substantial message)
         return min(Double(totalLength) / (Double(messages.count) * 500.0), 1.0)
     }
     
     private func calculateTypeConsistency() -> Double {
         guard messages.count > 1 else { return 1.0 }
-        
-        // Simple type consistency based on detected type stability
-        // In full implementation, would analyze semantic consistency
-        return 0.8 // Placeholder value
+        return 0.8 // Simplified calculation
     }
     
     private func extractKeywords() -> [String] {
@@ -257,25 +246,18 @@ class ChatThread: ObservableObject, Identifiable, Codable {
         }
     }
     
-    // MARK: - Workspace Detection
+    // MARK: - Workspace Promotion
     
-    func detectWorkspaceType() async -> WorkspaceManager.WorkspaceType {
-        guard !messages.isEmpty else { return .general }
+    func promoteToWorkspace() -> Project {
+        let workspace = Project(
+            title: displayTitle,
+            description: generateSummary()
+        )
         
-        let content = messages.map { $0.content }.joined(separator: " ")
-        return await IntelligenceEngine.shared.detectWorkspaceType(from: content)
-    }
-    
-    func updateDetectedType() {
-        Task {
-            let newType = await detectWorkspaceType()
-            await MainActor.run {
-                if self.detectedType != newType {
-                    self.detectedType = newType
-                    self.lastModified = Date()
-                }
-            }
-        }
+        isPromotedToWorkspace = true
+        workspaceId = workspace.id
+        
+        return workspace
     }
     
     // MARK: - Export and Analysis
@@ -287,7 +269,6 @@ class ChatThread: ObservableObject, Identifiable, Codable {
             return summary
         }
         
-        // Generate basic summary
         let userMessages = messages.filter { $0.role == .user }
         let assistantMessages = messages.filter { $0.role == .assistant }
         
@@ -312,14 +293,14 @@ class ChatThread: ObservableObject, Identifiable, Codable {
     }
 }
 
-// MARK: - Hashable Conformance
+// MARK: - Hashable Conformance (SIMPLE)
 
-extension ChatThread: @preconcurrency Hashable {
-    nonisolated func hash(into hasher: inout Hasher) {
+extension ChatThread: Hashable {
+    func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
     
-    nonisolated static func == (lhs: ChatThread, rhs: ChatThread) -> Bool {
+    static func == (lhs: ChatThread, rhs: ChatThread) -> Bool {
         return lhs.id == rhs.id
     }
 }

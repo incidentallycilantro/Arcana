@@ -1,3 +1,4 @@
+/*
 //
 // CircadianOptimizer.swift
 // Arcana - Circadian rhythm optimization for responses
@@ -354,3 +355,4 @@ enum Chronotype {
 struct CircadianCalibration {
     let personalizedShift: TimeInterval = 0
 }
+*/

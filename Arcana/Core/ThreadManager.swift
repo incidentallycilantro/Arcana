@@ -119,7 +119,7 @@ class ThreadManager: ObservableObject {
         let workspaces = WorkspaceManager.shared.workspaces
 
         return workspaces.filter { workspace in
-            let workspaceKeywords = intelligenceEngine.extractKeywords(from: "\(workspace.title) \(workspace.description)")
+            let workspaceKeywords = await intelligenceEngine.extractKeywords(from: "\(workspace.title) \(workspace.description)")
             let commonKeywords = Set(contentKeywords).intersection(Set(workspaceKeywords))
             return commonKeywords.count >= 2
         }.prefix(3).map { $0 }

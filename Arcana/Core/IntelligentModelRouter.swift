@@ -502,8 +502,10 @@ class IntelligentModelRouter: ObservableObject {
         // Initialize model capabilities database
         for model in modelSpecializations.keys {
             modelCapabilities[model] = ModelCapabilities(
-                model: model,
-                specializations: modelSpecializations[model] ?? [:],
+                modelName: model,
+                specialties: [], // Convert specializations to array if needed
+                averageConfidence: 0.8
+            )
                 memoryRequirement: getModelMemoryRequirement(model),
                 averageInferenceTime: getModelAverageInferenceTime(model)
             )

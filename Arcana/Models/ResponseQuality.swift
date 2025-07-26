@@ -142,7 +142,7 @@ struct ResponseQuality: Codable, Hashable {
     
     /// Generate human-readable quality summary
     var qualitySummary: String {
-        let grade = QualityStandards.getQualityGrade(overallScore)
+        let grade = QualityStandards.getQualityGrade(score: overallScore)
         let percentage = String(format: "%.1f%%", overallScore * 100)
         
         return "\(grade) (\(percentage)) - \(qualityTier.displayName) tier"
